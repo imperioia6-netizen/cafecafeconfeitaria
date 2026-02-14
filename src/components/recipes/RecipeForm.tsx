@@ -16,14 +16,15 @@ import { toast } from 'sonner';
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório').max(100),
   category: z.enum(['bolo', 'torta', 'salgado', 'bebida', 'doce', 'outro']),
+  sell_mode: z.enum(['fatia', 'inteiro']).default('fatia'),
   slice_weight_g: z.coerce.number().optional(),
   sale_price: z.coerce.number().min(0.01, 'Preço obrigatório'),
   direct_cost: z.coerce.number().min(0).nullable(),
 }).superRefine((data, ctx) => {
-  if (data.category === 'bolo' && (!data.slice_weight_g || data.slice_weight_g < 1)) {
+  if (data.category === 'bolo' && data.sell_mode === 'fatia' && (!data.slice_weight_g || data.slice_weight_g < 1)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Peso por fatia obrigatório para bolos',
+      message: 'Peso por fatia obrigatório para bolos vendidos por fatia',
       path: ['slice_weight_g'],
     });
   }
@@ -56,12 +57,14 @@ export default function RecipeForm({ recipe, onClose }: Props) {
     defaultValues: recipe ? {
       name: recipe.name,
       category: recipe.category,
+      sell_mode: (recipe as any).sell_mode || 'fatia',
       slice_weight_g: recipe.category === 'bolo' ? Number(recipe.slice_weight_g) : undefined,
       sale_price: Number(recipe.sale_price),
       direct_cost: recipe.direct_cost ? Number(recipe.direct_cost) : null,
     } : {
       name: '',
       category: 'bolo',
+      sell_mode: 'fatia',
       slice_weight_g: 250,
       sale_price: 0,
       direct_cost: null,
@@ -69,7 +72,9 @@ export default function RecipeForm({ recipe, onClose }: Props) {
   });
 
   const category = watch('category');
+  const sellMode = watch('sell_mode');
   const isBolo = category === 'bolo';
+  const isFatia = sellMode === 'fatia';
   const directCost = watch('direct_cost');
   const salePrice = watch('sale_price');
 
@@ -112,7 +117,8 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       setUploading(true);
       const payload = {
         ...data,
-        slice_weight_g: data.category === 'bolo' ? (data.slice_weight_g ?? 250) : 250,
+        sell_mode: data.category === 'bolo' ? data.sell_mode : 'fatia',
+        slice_weight_g: (data.category === 'bolo' && data.sell_mode === 'fatia') ? (data.slice_weight_g ?? 250) : 250,
         min_stock: 0,
       };
 
@@ -184,26 +190,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
-      {isBolo ? (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select defaultValue={category} onValueChange={(v: any) => setValue('category', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Constants.public.Enums.product_category.map(c => (
-                  <SelectItem key={c} value={c}>{categoryLabels[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="slice_weight_g">Peso por fatia (g)</Label>
-            <Input id="slice_weight_g" type="number" {...register('slice_weight_g')} />
-            {errors.slice_weight_g && <p className="text-xs text-destructive">{errors.slice_weight_g.message}</p>}
-          </div>
-        </div>
-      ) : (
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Categoria</Label>
           <Select defaultValue={category} onValueChange={(v: any) => setValue('category', v)}>
@@ -214,6 +201,26 @@ export default function RecipeForm({ recipe, onClose }: Props) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        {isBolo && (
+          <div className="space-y-2">
+            <Label>Modo de venda</Label>
+            <Select defaultValue={sellMode} onValueChange={(v: any) => setValue('sell_mode', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fatia">Fatia</SelectItem>
+                <SelectItem value="inteiro">Bolo Completo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      {isBolo && isFatia && (
+        <div className="space-y-2">
+          <Label htmlFor="slice_weight_g">Peso por fatia (g)</Label>
+          <Input id="slice_weight_g" type="number" {...register('slice_weight_g')} />
+          {errors.slice_weight_g && <p className="text-xs text-destructive">{errors.slice_weight_g.message}</p>}
         </div>
       )}
 
@@ -233,9 +240,9 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-1">
           <p className="text-sm font-medium text-foreground">Cálculo em tempo real</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <span className="text-muted-foreground">Custo {isBolo ? 'por fatia' : 'unitário'}:</span>
+            <span className="text-muted-foreground">Custo {isBolo && isFatia ? 'por fatia' : 'unitário'}:</span>
             <span className="font-mono font-medium">R$ {costNum.toFixed(2)}</span>
-            <span className="text-muted-foreground">Margem {isBolo ? 'por fatia' : 'unitária'}:</span>
+            <span className="text-muted-foreground">Margem {isBolo && isFatia ? 'por fatia' : 'unitária'}:</span>
             <span className="font-mono font-medium">R$ {marginPerSlice.toFixed(2)}</span>
             <span className="text-muted-foreground">Margem %:</span>
             <span className={`font-mono font-medium ${marginPercent > 0 ? 'text-green-600' : 'text-destructive'}`}>
