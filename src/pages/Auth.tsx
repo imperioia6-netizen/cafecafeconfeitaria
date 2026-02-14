@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coffee, Eye, EyeOff } from 'lucide-react';
+import { Coffee, Eye, EyeOff, ShieldCheck, BarChart3, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
@@ -21,7 +21,7 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Coffee className="h-8 w-8 animate-spin text-primary" />
+        <Coffee className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
@@ -48,38 +48,62 @@ const Auth = () => {
     setSubmitting(false);
   };
 
+  const features = [
+    { icon: BarChart3, label: 'Dashboard executivo em tempo real' },
+    { icon: Package, label: 'Controle de produção e estoque' },
+    { icon: ShieldCheck, label: 'Gestão financeira completa' },
+  ];
+
   return (
     <div className="flex min-h-screen">
-      {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-primary relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
-        <div className="relative z-10 text-center px-12">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <Coffee className="h-16 w-16 text-primary-foreground" />
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, hsl(24, 60%, 18%) 0%, hsl(24, 40%, 8%) 50%, hsl(24, 35%, 12%) 100%)',
+        }}
+      >
+        {/* Animated background shapes */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-accent/5 animate-glow-pulse" />
+          <div className="absolute bottom-32 -right-16 w-72 h-72 rounded-full bg-accent/8 animate-glow-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/3 w-48 h-48 rounded-full bg-primary-foreground/3 animate-glow-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative z-10 text-center px-16 max-w-lg">
+          <div className="flex items-center justify-center mb-10 opacity-0 animate-scale-in">
+            <Coffee className="h-20 w-20 text-accent glow-gold" />
           </div>
-          <h1 className="text-5xl font-bold text-primary-foreground mb-4 tracking-tight">
+          <h1 className="text-5xl font-bold text-primary-foreground mb-4 tracking-tight opacity-0 animate-fade-in" style={{ fontFamily: "'Playfair Display', serif", animationDelay: '200ms' }}>
             Café Café
           </h1>
-          <p className="text-xl text-primary-foreground/80 font-light">
+          <p className="text-lg text-primary-foreground/60 font-light mb-14 opacity-0 animate-fade-in" style={{ animationDelay: '400ms' }}>
             Confeitaria & Gestão Inteligente
           </p>
-          <div className="mt-12 space-y-3 text-primary-foreground/60 text-sm">
-            <p>✦ Controle de produção e estoque</p>
-            <p>✦ Dashboard executivo em tempo real</p>
-            <p>✦ Gestão financeira completa</p>
+
+          <div className="space-y-5">
+            {features.map((f, i) => (
+              <div
+                key={f.label}
+                className="flex items-center gap-4 text-primary-foreground/70 opacity-0 animate-fade-in"
+                style={{ animationDelay: `${600 + i * 150}ms` }}
+              >
+                <div className="rounded-lg bg-accent/10 p-2.5">
+                  <f.icon className="h-5 w-5 text-accent" />
+                </div>
+                <span className="text-sm">{f.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Right panel - form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-8 bg-background">
-        <Card className="w-full max-w-md border-0 shadow-none lg:shadow-lg lg:border">
-          <CardHeader className="text-center space-y-2">
+      {/* Right panel */}
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-8 bg-background bg-pattern">
+        <Card className="w-full max-w-md border-0 shadow-none lg:glass-strong lg:border lg:border-border/30 lg:shadow-xl">
+          <CardHeader className="text-center space-y-2 pb-6">
             <div className="flex items-center justify-center gap-2 lg:hidden mb-4">
-              <Coffee className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-primary">Café Café</span>
+              <Coffee className="h-9 w-9 text-primary" />
+              <span className="text-2xl font-bold text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Café Café</span>
             </div>
             <CardTitle className="text-2xl">
               {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
@@ -89,65 +113,38 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome completo"
-                    required={!isLogin}
-                  />
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required={!isLogin} className="h-11" />
                 </div>
               )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  required
-                />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="h-11" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-11 pr-10" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? (
-                  <Coffee className="h-4 w-4 animate-spin" />
-                ) : isLogin ? 'Entrar' : 'Criar conta'}
+              <Button
+                type="submit"
+                className="w-full h-11 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all shadow-lg shadow-primary/20"
+                disabled={submitting}
+              >
+                {submitting ? <Coffee className="h-4 w-4 animate-spin" /> : isLogin ? 'Entrar' : 'Criar conta'}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+              <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
               </button>
             </div>
