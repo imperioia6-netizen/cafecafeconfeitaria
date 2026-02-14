@@ -1,29 +1,67 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Users, Loader2 } from 'lucide-react';
+import { useTeamMembers } from '@/hooks/useTeam';
+
+const roleLabels: Record<string, string> = {
+  owner: 'Proprietário',
+  employee: 'Funcionário',
+  client: 'Cliente',
+};
 
 const Team = () => {
+  const { data: members, isLoading } = useTeamMembers();
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Equipe</h1>
-          <p className="text-muted-foreground mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Gerenciar funcionários e permissões
-          </p>
+          <p className="text-muted-foreground mt-1">Gerenciar funcionários e permissões</p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              Funcionários
+              Funcionários ({members?.length ?? 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Nenhum funcionário cadastrado ainda.
-            </p>
+            {isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : !members?.length ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum membro na equipe.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Aniversário</TableHead>
+                    <TableHead>Papel</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((m: any) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">{m.name}</TableCell>
+                      <TableCell>{m.phone ?? '—'}</TableCell>
+                      <TableCell>{m.birthday ? new Date(m.birthday).toLocaleDateString('pt-BR') : '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {m.roles?.map((r: string) => (
+                            <Badge key={r} variant="secondary">{roleLabels[r] ?? r}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
