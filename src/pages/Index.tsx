@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DollarSign, ShoppingCart, TrendingUp, AlertTriangle,
-  Package, ChefHat, Coffee, Loader2,
+  Package, ChefHat, Coffee, Loader2, MoreVertical, Calendar,
 } from 'lucide-react';
 import { useDashboardKPIs, useSalesChart } from '@/hooks/useDashboard';
 import { useActiveAlerts } from '@/hooks/useAlerts';
@@ -13,6 +14,9 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 /* ─── KPI Card ───────────────────────────────────────── */
 const KpiCard = ({
@@ -92,7 +96,8 @@ const Dashboard = () => {
   const { isOwner } = useAuth();
   const navigate = useNavigate();
   const { data: kpis, isLoading } = useDashboardKPIs();
-  const { data: chartData } = useSalesChart();
+  const [chartDays, setChartDays] = useState(7);
+  const { data: chartData } = useSalesChart(chartDays);
   const { data: alerts } = useActiveAlerts();
 
   if (!isOwner) return <Navigate to="/production" replace />;
@@ -161,9 +166,34 @@ const Dashboard = () => {
                 }}
               >
                 <div className="p-6">
-                  <h3 className="text-lg font-bold mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    Seu Desempenho
-                  </h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      Seu Desempenho
+                    </h3>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                          <MoreVertical className="h-4 w-4 opacity-60" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="glass-card border-border/30">
+                        <DropdownMenuItem
+                          onClick={() => setChartDays(7)}
+                          className={`gap-2 ${chartDays === 7 ? 'text-accent font-semibold' : ''}`}
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          7 dias
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setChartDays(30)}
+                          className={`gap-2 ${chartDays === 30 ? 'text-accent font-semibold' : ''}`}
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          Últimos 30 dias
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                   {chartData && chartData.length > 0 ? (
                     <>
                       <ResponsiveContainer width="100%" height={260}>
@@ -185,7 +215,7 @@ const Dashboard = () => {
                             tick={{ fontSize: 11, fill: 'hsl(36, 40%, 60%)' }}
                             axisLine={false}
                             tickLine={false}
-                            tickFormatter={(v) => `R$ ${v}`}
+                            tickFormatter={(v) => v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}K` : `R$ ${v}`}
                           />
                           <Tooltip content={<CustomTooltip />} />
                           <Area
