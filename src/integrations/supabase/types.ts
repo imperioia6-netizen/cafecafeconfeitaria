@@ -641,6 +641,7 @@ export type Database = {
           name: string
           photo_url: string | null
           sale_price: number
+          sell_mode: string
           slice_weight_g: number
           updated_at: string
         }
@@ -654,6 +655,7 @@ export type Database = {
           name: string
           photo_url?: string | null
           sale_price?: number
+          sell_mode?: string
           slice_weight_g?: number
           updated_at?: string
         }
@@ -667,6 +669,7 @@ export type Database = {
           name?: string
           photo_url?: string | null
           sale_price?: number
+          sell_mode?: string
           slice_weight_g?: number
           updated_at?: string
         }

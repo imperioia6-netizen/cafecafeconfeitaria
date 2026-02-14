@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ADD COLUMN sell_mode text NOT NULL DEFAULT 'fatia';
