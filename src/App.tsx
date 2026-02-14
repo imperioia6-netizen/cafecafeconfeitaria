@@ -16,7 +16,6 @@ import Alerts from "./pages/Alerts";
 import Team from "./pages/Team";
 import Profile from "./pages/Profile";
 import Crm from "./pages/Crm";
-import SmartHub from "./pages/SmartHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,7 +40,6 @@ const App = () => (
             <Route path="/team" element={<Team />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/crm" element={<Crm />} />
-            <Route path="/smart" element={<SmartHub />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
