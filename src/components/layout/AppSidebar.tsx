@@ -12,21 +12,21 @@ import { Badge } from '@/components/ui/badge';
 
 const navGroups = [
   {
-    label: 'Operação',
-    items: [
-      { label: 'Produção', icon: Coffee, path: '/production', ownerOnly: false },
-      { label: 'Estoque', icon: Package, path: '/inventory', ownerOnly: false },
-      { label: 'Vendas', icon: ShoppingCart, path: '/sales', ownerOnly: false },
-      { label: 'Caixas', icon: CreditCard, path: '/cash-register', ownerOnly: false },
-    ],
-  },
-  {
     label: 'Gestão',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, path: '/', ownerOnly: true },
       { label: 'Receitas', icon: ChefHat, path: '/recipes', ownerOnly: true },
       { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
       { label: 'Alertas', icon: AlertTriangle, path: '/alerts', ownerOnly: true },
+    ],
+  },
+  {
+    label: 'Operação',
+    items: [
+      { label: 'Produção', icon: Coffee, path: '/production', ownerOnly: false },
+      { label: 'Estoque', icon: Package, path: '/inventory', ownerOnly: false },
+      { label: 'Vendas', icon: ShoppingCart, path: '/sales', ownerOnly: false },
+      { label: 'Caixas', icon: CreditCard, path: '/cash-register', ownerOnly: false },
     ],
   },
   {
