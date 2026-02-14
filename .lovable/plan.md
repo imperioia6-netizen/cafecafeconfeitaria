@@ -1,123 +1,61 @@
 
-# CRM Profissional — Design Cinematografico + Kanban de Leads
 
-Redesign completo do CRM para alinhar com o padrao visual do Dashboard (KPI cards com gradientes escuros, tipografia Playfair Display, animacoes staggered) e adicionar um sistema de quadro Kanban para gerenciar leads/negocios em andamento.
+# Melhoria dos Campos do Pipeline de Leads
 
----
-
-## 1. Redesign dos KPI Cards (CrmDashboardKpis.tsx)
-
-Trocar os KPI cards atuais (simples, fundo claro) pelo mesmo padrao do Dashboard principal:
-- Primeiro card com gradiente escuro marrom (igual ao "Faturamento" do Dashboard)
-- Todos os cards com `card-cinematic`, `animate-fade-in` e delays staggered
-- Icones com `animate-float` dentro de circulos
-- Numeros grandes em `font-mono-numbers` com `glow-gold` no primeiro
-- Sub-informacoes abaixo com formatacao identica ao Dashboard
-- Grid 5 colunas em desktop, 2 em mobile
-
-## 2. Nova Aba: Kanban de Leads
-
-Adicionar uma nova aba "Pipeline" no CRM com um quadro Kanban visual para gerenciar leads e negocios em andamento.
-
-**Colunas do Kanban:**
-- **Novo Lead** — Primeiro contato, interesse inicial
-- **Em Negociacao** — Proposta enviada, aguardando resposta
-- **Proposta Aceita** — Fechamento proximo
-- **Convertido** — Virou cliente (movido automaticamente ao vincular venda)
-
-**Funcionalidades:**
-- Cada card mostra: nome, telefone, valor potencial, dias no estagio, notas
-- Botoes para mover lead entre colunas (avancar/retroceder)
-- Contadores por coluna com valor total potencial
-- Criar novo lead diretamente no kanban
-- Ao converter, opcao de transformar em cliente no CRM
-
-**Implementacao tecnica:**
-- Reutilizar a tabela `social_leads` existente, adicionando novos status via migration: `novo_lead`, `em_negociacao`, `proposta_aceita`, `convertido`
-- Adicionar colunas `potential_value` (numeric), `notes` (text), `stage_changed_at` (timestamptz) na tabela `social_leads`
-- Novo componente `LeadsKanban.tsx`
-- Atualizar `useSocialLeads.ts` para suportar os novos campos e status
-
-## 3. Migration SQL
-
-Alterar a tabela `social_leads` para suportar o Kanban:
-- Adicionar valores ao enum ou usar text para status: `novo_lead`, `em_negociacao`, `proposta_aceita`, `convertido` (alem dos existentes)
-- Adicionar colunas: `potential_value` (numeric default 0), `notes` (text), `name` (text), `phone` (text), `stage_changed_at` (timestamptz default now)
-
-## 4. Redesign da Pagina CRM (Crm.tsx)
-
-- Aplicar mesma estrutura do Dashboard: `space-y-8`, animacoes staggered
-- KPIs com design identico ao Dashboard
-- Nova aba "Pipeline" com icone Kanban (LayoutGrid ou Columns)
-- Tabs com estilo aprimorado
-- Melhorar estado vazio com design mais cinematografico
-
-## 5. Melhorias Visuais nas Abas Existentes
-
-**Aba Clientes:**
-- Status badges com animacao ao trocar filtro
-- Cards com hover mais pronunciado (depth-shadow)
-
-**Aba Aniversarios:**
-- Header com titulo em Playfair Display e gradiente
-- Cards com border-shine nos aniversarios de hoje
-
-**Aba Reativacao:**
-- KPI cards de resumo com mesmo padrao do Dashboard (gradiente escuro no primeiro)
-- Segmentacao visual mais pronunciada
-
-**Aba Config:**
-- Cards com gradientes sutis no header
-- Status de conexao com animacao pulse
-
-## 6. Componente LeadsKanban.tsx
-
-Quadro Kanban com 4 colunas lado a lado (scroll horizontal em mobile):
-- Cada coluna: header com titulo, contagem e valor total
-- Cards arrastados visualmente com botoes de acao
-- Dialog para criar/editar lead
-- Design: colunas com fundo sutil diferente, cards com card-cinematic
-- Cores por coluna: azul (novo), amarelo (negociacao), verde (proposta), dourado (convertido)
+Upgrade do formulario e dos cards do Kanban para tornar a experiencia mais profissional, com novos campos, melhor organizacao visual e funcionalidades extras.
 
 ---
 
-## Sequencia de Implementacao
+## Novos Campos no Formulario de Lead
 
-1. Migration SQL — novos campos em `social_leads`
-2. `useSocialLeads.ts` — atualizar hook com novos campos
-3. `CrmDashboardKpis.tsx` — redesign com padrao do Dashboard
-4. `LeadsKanban.tsx` — novo componente Kanban completo
-5. `Crm.tsx` — nova aba Pipeline + redesign geral
-6. Melhorias visuais nas abas existentes (Birthday, Reactivation, Config)
+Adicionar campos que trazem mais contexto e controle sobre cada lead:
 
----
+- **Email** — campo de contato adicional
+- **Origem/Fonte** — de onde veio o lead (Instagram, Indicacao, WhatsApp, Site, Outro) via Select dropdown
+- **Prioridade** — Alta, Media, Baixa com badges coloridas (vermelho, amarelo, verde)
+- **Data de Follow-up** — quando fazer o proximo contato (date picker)
+- **Produto de Interesse** — texto livre para registrar o que o lead quer
+
+## Alteracoes no Banco de Dados
+
+Migration para adicionar novas colunas na tabela `social_leads`:
+```text
+ALTER TABLE social_leads
+  ADD COLUMN IF NOT EXISTS email text,
+  ADD COLUMN IF NOT EXISTS source text DEFAULT 'outro',
+  ADD COLUMN IF NOT EXISTS priority text DEFAULT 'media',
+  ADD COLUMN IF NOT EXISTS follow_up_date date,
+  ADD COLUMN IF NOT EXISTS product_interest text;
+```
+
+## Melhorias nos Cards do Kanban
+
+Cada card passara a mostrar:
+- **Badge de prioridade** colorida (Alta = vermelho, Media = amarelo, Baixa = verde) no canto superior
+- **Origem** com icone correspondente (Instagram, WhatsApp, etc.)
+- **Indicador de follow-up** — se a data ja passou, mostrar em vermelho "Atrasado"; se e hoje, "Hoje"; se e futura, mostrar a data
+- **Produto de interesse** como tag discreta
+- **Avatar com iniciais** do nome no lugar do texto puro
+
+## Melhorias no Dialog de Criacao/Edicao
+
+- Reorganizar em 2 colunas (nome + email na primeira linha, telefone + instagram na segunda)
+- Selects estilizados para Origem e Prioridade
+- Date picker para Follow-up usando o calendario existente
+- Separador visual entre "Dados de Contato" e "Detalhes do Negocio"
+- Botao de deletar no dialog de edicao (com confirmacao)
 
 ## Detalhes Tecnicos
 
-### Tabela social_leads (alteracoes)
-```text
-ALTER TABLE social_leads
-  ADD COLUMN IF NOT EXISTS name text,
-  ADD COLUMN IF NOT EXISTS phone text,
-  ADD COLUMN IF NOT EXISTS potential_value numeric DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS notes text,
-  ADD COLUMN IF NOT EXISTS stage_changed_at timestamptz DEFAULT now();
-```
-Status existentes serao mantidos e novos adicionados: `novo_lead`, `em_negociacao`, `proposta_aceita`.
+### Arquivos Modificados
+- `supabase/migrations/` — nova migration com ALTER TABLE
+- `src/integrations/supabase/types.ts` — atualizar tipos
+- `src/hooks/useSocialLeads.ts` — adicionar novos campos na interface e mutations
+- `src/components/crm/LeadsKanban.tsx` — formulario expandido, cards melhorados, layout 2 colunas no dialog
 
-### LeadsKanban.tsx
-- Usa `useSocialLeads` para CRUD
-- 4 colunas em flex horizontal com `overflow-x-auto`
-- Cada coluna filtra leads por status
-- Botao "Mover" atualiza status e `stage_changed_at`
-- Dialog para criar lead com campos: nome, telefone, instagram, valor potencial, notas
-- Card mostra: nome, valor, dias no estagio, badge de status, notas truncadas
+### Sequencia
+1. Migration SQL
+2. Atualizar tipos e hook
+3. Redesign do dialog com novos campos
+4. Upgrade visual dos cards do Kanban
 
-### Design Visual
-Tudo alinhado com o Dashboard existente:
-- `card-cinematic`, `shine-effect`, `border-shine`
-- Gradientes escuros marrom no card principal
-- `font-mono-numbers` para valores
-- `glow-gold` para destaque
-- `animate-fade-in` com delays staggered
-- Tipografia Playfair Display para titulos
