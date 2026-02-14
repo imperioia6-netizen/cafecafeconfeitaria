@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { Plus, Camera, X, Loader2 } from 'lucide-react';
 import { useCreateRecipe, useUpdateRecipe, type Recipe, type RecipeInsert } from '@/hooks/useRecipes';
 import { Constants } from '@/integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -42,6 +43,10 @@ interface Props {
 
 export default function RecipeForm({ recipe, onClose }: Props) {
   const [open, setOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(recipe?.photo_url || null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const createRecipe = useCreateRecipe();
   const updateRecipe = useUpdateRecipe();
   const isEdit = !!recipe;
@@ -67,14 +72,43 @@ export default function RecipeForm({ recipe, onClose }: Props) {
   const isBolo = category === 'bolo';
   const directCost = watch('direct_cost');
   const salePrice = watch('sale_price');
-  const sliceWeight = watch('slice_weight_g');
 
   const costPerSlice = directCost ?? 0;
   const marginPerSlice = salePrice - costPerSlice;
   const marginPercent = salePrice > 0 ? (marginPerSlice / salePrice) * 100 : 0;
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Imagem deve ter no máximo 5MB');
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const uploadPhoto = async (recipeId: string): Promise<string | null> => {
+    if (!photoFile) return photoPreview; // keep existing
+    const ext = photoFile.name.split('.').pop();
+    const path = `${recipeId}.${ext}`;
+    const { error } = await supabase.storage
+      .from('product-photos')
+      .upload(path, photoFile, { upsert: true });
+    if (error) throw new Error('Erro ao enviar foto: ' + error.message);
+    const { data } = supabase.storage.from('product-photos').getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const onSubmit = async (data: FormData) => {
     try {
+      setUploading(true);
       const payload = {
         ...data,
         slice_weight_g: data.category === 'bolo' ? (data.slice_weight_g ?? 250) : 250,
@@ -82,22 +116,67 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       };
 
       if (isEdit && recipe) {
-        await updateRecipe.mutateAsync({ id: recipe.id, ...payload });
+        const photo_url = await uploadPhoto(recipe.id);
+        await updateRecipe.mutateAsync({ id: recipe.id, ...payload, photo_url });
         toast.success('Receita atualizada!');
         onClose?.();
       } else {
-        await createRecipe.mutateAsync(payload as RecipeInsert);
+        const created = await createRecipe.mutateAsync(payload as RecipeInsert);
+        const photo_url = await uploadPhoto(created.id);
+        if (photo_url) {
+          await updateRecipe.mutateAsync({ id: created.id, photo_url });
+        }
         toast.success('Receita criada!');
         reset();
+        setPhotoFile(null);
+        setPhotoPreview(null);
         setOpen(false);
       }
     } catch (e: any) {
       toast.error(e.message || 'Erro ao salvar receita');
+    } finally {
+      setUploading(false);
     }
   };
 
   const formContent = (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Photo upload */}
+      <div className="flex flex-col items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoSelect}
+        />
+        {photoPreview ? (
+          <div className="relative">
+            <img
+              src={photoPreview}
+              alt="Preview"
+              className="h-24 w-24 rounded-xl object-cover border border-border"
+            />
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-sm"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+          >
+            <Camera className="h-6 w-6" />
+            <span className="text-[10px] font-medium">Adicionar foto</span>
+          </button>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="name">Nome do Produto</Label>
         <Input id="name" {...register('name')} placeholder="Ex: Bolo de Chocolate" />
@@ -165,7 +244,8 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         </div>
       )}
 
-      <Button type="submit" className="w-full" disabled={createRecipe.isPending || updateRecipe.isPending}>
+      <Button type="submit" className="w-full" disabled={createRecipe.isPending || updateRecipe.isPending || uploading}>
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
         {isEdit ? 'Salvar Alterações' : 'Criar Produto'}
       </Button>
     </form>
