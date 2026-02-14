@@ -121,8 +121,8 @@ const Crm = () => {
                   value={tab.value}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-500 gap-1.5 border-0 ${
                     activeTab === tab.value
-                      ? 'text-white depth-shadow scale-105'
-                      : 'text-muted-foreground hover:bg-muted/60'
+                    ? 'text-white depth-shadow scale-105'
+                      : 'text-foreground hover:bg-muted/60'
                   }`}
                   style={activeTab === tab.value ? {
                     background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
@@ -140,7 +140,7 @@ const Crm = () => {
             <div className="card-cinematic rounded-xl p-4 space-y-4">
               {/* Status pills */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs font-medium uppercase tracking-wider mr-1" style={{ color: 'hsl(36 30% 85%)' }}>Filtro:</span>
+                <span className="text-xs font-medium uppercase tracking-wider mr-1 text-foreground">Filtro:</span>
                 {statusFilters.map(s => (
                   <button
                     key={s.key}
@@ -152,7 +152,7 @@ const Crm = () => {
                     }`}
                     style={statusFilter === s.key ? {
                       background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
-                    } : { color: 'hsl(36 30% 75%)', background: 'hsl(var(--muted) / 0.4)' }}
+                    } : { background: 'hsl(var(--muted) / 0.4)' }}
                   >
                     {s.label} ({s.count})
                   </button>
