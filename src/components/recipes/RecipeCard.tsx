@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Power, PowerOff } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Edit, Power, PowerOff, Trash2 } from 'lucide-react';
 import type { Recipe } from '@/hooks/useRecipes';
-import { useUpdateRecipe } from '@/hooks/useRecipes';
+import { useUpdateRecipe, useDeleteRecipe } from '@/hooks/useRecipes';
 import RecipeForm from './RecipeForm';
 import { toast } from 'sonner';
 
@@ -25,6 +26,14 @@ const categoryGradients: Record<string, string> = {
 export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; index?: number }) {
   const [editOpen, setEditOpen] = useState(false);
   const updateRecipe = useUpdateRecipe();
+  const deleteRecipe = useDeleteRecipe();
+
+  const handleDelete = async () => {
+    try {
+      await deleteRecipe.mutateAsync(recipe.id);
+      toast.success('Produto excluído');
+    } catch { toast.error('Erro ao excluir produto'); }
+  };
 
   const toggleActive = async () => {
     try {
@@ -57,6 +66,23 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
               <Button size="icon" variant="ghost" onClick={toggleActive} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
                 {recipe.active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-success" />}
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive/10 transition-all duration-300">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="glass-card border-border/30">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir produto</AlertDialogTitle>
+                    <AlertDialogDescription>Tem certeza que deseja excluir "{recipe.name}"? Essa ação não pode ser desfeita.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
 
