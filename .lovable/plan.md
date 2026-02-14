@@ -1,39 +1,64 @@
 
 
-# Menu do Avatar no Header com Troca de Perfil
+# Produtos com Foto/Preco e Anotacoes de Pedido na Venda
 
 ## Resumo
 
-Ao clicar no avatar no canto superior direito, abrir um dropdown menu com opcoes de navegacao e troca de visao. Remover "Meu Perfil" da sidebar.
+Duas melhorias na pagina de Vendas:
 
-## Alteracoes
+1. **Produtos com mais informacoes**: exibir foto do produto (da receita) e preco sugerido (sale_price) nos cards de produtos disponiveis, preenchendo automaticamente o preco no carrinho
+2. **Anotacoes de pedido**: adicionar campos opcionais de comanda, mesa e nome do cliente diretamente na venda
 
-### 1. AppHeader (`src/components/layout/AppHeader.tsx`)
+## Alteracoes no Banco de Dados
 
-- Substituir o botao do avatar por um `DropdownMenu` (Radix UI, ja instalado)
-- Opcoes do menu:
-  - **Meu Perfil** -- navega para `/profile`
-  - **Separador** (somente se owner)
-  - **Trocar Visao** (somente owner): sub-opcoes para alternar entre visao "Proprietario", "Funcionario" e "Cliente"
-  - **Separador**
-  - **Sair** -- executa signOut
-- A troca de visao nao altera roles no banco -- apenas simula a visao restrita no frontend (state local ou context)
+Adicionar 3 colunas na tabela `sales`:
 
-### 2. AppSidebar (`src/components/layout/AppSidebar.tsx`)
+```sql
+ALTER TABLE public.sales
+  ADD COLUMN order_number text DEFAULT NULL,
+  ADD COLUMN table_number text DEFAULT NULL,
+  ADD COLUMN customer_name text DEFAULT NULL;
+```
 
-- Remover o item "Meu Perfil" do grupo "Pessoal" no `navGroups`
-- Se o grupo "Pessoal" ficar vazio (usuario nao-owner nao ve "Equipe"), o grupo nao sera renderizado
+- `order_number`: numero da comanda (texto livre, ex: "042")
+- `table_number`: numero da mesa (texto livre, ex: "5")
+- `customer_name`: nome do cliente (texto livre, ex: "Maria")
 
-### 3. Contexto de Visao Simulada
+Esses campos sao opcionais e complementam o `customer_id` ja existente.
 
-- Adicionar estado `viewAs` no `AuthContext` (`useAuth.tsx`): `'owner' | 'employee' | 'client' | null`
-- Quando `viewAs` esta ativo, `isOwner` e `isEmployee` refletem o perfil simulado em vez do real
-- Somente owners podem ativar -- validado no contexto
-- Um badge no header indica quando esta em modo simulado (ex: "Visao: Funcionario") com botao para voltar
+## Alteracoes no Hook `useSales.ts`
+
+- Adicionar `order_number`, `table_number` e `customer_name` ao input de `useCreateSale`
+- Passar esses campos no insert da tabela `sales`
+- Incluir esses campos na query de `useTodaySales`
+
+## Alteracoes na Pagina `Sales.tsx`
+
+### Cards de Produtos
+
+- Buscar dados da receita via relacao `inventory -> recipes` (ja existente: `item.recipes`)
+- Exibir `photo_url` da receita como miniatura no card do produto
+- Exibir `sale_price` como preco de referencia no card
+- Ao adicionar ao carrinho, preencher `unit_price` automaticamente com o `sale_price` da receita
+
+### Anotacoes de Pedido (no carrinho)
+
+Adicionar secao "Anotacoes" no carrinho com 3 campos opcionais:
+
+- **Comanda**: input de texto curto para numero da comanda
+- **Mesa**: input de texto curto para numero da mesa
+- **Nome do cliente**: input de texto para nome (substitui ou complementa o seletor de cliente existente)
+
+Esses campos aparecem acima dos seletores de Canal e Pagamento.
+
+### Vendas de Hoje
+
+- Exibir comanda, mesa e nome do cliente quando preenchidos, usando badges ou texto secundario na linha da venda
 
 ## Detalhes Tecnicos
 
-- Usar `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuSub` do shadcn/ui (ja disponivel)
-- O dropdown tera `bg-popover` solido e `z-50` para evitar transparencia
-- A troca de visao e puramente client-side -- nao modifica `user_roles` no banco
-- O `viewAs` sera armazenado em estado React (nao localStorage) para seguranca
+- O `useInventory` ja faz join com `recipes`, entao `item.recipes?.photo_url` e `item.recipes?.sale_price` ja estao disponiveis
+- Os campos de anotacao sao states locais (`orderNumber`, `tableNumber`, `customerName`) resetados apos cada venda
+- O campo `customer_name` e texto livre e independente do `customer_id` (CRM) -- permite anotar nomes rapidos sem cadastrar cliente
+- Validacao: campos de texto com `maxLength` para seguranca (comanda: 20, mesa: 10, nome: 100)
+
