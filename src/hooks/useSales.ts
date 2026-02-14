@@ -44,7 +44,6 @@ export function useCreateSale() {
       total: number;
       items: CartItem[];
     }) => {
-      // Create sale
       const { data: sale, error: saleErr } = await supabase
         .from('sales')
         .insert({
@@ -57,7 +56,6 @@ export function useCreateSale() {
         .single();
       if (saleErr) throw saleErr;
 
-      // Create sale items
       const { error: itemsErr } = await supabase.from('sale_items').insert(
         input.items.map(item => ({
           sale_id: sale.id,
@@ -70,7 +68,6 @@ export function useCreateSale() {
       );
       if (itemsErr) throw itemsErr;
 
-      // Deduct from inventory
       for (const item of input.items) {
         const { data: inv } = await supabase
           .from('inventory')
@@ -86,6 +83,82 @@ export function useCreateSale() {
       }
 
       return sale;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sales'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useUpdateSale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      channel: SalesChannel;
+      payment_method: PaymentMethod;
+      total: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('sales')
+        .update({
+          channel: input.channel,
+          payment_method: input.payment_method,
+          total: input.total,
+        })
+        .eq('id', input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+}
+
+export function useDeleteSale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (saleId: string) => {
+      // Fetch sale items to restore inventory
+      const { data: items, error: itemsErr } = await supabase
+        .from('sale_items')
+        .select('inventory_id, quantity')
+        .eq('sale_id', saleId);
+      if (itemsErr) throw itemsErr;
+
+      // Restore inventory quantities
+      for (const item of items || []) {
+        if (item.inventory_id) {
+          const { data: inv } = await supabase
+            .from('inventory')
+            .select('slices_available')
+            .eq('id', item.inventory_id)
+            .single();
+          if (inv) {
+            await supabase
+              .from('inventory')
+              .update({ slices_available: inv.slices_available + item.quantity })
+              .eq('id', item.inventory_id);
+          }
+        }
+      }
+
+      // Delete sale items then sale
+      const { error: delItems } = await supabase
+        .from('sale_items')
+        .delete()
+        .eq('sale_id', saleId);
+      if (delItems) throw delItems;
+
+      const { error: delSale } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', saleId);
+      if (delSale) throw delSale;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales'] });
