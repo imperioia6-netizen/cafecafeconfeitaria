@@ -1,61 +1,39 @@
 
 
-# Enriquecer Ficha do Funcionario com Todas as Informacoes do Perfil
+# Menu do Avatar no Header com Troca de Perfil
 
-## Objetivo
+## Resumo
 
-Garantir que a ficha lateral (EmployeeSheet) exiba **todos** os dados disponiveis do perfil do funcionario, incluindo campos que atualmente nao aparecem.
-
-## Dados disponiveis na tabela `profiles`
-
-| Campo | Atual na ficha? | Acao |
-|-------|-----------------|------|
-| name | Sim | Manter |
-| phone | Sim | Manter |
-| birthday | Sim | Manter |
-| family_name | Nao | Adicionar |
-| family_birthday | Nao | Adicionar |
-| photo_url | Nao | Adicionar (exibir foto real no avatar se existir) |
-| service_rating | Sim | Manter |
-| service_notes | Sim | Manter |
-| roles (da user_roles) | Sim | Manter |
-| email (do auth.users) | Nao | Adicionar via user metadata |
-| created_at | Nao | Adicionar como "Membro desde" |
+Ao clicar no avatar no canto superior direito, abrir um dropdown menu com opcoes de navegacao e troca de visao. Remover "Meu Perfil" da sidebar.
 
 ## Alteracoes
 
-### 1. Card na pagina Team (`src/pages/Team.tsx`)
+### 1. AppHeader (`src/components/layout/AppHeader.tsx`)
 
-- Exibir telefone e aniversario de forma mais visivel no card
-- Mostrar foto real do usuario no Avatar quando `photo_url` existir
+- Substituir o botao do avatar por um `DropdownMenu` (Radix UI, ja instalado)
+- Opcoes do menu:
+  - **Meu Perfil** -- navega para `/profile`
+  - **Separador** (somente se owner)
+  - **Trocar Visao** (somente owner): sub-opcoes para alternar entre visao "Proprietario", "Funcionario" e "Cliente"
+  - **Separador**
+  - **Sair** -- executa signOut
+- A troca de visao nao altera roles no banco -- apenas simula a visao restrita no frontend (state local ou context)
 
-### 2. EmployeeSheet (`src/components/team/EmployeeSheet.tsx`)
+### 2. AppSidebar (`src/components/layout/AppSidebar.tsx`)
 
-Adicionar secao **Dados Pessoais** completa antes dos KPIs:
+- Remover o item "Meu Perfil" do grupo "Pessoal" no `navGroups`
+- Se o grupo "Pessoal" ficar vazio (usuario nao-owner nao ve "Equipe"), o grupo nao sera renderizado
 
-```
---- DADOS PESSOAIS ---
-Nome:              Vitor
-Telefone:          (11) 99999-9999
-Aniversario:       14 de fevereiro
-Familiar:          Maria (esposa)
-Aniv. Familiar:    22 de marco
-Membro desde:      janeiro de 2025
-```
+### 3. Contexto de Visao Simulada
 
-- Usar Avatar com `photo_url` real quando disponivel (AvatarImage + AvatarFallback)
-- Organizar os dados pessoais em rows com icones (Phone, Cake, Heart, Calendar, Mail)
-- Mostrar "Membro desde" usando `created_at` do perfil
-
-### 3. Hook useTeamMembers (`src/hooks/useTeam.ts`)
-
-- Garantir que o select de profiles inclui todos os campos: `family_name`, `family_birthday`, `photo_url`, `created_at`, `service_rating`, `service_notes`
-- Ja faz `select('*')` entao todos os campos ja vem -- nenhuma alteracao necessaria no hook
+- Adicionar estado `viewAs` no `AuthContext` (`useAuth.tsx`): `'owner' | 'employee' | 'client' | null`
+- Quando `viewAs` esta ativo, `isOwner` e `isEmployee` refletem o perfil simulado em vez do real
+- Somente owners podem ativar -- validado no contexto
+- Um badge no header indica quando esta em modo simulado (ex: "Visao: Funcionario") com botao para voltar
 
 ## Detalhes Tecnicos
 
-- Importar `AvatarImage` do componente Avatar para exibir foto real
-- Usar icones do Lucide: `Phone`, `Cake`, `Heart`, `Calendar`, `Clock` para os campos pessoais
-- Campos vazios (null) nao serao exibidos, mantendo a ficha limpa
-- Nenhuma alteracao de banco de dados necessaria -- todos os campos ja existem
-
+- Usar `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuSub` do shadcn/ui (ja disponivel)
+- O dropdown tera `bg-popover` solido e `z-50` para evitar transparencia
+- A troca de visao e puramente client-side -- nao modifica `user_roles` no banco
+- O `viewAs` sera armazenado em estado React (nao localStorage) para seguranca
