@@ -1,99 +1,166 @@
 
 
-# ☕ Café Café Confeitaria — Fase 1 + Fase 2: Base do Sistema + Controle de Produção
+# Implementacao Completa — Fase 1 + Fase 2
 
-## FASE 1 — Base do Sistema
-
-### 1.1 Autenticação e Perfis de Acesso
-- Tela de login com email/senha via Supabase Auth
-- 3 perfis de acesso com permissões diferentes:
-  - **Dono (Felipe)**: acesso total a tudo — dashboard, financeiro, relatórios, configurações
-  - **Funcionário (Caixa/Cozinha)**: registrar produção, peso, vendas, consultar estoque
-  - **Cliente**: perfil futuro — cadastro preparado com campos para aniversário e familiar
-- Tabela de perfis com nome, papel, telefone e foto
-- Felipe pode cadastrar/gerenciar funcionários
-
-### 1.2 Dashboard Executivo (Visão do Felipe)
-- Painel principal com visual profissional, tema da marca Café Café (tons de marrom/café)
-- Cards de resumo do dia:
-  - Faturamento hoje
-  - Quantidade de vendas (balcão + delivery)
-  - Ticket médio
-  - Estoque crítico (produtos com alerta)
-- Gráfico de vendas dos últimos 7 dias
-- Lista de alertas ativos (estoque baixo, produto parado >12h)
-- Acesso rápido aos módulos: Produção, Estoque, Financeiro, CRM
+O banco de dados ja esta pronto. As paginas existem mas sao apenas esqueletos vazios. Vamos implementar toda a funcionalidade real.
 
 ---
 
-## FASE 2 — Controle de Estoque e Produção
+## 1. Receitas (Cadastro Completo)
 
-### 2.1 Cadastro de Receitas/Produtos
-- Tela para cadastrar cada tipo de bolo/produto com:
-  - Nome (ex: "Bolo de Chocolate")
-  - Foto do produto
-  - **Peso por fatia** (ex: 250g) — usado para calcular rendimento proporcional
-  - **Preço de venda da fatia** — definido manualmente pelo Felipe
-  - Categoria (bolo, torta, salgado, bebida, etc.)
-- **Custo flexível — duas opções na mesma tela:**
-  - **Opção 1 — Custo direto**: informar "Este bolo custa R$45 pra fazer"
-  - **Opção 2 — Por ingredientes**: cadastrar ingredientes com preço e quantidade usada
-  - O sistema calcula o custo por fatia e a margem de lucro automaticamente nos dois casos
-- Campos calculados automaticamente (exibidos em tempo real):
-  - Custo por fatia = custo total ÷ (peso total ÷ peso por fatia)
-  - Margem por fatia = preço de venda − custo por fatia
-  - Margem percentual
+**Arquivo**: `src/pages/Recipes.tsx` + novos componentes
 
-### 2.2 Registro de Produção (Tela do Funcionário)
-- Interface simples e rápida para o funcionário usar no dia a dia:
-  1. Selecionar o produto (ex: "Bolo de Chocolate")
-  2. **Digitar o peso real que saiu** (ex: 3.2kg)
-  3. O sistema calcula automaticamente:
-     - Quantidade de fatias geradas (3200g ÷ 250g = 12.8 → 12 fatias)
-     - Custo total desta produção
-     - Custo e margem por fatia
-  4. Confirmar e adicionar ao estoque
-- Histórico de todas as produções com data, hora, operador e peso
+- Formulario de nova receita em Dialog/Sheet:
+  - Nome, categoria (bolo/torta/salgado/bebida/doce/outro), foto (upload futuro, por ora texto)
+  - Peso por fatia (g) — campo numerico
+  - Preco de venda por fatia — campo monetario
+  - Estoque minimo
+- **Custo flexivel** com toggle entre dois modos:
+  - **Custo direto**: campo simples "R$ quanto custa fazer"
+  - **Por ingredientes**: adicionar ingredientes com quantidade, o sistema soma
+- **Calculos em tempo real** exibidos na tela:
+  - Custo por fatia
+  - Margem por fatia (R$ e %)
+- Lista de receitas cadastradas em cards/tabela com editar e desativar
+- CRUD completo via Supabase (insert, update, select)
 
-### 2.3 Controle de Estoque em Tempo Real
-- Painel mostrando todos os produtos com:
-  - Quantidade disponível (fatias)
-  - Hora da produção
-  - Tempo no estoque (destaque visual se >12h)
-  - Status: 🟢 Normal | 🟡 Atenção | 🔴 Crítico
-- **Saída de estoque**: ao registrar uma venda (balcão ou delivery), desconta automaticamente
-- **Cruzamento produção vs venda**: relatório mostrando se houve perda/divergência
-- Definir estoque mínimo por produto — alerta quando atingir
-
-### 2.4 Sistema Anti-Desperdício (Alerta >12h)
-- Produtos no estoque há mais de 12 horas ganham destaque visual vermelho
-- Opções de ação rápida:
-  - Criar promoção automática (% de desconto)
-  - Marcar como "destaque" (para futuro app/delivery)
-  - Registrar descarte (com motivo)
-- Registro de todas as ações para relatório de desperdício
-
-### 2.5 Registro de Vendas (PDV Simples)
-- Tela de venda rápida para o caixa:
-  - Selecionar produto e quantidade
-  - Canal: Balcão, Delivery ou iFood
-  - Forma de pagamento: Pix, Crédito, Débito, Dinheiro, Refeição
-  - Desconta automaticamente do estoque
-- Preparação para integração futura com maquininha
+**Componentes novos**:
+- `src/components/recipes/RecipeForm.tsx`
+- `src/components/recipes/RecipeCard.tsx`
+- `src/components/recipes/IngredientSelector.tsx`
+- `src/components/recipes/CostCalculator.tsx`
 
 ---
 
-## Banco de Dados (Supabase)
-- Tabelas: perfis, receitas, ingredientes, produções, estoque, vendas, alertas
-- RLS (Row Level Security) por perfil de acesso
-- Edge Functions preparadas para webhooks do n8n (consulta de estoque, registro de pedido)
+## 2. Producao (Registro pelo Funcionario)
+
+**Arquivo**: `src/pages/Production.tsx` + componentes
+
+- Select para escolher receita ativa
+- Campo para digitar peso produzido (em gramas ou kg com conversao)
+- Calculos automaticos exibidos antes de confirmar:
+  - Fatias geradas = peso / peso_por_fatia (arredonda para baixo)
+  - Custo total desta producao
+  - Custo por fatia e margem
+- Botao "Confirmar Producao" que:
+  - Insere na tabela `productions`
+  - Insere na tabela `inventory` com `slices_available`
+- Historico de producoes do dia em tabela abaixo
+
+**Componentes novos**:
+- `src/components/production/ProductionForm.tsx`
+- `src/components/production/ProductionHistory.tsx`
 
 ---
 
-## Resultado Esperado desta Fase
-- Felipe terá um dashboard profissional com visão completa do negócio
-- Funcionários registram produção digitando o peso → sistema calcula tudo automaticamente
-- Estoque atualiza em tempo real com cada venda
-- Alertas automáticos de desperdício (>12h) e estoque crítico
-- Base sólida para as próximas fases (Financeiro, CRM, Previsão de Demanda)
+## 3. Estoque (Tempo Real)
+
+**Arquivo**: `src/pages/Inventory.tsx` + componentes
+
+- Tabela/grid mostrando todos os itens no estoque:
+  - Receita, fatias disponiveis, hora da producao
+  - Tempo no estoque (calculado: agora - produced_at)
+  - Status visual: verde (normal), amarelo (atencao >8h), vermelho (critico >12h)
+- Filtros: por status, por receita
+- Acoes rapidas para itens criticos (>12h):
+  - Registrar descarte
+  - Marcar acao tomada
+
+**Componentes novos**:
+- `src/components/inventory/InventoryTable.tsx`
+- `src/components/inventory/StockStatusBadge.tsx`
+
+---
+
+## 4. Vendas (PDV Simples)
+
+**Arquivo**: `src/pages/Sales.tsx` + componentes
+
+- Selecionar produtos do estoque disponivel
+- Definir quantidade de fatias
+- Canal: Balcao / Delivery / iFood
+- Pagamento: Pix / Credito / Debito / Dinheiro / Refeicao
+- Ao confirmar:
+  - Cria registro em `sales` e `sale_items`
+  - Desconta `slices_available` do `inventory`
+- Lista de vendas do dia abaixo
+
+**Componentes novos**:
+- `src/components/sales/SalesForm.tsx`
+- `src/components/sales/SalesHistory.tsx`
+- `src/components/sales/CartItem.tsx`
+
+---
+
+## 5. Alertas (Automaticos)
+
+**Arquivo**: `src/pages/Alerts.tsx`
+
+- Lista de alertas ativos vindos da tabela `alerts`
+- Tipos: estoque baixo, validade >12h, desperdicio
+- Acoes: resolver alerta, registrar acao tomada
+- Badge no sidebar com contagem de alertas nao resolvidos
+
+---
+
+## 6. Equipe (Gestao de Funcionarios)
+
+**Arquivo**: `src/pages/Team.tsx`
+
+- Lista de usuarios com perfil e papel
+- Formulario para convidar novo funcionario (criar conta + atribuir role)
+- Editar perfil: nome, telefone, aniversario, familiar
+- Apenas owner pode acessar
+
+---
+
+## 7. Dashboard (Dados Reais)
+
+**Arquivo**: `src/pages/Index.tsx`
+
+- KPIs com queries reais:
+  - Faturamento hoje = soma de `sales.total` onde `sold_at` e hoje
+  - Vendas hoje = count de `sales` de hoje
+  - Ticket medio = faturamento / vendas
+  - Estoque critico = count de `inventory` com status critico
+- Grafico de vendas dos ultimos 7 dias usando Recharts
+- Lista de alertas ativos
+- Cards de acesso rapido com navegacao funcional
+
+---
+
+## 8. Hooks de Dados (React Query)
+
+Criar hooks reutilizaveis para todas as queries:
+- `src/hooks/useRecipes.ts` — CRUD receitas + ingredientes
+- `src/hooks/useProductions.ts` — criar producao, historico
+- `src/hooks/useInventory.ts` — listar estoque, atualizar
+- `src/hooks/useSales.ts` — criar venda, historico
+- `src/hooks/useAlerts.ts` — listar alertas, resolver
+- `src/hooks/useTeam.ts` — listar membros, convidar
+- `src/hooks/useDashboard.ts` — agregacoes para KPIs
+
+---
+
+## Detalhes Tecnicos
+
+- Todas as queries via `@tanstack/react-query` com `useQuery` e `useMutation`
+- Validacao de formularios com `zod` + `react-hook-form`
+- Componentes UI usando shadcn/ui existentes (Dialog, Sheet, Select, Table, Badge)
+- Calculos de fatias, custo e margem feitos no frontend em tempo real
+- RLS ja configurado no banco — owner tem acesso total, employee pode criar producoes e vendas
+- Nenhuma alteracao no banco de dados necessaria (schema ja esta completo)
+
+---
+
+## Ordem de Implementacao
+
+1. Hooks de dados (base para tudo)
+2. Receitas (primeiro modulo funcional — pre-requisito dos outros)
+3. Producao (depende de receitas)
+4. Estoque (depende de producao)
+5. Vendas (depende de estoque)
+6. Alertas
+7. Equipe
+8. Dashboard com dados reais
 
