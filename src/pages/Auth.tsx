@@ -105,17 +105,22 @@ const Auth = () => {
       </div>
 
       {/* Right panel */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-8 bg-background hero-gradient">
-        <Card className="w-full max-w-md border-0 shadow-none lg:glass-card lg:border-shine lg:depth-shadow">
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-8"
+        style={{
+          background: 'linear-gradient(160deg, hsl(24, 45%, 14%) 0%, hsl(24, 40%, 10%) 50%, hsl(24, 35%, 8%) 100%)',
+          color: 'hsl(36 40% 95%)',
+        }}
+      >
+        <Card className="w-full max-w-md border-0 shadow-none bg-transparent" style={{ color: 'inherit' }}>
           <CardHeader className="text-center space-y-2 pb-6">
             <div className="flex items-center justify-center gap-2 lg:hidden mb-4">
-              <Coffee className="h-9 w-9 text-primary" />
+              <Coffee className="h-9 w-9 text-accent" />
               <span className="text-2xl font-bold text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Café Café</span>
             </div>
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-2xl" style={{ color: 'hsl(36 40% 95%)' }}>
               {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
             </CardTitle>
-            <CardDescription>
+            <CardDescription style={{ color: 'hsl(36 30% 65%)' }}>
               {isLogin ? 'Entre com suas credenciais' : 'Preencha os dados para começar'}
             </CardDescription>
           </CardHeader>
@@ -123,19 +128,19 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required={!isLogin} className="h-11 input-glow" />
+                  <Label htmlFor="name" style={{ color: 'hsl(36 30% 75%)' }}>Nome</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required={!isLogin} className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="h-11 input-glow" />
+                <Label htmlFor="email" style={{ color: 'hsl(36 30% 75%)' }}>Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" style={{ color: 'hsl(36 30% 75%)' }}>Senha</Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-11 pr-10 input-glow" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-11 pr-10 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
