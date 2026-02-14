@@ -18,7 +18,7 @@ const navGroups = [
       { label: 'Produtos', icon: ChefHat, path: '/recipes', ownerOnly: true },
       { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
       { label: 'CRM', icon: Heart, path: '/crm', ownerOnly: true },
-      { label: 'Alertas', icon: AlertTriangle, path: '/alerts', ownerOnly: true },
+      
     ],
   },
   {
