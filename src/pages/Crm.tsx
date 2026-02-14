@@ -140,7 +140,7 @@ const Crm = () => {
             <div className="card-cinematic rounded-xl p-4 space-y-4">
               {/* Status pills */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs text-foreground font-medium uppercase tracking-wider mr-1">Filtro:</span>
+                <span className="text-xs font-medium uppercase tracking-wider mr-1" style={{ color: 'hsl(36 30% 85%)' }}>Filtro:</span>
                 {statusFilters.map(s => (
                   <button
                     key={s.key}
@@ -148,11 +148,11 @@ const Crm = () => {
                     className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-400 ${
                       statusFilter === s.key
                         ? 'text-primary-foreground depth-shadow scale-105'
-                        : 'text-muted-foreground hover:bg-muted/60'
+                        : 'hover:bg-muted/60'
                     }`}
                     style={statusFilter === s.key ? {
                       background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
-                    } : { background: 'hsl(var(--muted) / 0.4)' }}
+                    } : { color: 'hsl(36 30% 75%)', background: 'hsl(var(--muted) / 0.4)' }}
                   >
                     {s.label} ({s.count})
                   </button>
