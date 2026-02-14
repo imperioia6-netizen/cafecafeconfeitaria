@@ -73,9 +73,10 @@ export default function RecipeForm({ recipe, onClose }: Props) {
   const directCost = watch('direct_cost');
   const salePrice = watch('sale_price');
 
-  const costPerSlice = directCost ?? 0;
-  const marginPerSlice = salePrice - costPerSlice;
-  const marginPercent = salePrice > 0 ? (marginPerSlice / salePrice) * 100 : 0;
+  const costNum = Number(directCost) || 0;
+  const salePriceNum = Number(salePrice) || 0;
+  const marginPerSlice = salePriceNum - costNum;
+  const marginPercent = salePriceNum > 0 ? (marginPerSlice / salePriceNum) * 100 : 0;
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -233,7 +234,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
           <p className="text-sm font-medium text-foreground">Cálculo em tempo real</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span className="text-muted-foreground">Custo {isBolo ? 'por fatia' : 'unitário'}:</span>
-            <span className="font-mono font-medium">R$ {costPerSlice.toFixed(2)}</span>
+            <span className="font-mono font-medium">R$ {costNum.toFixed(2)}</span>
             <span className="text-muted-foreground">Margem {isBolo ? 'por fatia' : 'unitária'}:</span>
             <span className="font-mono font-medium">R$ {marginPerSlice.toFixed(2)}</span>
             <span className="text-muted-foreground">Margem %:</span>
