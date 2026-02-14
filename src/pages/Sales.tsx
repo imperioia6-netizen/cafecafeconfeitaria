@@ -61,18 +61,16 @@ const Sales = () => {
     <AppLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Vendas</h1>
-          <p className="text-muted-foreground mt-1">Ponto de venda</p>
+          <h1 className="page-title">Vendas</h1>
+          <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Ponto de venda</p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-5">
           {/* Products — 3 cols */}
           <div className="lg:col-span-3">
-            <Card className="card-premium">
-              <CardHeader>
-                <CardTitle className="text-base">Produtos Disponíveis</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="card-cinematic rounded-xl">
+              <div className="p-6">
+                <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Produtos Disponíveis</h3>
                 {invLoading ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : !availableItems.length ? (
@@ -83,46 +81,47 @@ const Sales = () => {
                       <button
                         key={item.id}
                         onClick={() => addToCart(item)}
-                        className="flex items-center justify-between p-4 rounded-xl border border-border hover:border-primary/30 hover:shadow-md transition-all text-left group"
+                        className="flex items-center justify-between p-4 rounded-xl border border-border/30 hover:border-accent/30 transition-all duration-500 text-left group hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5"
+                        style={{ background: 'hsl(var(--card) / 0.6)' }}
                       >
                         <div>
-                          <p className="font-semibold text-sm group-hover:text-primary transition-colors">{item.recipes?.name}</p>
-                          <Badge variant="secondary" className="text-[10px] mt-1">{item.slices_available} fatias</Badge>
+                          <p className="font-semibold text-sm group-hover:text-accent transition-colors duration-300">{item.recipes?.name}</p>
+                          <Badge variant="secondary" className="text-[10px] mt-1" style={{ background: 'linear-gradient(135deg, hsl(36 70% 50% / 0.1), hsl(24 60% 23% / 0.05))' }}>
+                            {item.slices_available} fatias
+                          </Badge>
                         </div>
-                        <div className="rounded-full bg-primary/10 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Plus className="h-4 w-4 text-primary" />
+                        <div className="rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110" style={{ background: 'hsl(36 70% 50% / 0.1)' }}>
+                          <Plus className="h-4 w-4 text-accent" />
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Cart — 2 cols */}
           <div className="lg:col-span-2">
-            <Card className="card-premium gradient-border sticky top-24">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ShoppingCart className="h-4 w-4" />
+            <div className="card-cinematic gradient-border rounded-xl sticky top-24">
+              <div className="p-6 space-y-4">
+                <h3 className="flex items-center gap-2 text-base font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <ShoppingCart className="h-4 w-4 text-accent" />
                   Carrinho ({cart.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </h3>
                 {cart.length === 0 ? (
                   <div className="text-center py-8">
-                    <ShoppingCart className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Adicione produtos</p>
+                    <ShoppingCart className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground/60">Adicione produtos</p>
                   </div>
                 ) : (
                   <>
                     {cart.map(item => (
-                      <div key={item.inventory_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                      <div key={item.inventory_id} className="flex items-center justify-between p-3 rounded-xl border border-border/30 glass">
                         <div className="flex-1 space-y-1">
                           <p className="font-medium text-sm">{item.recipe_name}</p>
                           <Input
-                            type="number" className="w-24 h-7 text-xs" min={0} step="0.01"
+                            type="number" className="w-24 h-7 text-xs input-glow" min={0} step="0.01"
                             value={item.unit_price}
                             onChange={e => setCart(cart.map(c => c.inventory_id === item.inventory_id ? { ...c, unit_price: parseFloat(e.target.value) || 0 } : c))}
                             placeholder="Preço"
@@ -169,9 +168,9 @@ const Sales = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-border">
-                      <span className="text-sm font-medium text-muted-foreground">Total</span>
-                      <span className="text-2xl font-bold font-mono-numbers text-gradient-gold"
+                    <div className="flex items-center justify-between pt-4">
+                      <div className="separator-gradient flex-1 mr-4" />
+                      <span className="text-4xl font-bold font-mono-numbers text-gradient-gold"
                         style={{ WebkitTextFillColor: total > 0 ? undefined : 'hsl(24, 10%, 45%)' }}>
                         R$ {total.toFixed(2)}
                       </span>
@@ -179,25 +178,29 @@ const Sales = () => {
 
                     <Button
                       onClick={handleSale}
-                      className="w-full h-12 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20 gap-2"
+                      className="w-full h-12 text-sm font-semibold shine-effect gap-2"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%), hsl(24 60% 23%))',
+                        boxShadow: '0 4px 24px hsl(24 60% 23% / 0.35)',
+                      }}
                       disabled={createSale.isPending || total <= 0}
                     >
-                      {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      Finalizar Venda
+                      <span className="relative z-10 flex items-center gap-2">
+                        {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        Finalizar Venda
+                      </span>
                     </Button>
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Today's sales */}
-        <Card className="card-premium">
-          <CardHeader>
-            <CardTitle className="text-lg">Vendas de Hoje</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="card-cinematic rounded-xl">
+          <div className="p-6">
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Vendas de Hoje</h3>
             {salesLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : !todaySales?.length ? (
@@ -205,7 +208,7 @@ const Sales = () => {
             ) : (
               <div className="space-y-2">
                 {todaySales.map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors">
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-border/20 hover:border-accent/20 hover:shadow-md transition-all duration-300 group">
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground font-mono-numbers">
                         {new Date(s.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -213,13 +216,13 @@ const Sales = () => {
                       <Badge variant="secondary">{channelLabels[s.channel] ?? s.channel}</Badge>
                       <span className="text-xs text-muted-foreground">{paymentLabels[s.payment_method]}</span>
                     </div>
-                    <span className="font-mono-numbers font-semibold">R$ {Number(s.total).toFixed(2)}</span>
+                    <span className="font-mono-numbers font-semibold group-hover:text-accent transition-colors">R$ {Number(s.total).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

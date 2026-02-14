@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,12 +14,12 @@ const categoryLabels: Record<string, string> = {
 };
 
 const categoryGradients: Record<string, string> = {
-  bolo: 'from-pink-500/10 to-pink-500/5',
-  torta: 'from-orange-500/10 to-orange-500/5',
-  salgado: 'from-amber-500/10 to-amber-500/5',
-  bebida: 'from-blue-500/10 to-blue-500/5',
-  doce: 'from-purple-500/10 to-purple-500/5',
-  outro: 'from-gray-500/10 to-gray-500/5',
+  bolo: 'linear-gradient(135deg, hsl(330 60% 50% / 0.12), hsl(330 60% 50% / 0.04))',
+  torta: 'linear-gradient(135deg, hsl(24 80% 50% / 0.12), hsl(24 80% 50% / 0.04))',
+  salgado: 'linear-gradient(135deg, hsl(38 80% 50% / 0.12), hsl(38 80% 50% / 0.04))',
+  bebida: 'linear-gradient(135deg, hsl(210 70% 50% / 0.12), hsl(210 70% 50% / 0.04))',
+  doce: 'linear-gradient(135deg, hsl(280 60% 50% / 0.12), hsl(280 60% 50% / 0.04))',
+  outro: 'linear-gradient(135deg, hsl(0 0% 50% / 0.12), hsl(0 0% 50% / 0.04))',
 };
 
 export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; index?: number }) {
@@ -40,24 +39,34 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
 
   return (
     <>
-      <Card className={`card-premium gradient-border opacity-0 animate-fade-in ${!recipe.active ? 'opacity-60' : ''}`}
+      <div className={`card-cinematic shine-effect gradient-border rounded-xl opacity-0 animate-fade-in ${!recipe.active ? 'opacity-50' : ''}`}
         style={{ animationDelay: `${index * 60}ms` }}>
-        <CardContent className="pt-5 pb-4 space-y-4">
+        <div className="p-5 space-y-4 relative z-10">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-semibold text-base">{recipe.name}</h3>
-              <Badge variant="secondary" className={`text-[10px] mt-1.5 bg-gradient-to-r ${categoryGradients[recipe.category] ?? ''}`}>
+              <Badge variant="secondary" className="text-[10px] mt-1.5"
+                style={{ background: categoryGradients[recipe.category] ?? categoryGradients.outro }}>
                 {categoryLabels[recipe.category]}
               </Badge>
             </div>
             <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setEditOpen(true)} className="h-8 w-8 hover:bg-muted">
+              <Button size="icon" variant="ghost" onClick={() => setEditOpen(true)} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
                 <Edit className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={toggleActive} className="h-8 w-8 hover:bg-muted">
+              <Button size="icon" variant="ghost" onClick={toggleActive} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
                 {recipe.active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-success" />}
               </Button>
             </div>
+          </div>
+
+          {/* Margin visual bar */}
+          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'hsl(var(--muted) / 0.5)' }}>
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, margin)}%`,
+                background: margin > 30 ? 'linear-gradient(90deg, hsl(142 60% 45%), hsl(142 60% 35%))' : margin > 0 ? 'linear-gradient(90deg, hsl(38 92% 50%), hsl(38 92% 40%))' : 'hsl(0 72% 51%)',
+              }} />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -66,22 +75,22 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
               { label: 'Custo', value: `R$ ${cost.toFixed(2)}` },
               { label: 'Margem', value: `${margin.toFixed(0)}%`, color: margin > 30 ? 'text-success' : margin > 0 ? 'text-warning' : 'text-destructive' },
             ].map(stat => (
-              <div key={stat.label}>
+              <div key={stat.label} className="glass rounded-lg p-2 text-center">
                 <p className="text-muted-foreground text-[10px] uppercase tracking-wider">{stat.label}</p>
                 <p className={`font-mono-numbers font-semibold text-sm ${stat.color ?? ''}`}>{stat.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border/50 pt-3">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground/70 pt-1">
             <span>Fatia: {Number(recipe.slice_weight_g)}g</span>
             <span>Est. mín: {recipe.min_stock}</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md glass-strong">
+        <DialogContent className="max-w-md glass-card depth-shadow border-shine">
           <DialogHeader><DialogTitle>Editar Receita</DialogTitle></DialogHeader>
           <RecipeForm recipe={recipe} onClose={() => setEditOpen(false)} />
         </DialogContent>

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Package, Loader2, Trash2, Clock } from 'lucide-react';
@@ -12,17 +11,28 @@ function getStockAge(producedAt: string) {
 }
 
 function StockStatusBadge({ hours }: { hours: number }) {
-  if (hours > 12) return <Badge variant="destructive" className="animate-glow-pulse">Crítico</Badge>;
+  if (hours > 12) return <Badge variant="destructive" className="animate-glow-pulse glow-destructive">Crítico</Badge>;
   if (hours > 8) return <Badge className="bg-warning/15 text-warning border border-warning/30">Atenção</Badge>;
-  return <Badge className="bg-success/15 text-success border border-success/30">Normal</Badge>;
+  return <Badge className="bg-success/15 text-success border border-success/30 glow-success">Normal</Badge>;
 }
 
 function LifeBar({ hours }: { hours: number }) {
   const pct = Math.min(100, (hours / 12) * 100);
-  const color = hours > 12 ? 'bg-destructive' : hours > 8 ? 'bg-warning' : 'bg-success';
+  const isCritical = hours > 12;
   return (
-    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+    <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'animate-glow-pulse' : ''}`}
+        style={{
+          width: `${pct}%`,
+          background: hours > 12
+            ? 'linear-gradient(90deg, hsl(0 72% 51%), hsl(0 72% 40%))'
+            : hours > 8
+              ? 'linear-gradient(90deg, hsl(38 92% 50%), hsl(38 92% 40%))'
+              : 'linear-gradient(90deg, hsl(142 60% 45%), hsl(142 60% 35%))',
+          boxShadow: isCritical ? '0 0 8px hsl(0 72% 51% / 0.4)' : undefined,
+        }}
+      />
     </div>
   );
 }
@@ -60,8 +70,8 @@ const Inventory = () => {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Estoque</h1>
-            <p className="text-muted-foreground mt-1">Controle em tempo real — {filtered?.length ?? 0} itens</p>
+            <h1 className="page-title">Estoque</h1>
+            <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Controle em tempo real — {filtered?.length ?? 0} itens</p>
           </div>
         </div>
 
@@ -71,11 +81,14 @@ const Inventory = () => {
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-500 ${
                 filter === f.key
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'text-primary-foreground depth-shadow scale-105'
+                  : 'text-muted-foreground hover:bg-muted/60'
               }`}
+              style={filter === f.key ? {
+                background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
+              } : { background: 'hsl(var(--muted) / 0.5)' }}
             >
               {f.label}
             </button>
@@ -86,20 +99,25 @@ const Inventory = () => {
           <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : !filtered?.length ? (
           <div className="flex flex-col items-center py-16 text-muted-foreground">
-            <Package className="h-12 w-12 mb-3 opacity-30" />
+            <Package className="h-12 w-12 mb-3 opacity-20" />
             <p className="text-sm">Nenhum produto em estoque.</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item, i) => {
               const hours = getStockAge(item.produced_at);
+              const isCritical = hours > 12;
               return (
-                <Card
+                <div
                   key={item.id}
-                  className={`card-premium opacity-0 animate-fade-in ${hours > 12 ? 'border-destructive/30' : ''}`}
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className={`card-cinematic rounded-xl opacity-0 animate-fade-in`}
+                  style={{
+                    animationDelay: `${i * 50}ms`,
+                    borderColor: isCritical ? 'hsl(0 72% 51% / 0.3)' : undefined,
+                    boxShadow: isCritical ? '0 0 20px hsl(0 72% 51% / 0.08), inset 0 0 20px hsl(0 72% 51% / 0.03)' : undefined,
+                  }}
                 >
-                  <CardContent className="pt-5 pb-4 space-y-3">
+                  <div className="p-5 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-base">{item.recipes?.name ?? '—'}</h3>
@@ -115,30 +133,33 @@ const Inventory = () => {
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-muted-foreground">Fatias</p>
-                        <p className="text-2xl font-bold font-mono-numbers">{item.slices_available}</p>
+                        <p className="text-xs text-muted-foreground/70">Fatias</p>
+                        <p className="text-3xl font-extrabold font-mono-numbers">{item.slices_available}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Tempo</p>
+                        <p className="text-xs text-muted-foreground/70">Tempo</p>
                         <p className="text-lg font-semibold font-mono-numbers">{hours.toFixed(1)}h</p>
                       </div>
                     </div>
 
                     <LifeBar hours={hours} />
 
-                    {hours > 12 && (
+                    {isCritical && (
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => handleDiscard(item)}
                         disabled={discardMutation.isPending}
-                        className="w-full bg-gradient-to-r from-destructive to-destructive/80"
+                        className="w-full shine-effect"
+                        style={{ background: 'linear-gradient(135deg, hsl(0 72% 51%), hsl(0 72% 40%))' }}
                       >
-                        <Trash2 className="h-3 w-3 mr-1" /> Descartar
+                        <span className="relative z-10 flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" /> Descartar
+                        </span>
                       </Button>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
