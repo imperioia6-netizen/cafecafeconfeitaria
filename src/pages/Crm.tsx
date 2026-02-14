@@ -9,14 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCustomers, type Customer } from '@/hooks/useCustomers';
 import CustomerCard from '@/components/crm/CustomerCard';
-import CustomerForm from '@/components/crm/CustomerForm';
+
 import CustomerDetailSheet from '@/components/crm/CustomerDetailSheet';
 import CrmDashboardKpis from '@/components/crm/CrmDashboardKpis';
 import BirthdayTimeline from '@/components/crm/BirthdayTimeline';
 import ReactivationPanel from '@/components/crm/ReactivationPanel';
 import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
 import LeadsKanban from '@/components/crm/LeadsKanban';
-import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3 } from 'lucide-react';
+import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle } from 'lucide-react';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
@@ -133,7 +133,9 @@ const Crm = () => {
                   <SelectItem value="created_at">Mais recente</SelectItem>
                 </SelectContent>
               </Select>
-              <CustomerForm />
+              <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5" onClick={() => window.open('https://wa.me/', '_blank')}>
+                <MessageCircle className="h-4 w-4" />WhatsApp
+              </Button>
             </div>
 
             {isLoading ? (
