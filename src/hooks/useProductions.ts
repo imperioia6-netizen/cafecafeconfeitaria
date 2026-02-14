@@ -4,6 +4,24 @@ import type { Tables } from '@/integrations/supabase/types';
 
 export type Production = Tables<'productions'>;
 
+export function useOperatorProfiles(operatorIds: string[]) {
+  return useQuery({
+    queryKey: ['profiles', 'operators', operatorIds],
+    queryFn: async () => {
+      if (!operatorIds.length) return {};
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .in('user_id', operatorIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach(p => { map[p.user_id] = p.name; });
+      return map;
+    },
+    enabled: operatorIds.length > 0,
+  });
+}
+
 export function useTodayProductions() {
   return useQuery({
     queryKey: ['productions', 'today'],

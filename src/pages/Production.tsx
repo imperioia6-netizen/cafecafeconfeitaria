@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,22 +7,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock, Pencil, Trash2 } from 'lucide-react';
+import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock, Pencil, Trash2, User } from 'lucide-react';
 import { useActiveRecipes } from '@/hooks/useRecipes';
-import { useCreateProduction, useTodayProductions, useDeleteProduction, useUpdateProduction } from '@/hooks/useProductions';
+import { useCreateProduction, useTodayProductions, useDeleteProduction, useUpdateProduction, useOperatorProfiles } from '@/hooks/useProductions';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 const Production = () => {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
   const { data: recipes, isLoading: recipesLoading } = useActiveRecipes();
   const { data: productions, isLoading: prodsLoading } = useTodayProductions();
   const createProduction = useCreateProduction();
   const deleteProduction = useDeleteProduction();
   const updateProduction = useUpdateProduction();
 
+  // Operator profiles
+  const operatorIds = useMemo(() => {
+    if (!productions) return [];
+    return [...new Set(productions.map((p: any) => p.operator_id))];
+  }, [productions]);
+  const { data: operatorNames } = useOperatorProfiles(operatorIds);
+
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
   const [weightKg, setWeightKg] = useState('');
+  const [filterOperator, setFilterOperator] = useState('all');
 
   // Edit/Delete state
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -189,7 +197,10 @@ const Production = () => {
             ) : !productions?.length ? (
               <p className="text-sm text-muted-foreground text-center py-6">Nenhuma produção registrada hoje.</p>
             ) : (() => {
-              const totals = productions.reduce((acc: any, p: any) => {
+              const filteredProductions = filterOperator === 'all'
+                ? productions
+                : productions.filter((p: any) => p.operator_id === filterOperator);
+              const totals = filteredProductions.reduce((acc: any, p: any) => {
                 const pSalePrice = Number(p.recipes?.sale_price ?? 0);
                 const pRevenue = p.slices_generated * pSalePrice;
                 const pCost = Number(p.total_cost);
@@ -204,6 +215,21 @@ const Production = () => {
 
               return (
                 <div className="space-y-6">
+                  {/* Operator filter for owners */}
+                  {isOwner && operatorIds.length > 1 && (
+                    <div className="flex items-center gap-3">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Filtrar por operador</Label>
+                      <Select value={filterOperator} onValueChange={setFilterOperator}>
+                        <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os funcionários</SelectItem>
+                          {operatorIds.map(id => (
+                            <SelectItem key={id} value={id}>{operatorNames?.[id] ?? 'Carregando...'}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {/* Summary cards */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {[
@@ -224,7 +250,7 @@ const Production = () => {
                   {/* Timeline */}
                   <div className="relative space-y-0">
                     <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background: 'linear-gradient(180deg, hsl(36 70% 50% / 0.4), transparent)' }} />
-                    {productions.map((p: any) => {
+                    {filteredProductions.map((p: any) => {
                       const pSalePrice = Number(p.recipes?.sale_price ?? 0);
                       const pRevenue = p.slices_generated * pSalePrice;
                       const pMargin = pRevenue - Number(p.total_cost);
@@ -245,6 +271,12 @@ const Production = () => {
                             <div className="flex items-center gap-4 mt-1 text-xs">
                               <span className="text-success font-mono-numbers">Receita: R$ {pRevenue.toFixed(2)}</span>
                               <span className={`font-mono-numbers ${pMargin >= 0 ? 'text-success' : 'text-destructive'}`}>Margem: R$ {pMargin.toFixed(2)}</span>
+                              {isOwner && operatorNames?.[p.operator_id] && (
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <User className="h-3 w-3" />
+                                  {operatorNames[p.operator_id]}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex gap-1 mt-1">
