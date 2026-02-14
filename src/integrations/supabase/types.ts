@@ -678,6 +678,8 @@ export type Database = {
           converted_at: string | null
           created_at: string
           customer_id: string | null
+          email: string | null
+          follow_up_date: string | null
           followers_count: number | null
           id: string
           instagram_handle: string
@@ -686,6 +688,9 @@ export type Database = {
           offer_sent: string | null
           phone: string | null
           potential_value: number | null
+          priority: string | null
+          product_interest: string | null
+          source: string | null
           stage_changed_at: string | null
           status: Database["public"]["Enums"]["social_lead_status"]
         }
@@ -693,6 +698,8 @@ export type Database = {
           converted_at?: string | null
           created_at?: string
           customer_id?: string | null
+          email?: string | null
+          follow_up_date?: string | null
           followers_count?: number | null
           id?: string
           instagram_handle: string
@@ -701,6 +708,9 @@ export type Database = {
           offer_sent?: string | null
           phone?: string | null
           potential_value?: number | null
+          priority?: string | null
+          product_interest?: string | null
+          source?: string | null
           stage_changed_at?: string | null
           status?: Database["public"]["Enums"]["social_lead_status"]
         }
@@ -708,6 +718,8 @@ export type Database = {
           converted_at?: string | null
           created_at?: string
           customer_id?: string | null
+          email?: string | null
+          follow_up_date?: string | null
           followers_count?: number | null
           id?: string
           instagram_handle?: string
@@ -716,6 +728,9 @@ export type Database = {
           offer_sent?: string | null
           phone?: string | null
           potential_value?: number | null
+          priority?: string | null
+          product_interest?: string | null
+          source?: string | null
           stage_changed_at?: string | null
           status?: Database["public"]["Enums"]["social_lead_status"]
         }
