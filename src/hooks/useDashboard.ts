@@ -55,25 +55,41 @@ export function useDashboardKPIs() {
   });
 }
 
-export function useSalesChart(days: number = 7) {
+export function useSalesChart(days: number = 7, customRange?: { from: Date; to: Date }) {
   return useQuery({
-    queryKey: ['dashboard', 'chart', days],
+    queryKey: ['dashboard', 'chart', days, customRange?.from?.toISOString(), customRange?.to?.toISOString()],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      since.setHours(0, 0, 0, 0);
+      let since: Date;
+      let until: Date;
+
+      if (customRange?.from && customRange?.to) {
+        since = new Date(customRange.from);
+        since.setHours(0, 0, 0, 0);
+        until = new Date(customRange.to);
+        until.setHours(23, 59, 59, 999);
+      } else {
+        since = new Date();
+        since.setDate(since.getDate() - days);
+        since.setHours(0, 0, 0, 0);
+        until = new Date();
+        until.setHours(23, 59, 59, 999);
+      }
 
       const { data, error } = await supabase
         .from('sales')
         .select('total, sold_at')
         .gte('sold_at', since.toISOString())
+        .lte('sold_at', until.toISOString())
         .order('sold_at');
       if (error) throw error;
 
+      const diffMs = until.getTime() - since.getTime();
+      const totalDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
       const grouped: Record<string, number> = {};
-      for (let i = 0; i < days; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - (days - 1 - i));
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(since);
+        d.setDate(d.getDate() + i);
         grouped[d.toISOString().split('T')[0]] = 0;
       }
       (data ?? []).forEach(s => {

@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DollarSign, ShoppingCart, TrendingUp, AlertTriangle,
-  Package, ChefHat, Coffee, Loader2, MoreVertical, Calendar,
+  Package, ChefHat, Coffee, Loader2, MoreVertical, Calendar, CalendarRange,
 } from 'lucide-react';
 import { useDashboardKPIs, useSalesChart } from '@/hooks/useDashboard';
 import { useActiveAlerts } from '@/hooks/useAlerts';
@@ -15,8 +15,14 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 /* ─── KPI Card ───────────────────────────────────────── */
 const KpiCard = ({
@@ -97,12 +103,27 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { data: kpis, isLoading } = useDashboardKPIs();
   const [chartDays, setChartDays] = useState(7);
-  const { data: chartData } = useSalesChart(chartDays);
+  const [chartMode, setChartMode] = useState<'preset' | 'custom'>('preset');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const customRange = chartMode === 'custom' && customFrom && customTo ? { from: customFrom, to: customTo } : undefined;
+  const { data: chartData } = useSalesChart(chartDays, customRange);
   const { data: alerts } = useActiveAlerts();
 
   if (!isOwner) return <Navigate to="/production" replace />;
 
   const fmtCurrency = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+  const handlePreset = (days: number) => {
+    setChartMode('preset');
+    setChartDays(days);
+    setCustomFrom(undefined);
+    setCustomTo(undefined);
+  };
+
+  const chartLabel = chartMode === 'custom' && customFrom && customTo
+    ? `${format(customFrom, 'dd/MM', { locale: ptBR })} - ${format(customTo, 'dd/MM', { locale: ptBR })}`
+    : chartDays === 7 ? '7 dias' : 'Últimos 30 dias';
 
   return (
     <AppLayout>
@@ -167,33 +188,93 @@ const Dashboard = () => {
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      Seu Desempenho
-                    </h3>
+                    <div>
+                      <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                        Seu Desempenho
+                      </h3>
+                      <p className="text-xs opacity-40 mt-0.5">{chartLabel}</p>
+                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                           <MoreVertical className="h-4 w-4 opacity-60" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="glass-card border-border/30">
+                      <DropdownMenuContent align="end" className="bg-card border-border/50 shadow-xl z-50">
                         <DropdownMenuItem
-                          onClick={() => setChartDays(7)}
-                          className={`gap-2 ${chartDays === 7 ? 'text-accent font-semibold' : ''}`}
+                          onClick={() => handlePreset(7)}
+                          className={`gap-2 ${chartMode === 'preset' && chartDays === 7 ? 'text-accent font-semibold' : ''}`}
                         >
                           <Calendar className="h-3.5 w-3.5" />
                           7 dias
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => setChartDays(30)}
-                          className={`gap-2 ${chartDays === 30 ? 'text-accent font-semibold' : ''}`}
+                          onClick={() => handlePreset(30)}
+                          className={`gap-2 ${chartMode === 'preset' && chartDays === 30 ? 'text-accent font-semibold' : ''}`}
                         >
                           <Calendar className="h-3.5 w-3.5" />
                           Últimos 30 dias
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setChartMode('custom')}
+                          className={`gap-2 ${chartMode === 'custom' ? 'text-accent font-semibold' : ''}`}
+                        >
+                          <CalendarRange className="h-3.5 w-3.5" />
+                          Personalizado
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
+
+                  {/* Custom date range picker */}
+                  {chartMode === 'custom' && (
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className={cn(
+                            "h-8 text-xs gap-1.5 bg-white/5 border-white/10 hover:bg-white/10",
+                            !customFrom && "text-white/40"
+                          )}>
+                            <Calendar className="h-3 w-3" />
+                            {customFrom ? format(customFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'De'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-card border-border shadow-xl z-50" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={customFrom}
+                            onSelect={setCustomFrom}
+                            disabled={(date) => date > new Date() || (customTo ? date > customTo : false)}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <span className="text-xs opacity-40">até</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className={cn(
+                            "h-8 text-xs gap-1.5 bg-white/5 border-white/10 hover:bg-white/10",
+                            !customTo && "text-white/40"
+                          )}>
+                            <Calendar className="h-3 w-3" />
+                            {customTo ? format(customTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Até'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-card border-border shadow-xl z-50" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={customTo}
+                            onSelect={setCustomTo}
+                            disabled={(date) => date > new Date() || (customFrom ? date < customFrom : false)}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
                   {chartData && chartData.length > 0 ? (
                     <>
                       <ResponsiveContainer width="100%" height={260}>
