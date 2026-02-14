@@ -1,29 +1,38 @@
 
 
-# Adicionar "Receita Total" na previa da producao
+# Adicionar seletor "Fatia ou Bolo Completo"
 
 ## Resumo
 
-Adicionar um quinto card na previa da producao mostrando o valor total que as fatias irao gerar em vendas (fatias x preco de venda).
+Quando a categoria for **Bolo**, aparecera um seletor para o usuario escolher se vende por **fatia** ou por **bolo completo**. Se escolher fatia, o campo "Peso por fatia (g)" aparece. Se escolher bolo completo, esse campo some.
 
-## Alteracao
+## Alteracoes
 
-### `src/pages/Production.tsx`
+### 1. Migracao SQL
 
-Na secao de stats da previa, adicionar um novo item ao array:
+Adicionar coluna `sell_mode` na tabela `recipes`:
 
-- **Label**: "Receita total" (ou "Faturamento")
-- **Valor**: `slices * salePrice`, formatado como `R$ X.XX`
-- **Icone**: `DollarSign`
-- **Cor**: verde (sempre positivo)
-
-O grid passa de `grid-cols-2 md:grid-cols-4` para `grid-cols-2 md:grid-cols-5` para acomodar o quinto card.
-
-### Calculo
-
-```text
-Receita total = slices x salePrice
+```sql
+ALTER TABLE recipes ADD COLUMN sell_mode text NOT NULL DEFAULT 'fatia';
 ```
 
-As variaveis `slices` e `salePrice` ja existem no componente, nao e necessario nenhum dado adicional.
+### 2. Formulario (`src/components/recipes/RecipeForm.tsx`)
+
+- Adicionar `sell_mode` ao schema Zod: `z.enum(['fatia', 'inteiro']).default('fatia')`
+- Quando categoria = bolo: exibir seletor "Modo de venda" com opcoes **Fatia** e **Bolo Completo**
+- Campo "Peso por fatia (g)" aparece somente quando `sell_mode = 'fatia'`
+- Validacao `superRefine`: peso obrigatorio apenas se `category === 'bolo' && sell_mode === 'fatia'`
+- Labels do calculo em tempo real: "por fatia" vs "por unidade" conforme o modo
+- Payload do `onSubmit`: incluir `sell_mode` nos dados salvos
+
+### 3. Layout do formulario (quando categoria = bolo)
+
+```text
+[ Categoria      ] [ Modo de venda    ]
+[ Peso por fatia (g) ]   <-- so aparece se modo = fatia
+```
+
+### 4. Tipos Supabase
+
+Regenerar tipos para incluir `sell_mode` na tabela `recipes`.
 
