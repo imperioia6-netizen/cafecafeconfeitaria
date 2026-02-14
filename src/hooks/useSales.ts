@@ -43,6 +43,9 @@ export function useCreateSale() {
       payment_method: PaymentMethod;
       total: number;
       items: CartItem[];
+      order_number?: string;
+      table_number?: string;
+      customer_name?: string;
     }) => {
       const { data: sale, error: saleErr } = await supabase
         .from('sales')
@@ -51,7 +54,10 @@ export function useCreateSale() {
           channel: input.channel,
           payment_method: input.payment_method,
           total: input.total,
-        })
+          order_number: input.order_number || null,
+          table_number: input.table_number || null,
+          customer_name: input.customer_name || null,
+        } as any)
         .select()
         .single();
       if (saleErr) throw saleErr;

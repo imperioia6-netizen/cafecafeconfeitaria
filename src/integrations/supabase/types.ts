@@ -754,10 +754,13 @@ export type Database = {
           channel: Database["public"]["Enums"]["sales_channel"]
           created_at: string
           customer_id: string | null
+          customer_name: string | null
           id: string
           operator_id: string
+          order_number: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           sold_at: string
+          table_number: string | null
           total: number
         }
         Insert: {
@@ -765,10 +768,13 @@ export type Database = {
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
           customer_id?: string | null
+          customer_name?: string | null
           id?: string
           operator_id: string
+          order_number?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           sold_at?: string
+          table_number?: string | null
           total?: number
         }
         Update: {
@@ -776,10 +782,13 @@ export type Database = {
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
           customer_id?: string | null
+          customer_name?: string | null
           id?: string
           operator_id?: string
+          order_number?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           sold_at?: string
+          table_number?: string | null
           total?: number
         }
         Relationships: [

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 
 export type InventoryItem = Tables<'inventory'> & {
-  recipes?: { name: string; category: string } | null;
+  recipes?: { name: string; category: string; photo_url: string | null; sale_price: number } | null;
 };
 
 export function useInventory() {
@@ -12,7 +12,7 @@ export function useInventory() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inventory')
-        .select('*, recipes(name, category)')
+        .select('*, recipes(name, category, photo_url, sale_price)')
         .gt('slices_available', 0)
         .order('produced_at', { ascending: false });
       if (error) throw error;
