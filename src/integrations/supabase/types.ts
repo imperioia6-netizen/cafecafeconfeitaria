@@ -169,9 +169,11 @@ export type Database = {
       }
       cash_closings: {
         Row: {
+          cash_difference: number | null
           cash_register_id: string
           closed_at: string
           closed_by: string
+          counted_cash: number | null
           created_at: string
           id: string
           notes: string | null
@@ -179,9 +181,11 @@ export type Database = {
           total_transactions: number
         }
         Insert: {
+          cash_difference?: number | null
           cash_register_id: string
           closed_at?: string
           closed_by: string
+          counted_cash?: number | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -189,9 +193,11 @@ export type Database = {
           total_transactions?: number
         }
         Update: {
+          cash_difference?: number | null
           cash_register_id?: string
           closed_at?: string
           closed_by?: string
+          counted_cash?: number | null
           created_at?: string
           id?: string
           notes?: string | null
