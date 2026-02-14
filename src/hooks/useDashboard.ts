@@ -55,11 +55,10 @@ export function useDashboardKPIs() {
   });
 }
 
-export function useSalesChart() {
+export function useSalesChart(days: number = 7) {
   return useQuery({
-    queryKey: ['dashboard', 'chart'],
+    queryKey: ['dashboard', 'chart', days],
     queryFn: async () => {
-      const days = 7;
       const since = new Date();
       since.setDate(since.getDate() - days);
       since.setHours(0, 0, 0, 0);
