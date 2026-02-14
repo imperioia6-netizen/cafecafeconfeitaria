@@ -11,6 +11,7 @@ import { useCustomers, type Customer } from '@/hooks/useCustomers';
 import CustomerCard from '@/components/crm/CustomerCard';
 
 import CustomerDetailSheet from '@/components/crm/CustomerDetailSheet';
+import WhatsAppConnectDialog from '@/components/crm/WhatsAppConnectDialog';
 import CrmDashboardKpis from '@/components/crm/CrmDashboardKpis';
 import BirthdayTimeline from '@/components/crm/BirthdayTimeline';
 import ReactivationPanel from '@/components/crm/ReactivationPanel';
@@ -28,6 +29,7 @@ const Crm = () => {
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
   const { data: customers, isLoading } = useCustomers(statusFilter);
 
   if (!loading && !user) { navigate('/auth'); return null; }
@@ -133,7 +135,7 @@ const Crm = () => {
                   <SelectItem value="created_at">Mais recente</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5" onClick={() => window.open('https://wa.me/', '_blank')}>
+              <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5" onClick={() => setWhatsappOpen(true)}>
                 <MessageCircle className="h-4 w-4" />WhatsApp
               </Button>
             </div>
@@ -174,6 +176,7 @@ const Crm = () => {
         </Tabs>
 
         <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} />
+        <WhatsAppConnectDialog open={whatsappOpen} onOpenChange={setWhatsappOpen} />
       </div>
     </AppLayout>
   );
