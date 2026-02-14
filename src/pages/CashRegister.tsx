@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, DollarSign, Lock, Unlock, Clock, CreditCard, Banknote, Smartphone } from 'lucide-react';
-import { useOpenRegisters, useClosingHistory, useOpenRegister, useCloseRegister, registerLabels, type CashRegisterName } from '@/hooks/useCashRegister';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Loader2, DollarSign, Lock, Unlock, Clock, CreditCard, Banknote, Smartphone, Pencil, Trash2 } from 'lucide-react';
+import { useOpenRegisters, useClosingHistory, useOpenRegister, useCloseRegister, useDeleteClosing, useUpdateClosing, registerLabels, type CashRegisterName } from '@/hooks/useCashRegister';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -18,17 +19,21 @@ const channelLabels: Record<string, string> = { caixa_1: 'Caixa 1', caixa_2: 'Ca
 const paymentIcons: Record<string, React.ElementType> = { pix: Smartphone, credito: CreditCard, debito: CreditCard, dinheiro: Banknote, refeicao: CreditCard };
 
 const CashRegisterPage = () => {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
   const { data: openRegisters, isLoading: regLoading } = useOpenRegisters();
   const { data: history, isLoading: histLoading } = useClosingHistory();
   const openRegister = useOpenRegister();
   const closeRegister = useCloseRegister();
+  const deleteClosing = useDeleteClosing();
+  const updateClosing = useUpdateClosing();
 
   const [selectedName, setSelectedName] = useState<CashRegisterName>('caixa_1');
   const [openingBalance, setOpeningBalance] = useState('');
   const [closeNotes, setCloseNotes] = useState('');
   const [closingId, setClosingId] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState('');
 
   const handleOpen = async () => {
     if (!user) return;
@@ -48,6 +53,23 @@ const CashRegisterPage = () => {
       setCloseNotes('');
       setClosingId(null);
     } catch (e: any) { toast.error(e.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteClosing.mutateAsync(id);
+      toast.success('Fechamento excluído');
+    } catch { toast.error('Erro ao excluir'); }
+  };
+
+  const handleEdit = async () => {
+    if (!editId) return;
+    try {
+      await updateClosing.mutateAsync({ id: editId, notes: editNotes });
+      toast.success('Fechamento atualizado');
+      setEditId(null);
+      setEditNotes('');
+    } catch { toast.error('Erro ao atualizar'); }
   };
 
   return (
@@ -175,6 +197,54 @@ const CashRegisterPage = () => {
                           );
                         })}
                       </div>
+
+                      {/* Edit/Delete - owner only */}
+                      {isOwner && (
+                        <div className="flex items-center gap-2 pt-1">
+                          {editId === c.id ? (
+                            <div className="flex-1 flex gap-2 items-end">
+                              <div className="flex-1">
+                                <Textarea placeholder="Observações..." value={editNotes} onChange={e => setEditNotes(e.target.value)} className="text-sm h-16" />
+                              </div>
+                              <Button size="sm" onClick={handleEdit} disabled={updateClosing.isPending}>
+                                {updateClosing.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                Salvar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>
+                            </div>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                                onClick={() => { setEditId(c.id); setEditNotes(c.notes || ''); }}>
+                                <Pencil className="h-3 w-3 mr-1" /> Editar
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive">
+                                    <Trash2 className="h-3 w-3 mr-1" /> Excluir
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir fechamento?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {c.notes && editId !== c.id && (
+                        <p className="text-xs text-muted-foreground/60 italic">Obs: {c.notes}</p>
+                      )}
                     </div>
                   </div>
                 ))}
