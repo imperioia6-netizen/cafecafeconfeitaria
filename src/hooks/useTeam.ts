@@ -45,18 +45,50 @@ export function useUpdateRole() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: AppRole }) => {
-      // Delete existing roles for user
       const { error: delErr } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
       if (delErr) throw delErr;
-
-      // Insert new role
       const { error: insErr } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role: newRole });
       if (insErr) throw insErr;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['team'] }),
+  });
+}
+
+export function useEmployeeStats(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['employee-stats', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('total, sold_at')
+        .eq('operator_id', userId!);
+      if (error) throw error;
+      const sales = data ?? [];
+      const totalSales = sales.length;
+      const totalRevenue = sales.reduce((s, r) => s + Number(r.total), 0);
+      const uniqueDays = new Set(sales.map(s => s.sold_at.slice(0, 10))).size;
+      const avgPerDay = uniqueDays > 0 ? totalRevenue / uniqueDays : 0;
+      const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+      return { totalSales, totalRevenue, avgPerDay, avgTicket };
+    },
+  });
+}
+
+export function useUpdateServiceRating() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, service_rating, service_notes }: { id: string; service_rating: number; service_notes: string }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ service_rating, service_notes } as any)
+        .eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['team'] }),
   });
