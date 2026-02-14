@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles, UserCircle, Check } from 'lucide-react';
+import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles, UserCircle, Check, ClipboardList, Hash, User } from 'lucide-react';
 import { useInventory } from '@/hooks/useInventory';
 import { useCreateSale, useTodaySales, type CartItem } from '@/hooks/useSales';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +32,9 @@ const Sales = () => {
   const [payment, setPayment] = useState<string>('dinheiro');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [tableNumber, setTableNumber] = useState('');
+  const [customerName, setCustomerName] = useState('');
 
   const availableItems = inventory?.filter(i => i.slices_available > 0) ?? [];
 
@@ -47,7 +50,7 @@ const Sales = () => {
         recipe_name: item.recipes?.name ?? '—',
         inventory_id: item.id,
         quantity: 1,
-        unit_price: 0,
+        unit_price: item.recipes?.sale_price ?? 0,
         max_available: item.slices_available,
       }]);
     }
@@ -58,12 +61,23 @@ const Sales = () => {
   const handleSale = async () => {
     if (!user || cart.length === 0) return;
     try {
-      await createSale.mutateAsync({ operator_id: user.id, channel: channel as any, payment_method: payment as any, total, items: cart });
+      await createSale.mutateAsync({
+        operator_id: user.id,
+        channel: channel as any,
+        payment_method: payment as any,
+        total,
+        items: cart,
+        order_number: orderNumber || undefined,
+        table_number: tableNumber || undefined,
+        customer_name: customerName || undefined,
+      });
       toast.success('Venda registrada!');
       setCart([]);
+      setOrderNumber('');
+      setTableNumber('');
+      setCustomerName('');
     } catch (e: any) { toast.error(e.message || 'Erro ao registrar venda'); }
   };
-
 
   return (
     <AppLayout>
@@ -89,16 +103,37 @@ const Sales = () => {
                       <button
                         key={item.id}
                         onClick={() => addToCart(item)}
-                        className="flex items-center justify-between p-4 rounded-xl border border-border/30 hover:border-accent/30 transition-all duration-500 text-left group hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border/30 hover:border-accent/30 transition-all duration-500 text-left group hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5"
                         style={{ background: 'hsl(var(--card) / 0.6)' }}
                       >
-                        <div>
-                          <p className="font-semibold text-sm group-hover:text-accent transition-colors duration-300">{item.recipes?.name}</p>
-                          <Badge variant="secondary" className="text-[10px] mt-1" style={{ background: 'linear-gradient(135deg, hsl(36 70% 50% / 0.1), hsl(24 60% 23% / 0.05))' }}>
-                            {item.slices_available} fatias
-                          </Badge>
+                        {/* Product photo */}
+                        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-muted/30">
+                          {item.recipes?.photo_url ? (
+                            <img
+                              src={item.recipes.photo_url}
+                              alt={item.recipes?.name ?? ''}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-xs">
+                              📷
+                            </div>
+                          )}
                         </div>
-                        <div className="rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110" style={{ background: 'hsl(36 70% 50% / 0.1)' }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm group-hover:text-accent transition-colors duration-300 truncate">{item.recipes?.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-[10px]" style={{ background: 'linear-gradient(135deg, hsl(36 70% 50% / 0.1), hsl(24 60% 23% / 0.05))' }}>
+                              {item.slices_available} fatias
+                            </Badge>
+                            {(item.recipes?.sale_price ?? 0) > 0 && (
+                              <span className="text-[11px] font-mono-numbers text-accent/80 font-semibold">
+                                R$ {Number(item.recipes!.sale_price).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 flex-shrink-0" style={{ background: 'hsl(36 70% 50% / 0.1)' }}>
                           <Plus className="h-4 w-4 text-accent" />
                         </div>
                       </button>
@@ -151,9 +186,48 @@ const Sales = () => {
                       </div>
                     ))}
 
+                    {/* Order Annotations */}
+                    <div className="space-y-2 pt-2 border-t border-border/20">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <ClipboardList className="h-3 w-3" /> Anotações do Pedido
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Comanda</Label>
+                          <Input
+                            className="h-8 text-xs"
+                            placeholder="Nº comanda"
+                            value={orderNumber}
+                            onChange={e => setOrderNumber(e.target.value)}
+                            maxLength={20}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Mesa</Label>
+                          <Input
+                            className="h-8 text-xs"
+                            placeholder="Nº mesa"
+                            value={tableNumber}
+                            onChange={e => setTableNumber(e.target.value)}
+                            maxLength={10}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Nome do Cliente</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Nome (opcional)"
+                          value={customerName}
+                          onChange={e => setCustomerName(e.target.value)}
+                          maxLength={100}
+                        />
+                      </div>
+                    </div>
+
                     {/* Customer Selector */}
                     <div className="space-y-1">
-                      <Label className="text-xs">Cliente (opcional)</Label>
+                      <Label className="text-xs">Cliente CRM (opcional)</Label>
                       <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" role="combobox" className="w-full justify-start h-9 text-xs font-normal">
@@ -252,12 +326,25 @@ const Sales = () => {
               <div className="space-y-2">
                 {todaySales.map((s: any) => (
                   <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-border/20 hover:border-accent/20 hover:shadow-md transition-all duration-300 group">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm text-muted-foreground font-mono-numbers">
                         {new Date(s.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <Badge variant="secondary">{channelLabels[s.channel] ?? s.channel}</Badge>
                       <span className="text-xs text-muted-foreground">{paymentLabels[s.payment_method]}</span>
+                      {s.order_number && (
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Hash className="h-2.5 w-2.5" />{s.order_number}
+                        </Badge>
+                      )}
+                      {s.table_number && (
+                        <Badge variant="outline" className="text-[10px]">Mesa {s.table_number}</Badge>
+                      )}
+                      {s.customer_name && (
+                        <span className="text-xs text-muted-foreground/80 flex items-center gap-1">
+                          <User className="h-2.5 w-2.5" />{s.customer_name}
+                        </span>
+                      )}
                     </div>
                     <span className="font-mono-numbers font-semibold group-hover:text-accent transition-colors">R$ {Number(s.total).toFixed(2)}</span>
                   </div>
