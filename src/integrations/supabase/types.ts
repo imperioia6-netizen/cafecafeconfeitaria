@@ -14,16 +14,412 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          action_taken: string | null
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at: string
+          id: string
+          inventory_id: string | null
+          message: string | null
+          recipe_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          message?: string | null
+          recipe_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          message?: string | null
+          recipe_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price_per_unit: number
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price_per_unit?: number
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price_per_unit?: number
+          unit?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          id: string
+          produced_at: string
+          production_id: string
+          recipe_id: string
+          slices_available: number
+          status: Database["public"]["Enums"]["inventory_status"]
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          produced_at?: string
+          production_id: string
+          recipe_id: string
+          slices_available?: number
+          status?: Database["public"]["Enums"]["inventory_status"]
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          produced_at?: string
+          production_id?: string
+          recipe_id?: string
+          slices_available?: number
+          status?: Database["public"]["Enums"]["inventory_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productions: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string
+          produced_at: string
+          recipe_id: string
+          slices_generated: number
+          total_cost: number
+          weight_produced_g: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operator_id: string
+          produced_at?: string
+          recipe_id: string
+          slices_generated: number
+          total_cost?: number
+          weight_produced_g: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string
+          produced_at?: string
+          recipe_id?: string
+          slices_generated?: number
+          total_cost?: number
+          weight_produced_g?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productions_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          birthday: string | null
+          created_at: string
+          family_birthday: string | null
+          family_name: string | null
+          id: string
+          name: string
+          phone: string | null
+          photo_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birthday?: string | null
+          created_at?: string
+          family_birthday?: string | null
+          family_name?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birthday?: string | null
+          created_at?: string
+          family_birthday?: string | null
+          family_name?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          id: string
+          ingredient_id: string
+          quantity_used: number
+          recipe_id: string
+        }
+        Insert: {
+          id?: string
+          ingredient_id: string
+          quantity_used?: number
+          recipe_id: string
+        }
+        Update: {
+          id?: string
+          ingredient_id?: string
+          quantity_used?: number
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          active: boolean
+          category: Database["public"]["Enums"]["product_category"]
+          created_at: string
+          direct_cost: number | null
+          id: string
+          min_stock: number
+          name: string
+          photo_url: string | null
+          sale_price: number
+          slice_weight_g: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          direct_cost?: number | null
+          id?: string
+          min_stock?: number
+          name: string
+          photo_url?: string | null
+          sale_price?: number
+          slice_weight_g?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          direct_cost?: number | null
+          id?: string
+          min_stock?: number
+          name?: string
+          photo_url?: string | null
+          sale_price?: number
+          slice_weight_g?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sale_items: {
+        Row: {
+          id: string
+          inventory_id: string | null
+          quantity: number
+          recipe_id: string
+          sale_id: string
+          subtotal: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          inventory_id?: string | null
+          quantity?: number
+          recipe_id: string
+          sale_id: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Update: {
+          id?: string
+          inventory_id?: string | null
+          quantity?: number
+          recipe_id?: string
+          sale_id?: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          channel: Database["public"]["Enums"]["sales_channel"]
+          created_at: string
+          id: string
+          operator_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          sold_at: string
+          total: number
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["sales_channel"]
+          created_at?: string
+          id?: string
+          operator_id: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          sold_at?: string
+          total?: number
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["sales_channel"]
+          created_at?: string
+          id?: string
+          operator_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          sold_at?: string
+          total?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_employee: { Args: never; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      alert_type: "estoque_baixo" | "validade_12h" | "desperdicio" | "outro"
+      app_role: "owner" | "employee" | "client"
+      inventory_status: "normal" | "atencao" | "critico"
+      payment_method: "pix" | "credito" | "debito" | "dinheiro" | "refeicao"
+      product_category:
+        | "bolo"
+        | "torta"
+        | "salgado"
+        | "bebida"
+        | "doce"
+        | "outro"
+      sales_channel: "balcao" | "delivery" | "ifood"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +546,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_type: ["estoque_baixo", "validade_12h", "desperdicio", "outro"],
+      app_role: ["owner", "employee", "client"],
+      inventory_status: ["normal", "atencao", "critico"],
+      payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
+      product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
+      sales_channel: ["balcao", "delivery", "ifood"],
+    },
   },
 } as const
