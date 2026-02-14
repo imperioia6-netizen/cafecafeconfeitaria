@@ -19,7 +19,7 @@ const N8nSettingsPanel = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [minFollowers, setMinFollowers] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
-  const [autoAssign, setAutoAssign] = useState(false);
+  const [autoReturnEnabled, setAutoReturnEnabled] = useState(false);
   const [noResponseMinutes, setNoResponseMinutes] = useState('30');
   const [loaded, setLoaded] = useState(false);
   const [connectionTested, setConnectionTested] = useState<'idle' | 'success' | 'error'>('idle');
@@ -28,7 +28,7 @@ const N8nSettingsPanel = () => {
     setWebhookUrl(getSetting('n8n_webhook_url') || '');
     setMinFollowers(getSetting('influence_min_followers') || '5000');
     setDiscountPercent(getSetting('influence_discount_percent') || '20');
-    setAutoAssign(getSetting('auto_assign_enabled') === 'true');
+    setAutoReturnEnabled(getSetting('auto_return_enabled') === 'true');
     setNoResponseMinutes(getSetting('no_response_minutes') || '30');
     setLoaded(true);
   }
@@ -58,24 +58,25 @@ const N8nSettingsPanel = () => {
             <Headset className="h-5 w-5 text-accent" />
             <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Atendimento</span>
           </CardTitle>
-          <CardDescription>Configure o comportamento do sistema de atendimento</CardDescription>
+          <CardDescription>Retorno automático após período sem resposta do cliente</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Atendimento automático</Label>
-              <p className="text-xs text-muted-foreground">Distribuir novos clientes automaticamente para atendentes disponíveis</p>
+              <Label>Retorno automático</Label>
+              <p className="text-xs text-muted-foreground">Alterar status para "Voltar contato" após tempo sem resposta</p>
             </div>
-            <Switch checked={autoAssign} onCheckedChange={setAutoAssign} />
+            <Switch checked={autoReturnEnabled} onCheckedChange={setAutoReturnEnabled} />
           </div>
-          <div>
-            <Label>Minutos sem resposta para voltar contato</Label>
-            <p className="text-xs text-muted-foreground mb-2">Após este tempo sem resposta do cliente, o status será alterado para "Voltar contato"</p>
-            <Input type="number" value={noResponseMinutes} onChange={e => setNoResponseMinutes(e.target.value)} className="input-glow w-32" />
-          </div>
+          {autoReturnEnabled && (
+            <div>
+              <Label>Minutos sem resposta</Label>
+              <Input type="number" value={noResponseMinutes} onChange={e => setNoResponseMinutes(e.target.value)} className="input-glow w-32 mt-1" />
+            </div>
+          )}
           <Button
             onClick={() => {
-              upsertSetting.mutate({ key: 'auto_assign_enabled', value: autoAssign ? 'true' : 'false' });
+              upsertSetting.mutate({ key: 'auto_return_enabled', value: autoReturnEnabled ? 'true' : 'false' });
               upsertSetting.mutate({ key: 'no_response_minutes', value: noResponseMinutes });
             }}
             disabled={upsertSetting.isPending}
