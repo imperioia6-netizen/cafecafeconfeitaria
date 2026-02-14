@@ -14,7 +14,8 @@ const statusConfig = {
   cliente: { label: 'Cliente', icon: UserCheck, color: 'text-accent', bg: 'bg-accent/10', barColor: 'bg-accent' },
 };
 
-const statusOrder = ['novo_seguidor', 'mensagem_enviada', 'convertido', 'cliente'] as const;
+type FunnelStatus = 'novo_seguidor' | 'mensagem_enviada' | 'convertido' | 'cliente';
+const statusOrder: FunnelStatus[] = ['novo_seguidor', 'mensagem_enviada', 'convertido', 'cliente'];
 
 const SocialFunnel = () => {
   const { data: leads, createLead, updateLead } = useSocialLeads();
@@ -137,8 +138,8 @@ const SocialFunnel = () => {
           </div>
         ) : (
           filteredLeads.map(lead => {
-            const cfg = statusConfig[lead.status] || statusConfig.novo_seguidor;
-            const canAdvance = statusOrder.indexOf(lead.status) < statusOrder.length - 1;
+            const cfg = statusConfig[lead.status as FunnelStatus] || statusConfig.novo_seguidor;
+            const canAdvance = statusOrder.indexOf(lead.status as FunnelStatus) < statusOrder.length - 1;
             return (
               <div key={lead.id} className="card-cinematic rounded-xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
