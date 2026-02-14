@@ -1,8 +1,8 @@
 
 
-# Simplificar Configuracao de Atendimento
+# Remover secao "Paga com Influencia"
 
-Reduzir o card "Atendimento" para ter apenas uma unica configuracao: retorno automatico apos periodo sem resposta do cliente.
+Remover o card "Paga com Influencia" do painel de configuracoes do CRM.
 
 ---
 
@@ -10,20 +10,11 @@ Reduzir o card "Atendimento" para ter apenas uma unica configuracao: retorno aut
 
 ### Arquivo: `src/components/crm/N8nSettingsPanel.tsx`
 
-**Remover:**
-- O toggle "Atendimento automatico" (distribuir novos clientes) e seu estado `autoAssign`
-- A referencia a `auto_assign_enabled` no carregamento e no salvamento
+- Remover o card inteiro que contem "Paga com Influencia" (icone Instagram, campos Min. Seguidores, % Desconto, botao Salvar Regras)
+- Remover os estados `minFollowers` e `discountPercent`
+- Remover a funcao `saveInfluence`
+- Remover a inicializacao desses valores no bloco `if (settings && !loaded)`
+- Remover import do icone `Instagram` se nao for usado em outro lugar
 
-**Manter/Ajustar:**
-- Um toggle (Switch) para ativar/desativar o recurso de "voltar contato" automaticamente
-- Campo numerico para definir os minutos sem resposta
-- O campo de minutos so fica habilitado quando o toggle esta ativo
-- Botao "Salvar" persiste ambos: `auto_return_enabled` (true/false) e `no_response_minutes`
-
-### Resultado visual
-O card tera:
-1. Titulo "Atendimento" com icone e descricao
-2. Uma linha com label "Retorno automatico" + Switch para ativar/desativar
-3. Campo numerico de minutos (visivel/habilitado somente quando ativo)
-4. Botao Salvar
+Nenhuma alteracao no banco de dados necessaria.
 
