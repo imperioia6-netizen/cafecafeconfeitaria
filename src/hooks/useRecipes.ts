@@ -90,6 +90,17 @@ export function useUpdateRecipe() {
   });
 }
 
+export function useDeleteRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
+  });
+}
+
 export function useCreateIngredient() {
   const qc = useQueryClient();
   return useMutation({
