@@ -171,6 +171,178 @@ export type Database = {
           },
         ]
       }
+      crm_messages: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          message_content: string | null
+          message_type: Database["public"]["Enums"]["crm_message_type"]
+          scheduled_for: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["crm_message_status"]
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          message_content?: string | null
+          message_type: Database["public"]["Enums"]["crm_message_type"]
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["crm_message_status"]
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          message_content?: string | null
+          message_type?: Database["public"]["Enums"]["crm_message_type"]
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["crm_message_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          birthday: string | null
+          created_at: string
+          email: string | null
+          family_birthday: string | null
+          family_name: string | null
+          favorite_recipe_id: string | null
+          id: string
+          instagram_followers: number | null
+          instagram_handle: string | null
+          last_purchase_at: string | null
+          name: string
+          phone: string | null
+          preferred_channel: string | null
+          status: Database["public"]["Enums"]["customer_status"]
+          total_spent: number
+          updated_at: string
+        }
+        Insert: {
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          family_birthday?: string | null
+          family_name?: string | null
+          favorite_recipe_id?: string | null
+          id?: string
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          last_purchase_at?: string | null
+          name: string
+          phone?: string | null
+          preferred_channel?: string | null
+          status?: Database["public"]["Enums"]["customer_status"]
+          total_spent?: number
+          updated_at?: string
+        }
+        Update: {
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          family_birthday?: string | null
+          family_name?: string | null
+          favorite_recipe_id?: string | null
+          id?: string
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          last_purchase_at?: string | null
+          name?: string
+          phone?: string | null
+          preferred_channel?: string | null
+          status?: Database["public"]["Enums"]["customer_status"]
+          total_spent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_favorite_recipe_id_fkey"
+            columns: ["favorite_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influence_discounts: {
+        Row: {
+          created_at: string
+          customer_id: string
+          discount_percent: number
+          followers_at_time: number | null
+          id: string
+          instagram_post_url: string | null
+          sale_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          discount_percent?: number
+          followers_at_time?: number | null
+          id?: string
+          instagram_post_url?: string | null
+          sale_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          discount_percent?: number
+          followers_at_time?: number | null
+          id?: string
+          instagram_post_url?: string | null
+          sale_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influence_discounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influence_discounts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           created_at: string
@@ -455,6 +627,7 @@ export type Database = {
           cash_register_id: string | null
           channel: Database["public"]["Enums"]["sales_channel"]
           created_at: string
+          customer_id: string | null
           id: string
           operator_id: string
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -465,6 +638,7 @@ export type Database = {
           cash_register_id?: string | null
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
+          customer_id?: string | null
           id?: string
           operator_id: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -475,6 +649,7 @@ export type Database = {
           cash_register_id?: string | null
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
+          customer_id?: string | null
           id?: string
           operator_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -487,6 +662,54 @@ export type Database = {
             columns: ["cash_register_id"]
             isOneToOne: false
             referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_leads: {
+        Row: {
+          converted_at: string | null
+          created_at: string
+          customer_id: string | null
+          followers_count: number | null
+          id: string
+          instagram_handle: string
+          offer_sent: string | null
+          status: Database["public"]["Enums"]["social_lead_status"]
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          followers_count?: number | null
+          id?: string
+          instagram_handle: string
+          offer_sent?: string | null
+          status?: Database["public"]["Enums"]["social_lead_status"]
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          followers_count?: number | null
+          id?: string
+          instagram_handle?: string
+          offer_sent?: string | null
+          status?: Database["public"]["Enums"]["social_lead_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_leads_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -528,6 +751,14 @@ export type Database = {
       alert_type: "estoque_baixo" | "validade_12h" | "desperdicio" | "outro"
       app_role: "owner" | "employee" | "client"
       cash_register_name: "caixa_1" | "caixa_2" | "delivery"
+      crm_message_status: "pendente" | "enviada" | "lida" | "erro"
+      crm_message_type:
+        | "aniversario_cliente"
+        | "aniversario_familiar"
+        | "reativacao"
+        | "social_seller"
+        | "upsell"
+      customer_status: "ativo" | "inativo" | "novo"
       inventory_status: "normal" | "atencao" | "critico"
       payment_method: "pix" | "credito" | "debito" | "dinheiro" | "refeicao"
       product_category:
@@ -538,6 +769,11 @@ export type Database = {
         | "doce"
         | "outro"
       sales_channel: "balcao" | "delivery" | "ifood"
+      social_lead_status:
+        | "novo_seguidor"
+        | "mensagem_enviada"
+        | "convertido"
+        | "cliente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -668,10 +904,25 @@ export const Constants = {
       alert_type: ["estoque_baixo", "validade_12h", "desperdicio", "outro"],
       app_role: ["owner", "employee", "client"],
       cash_register_name: ["caixa_1", "caixa_2", "delivery"],
+      crm_message_status: ["pendente", "enviada", "lida", "erro"],
+      crm_message_type: [
+        "aniversario_cliente",
+        "aniversario_familiar",
+        "reativacao",
+        "social_seller",
+        "upsell",
+      ],
+      customer_status: ["ativo", "inativo", "novo"],
       inventory_status: ["normal", "atencao", "critico"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
       product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
       sales_channel: ["balcao", "delivery", "ifood"],
+      social_lead_status: [
+        "novo_seguidor",
+        "mensagem_enviada",
+        "convertido",
+        "cliente",
+      ],
     },
   },
 } as const
