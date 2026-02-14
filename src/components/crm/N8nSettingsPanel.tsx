@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Webhook, Zap, Instagram, CheckCircle2, XCircle, Clock, Headset } from 'lucide-react';
+import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const N8nSettingsPanel = () => {
@@ -17,8 +17,6 @@ const N8nSettingsPanel = () => {
   const { data: allMessages } = useCrmMessages();
 
   const [webhookUrl, setWebhookUrl] = useState('');
-  const [minFollowers, setMinFollowers] = useState('');
-  const [discountPercent, setDiscountPercent] = useState('');
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(false);
   const [noResponseMinutes, setNoResponseMinutes] = useState('30');
   const [loaded, setLoaded] = useState(false);
@@ -26,18 +24,12 @@ const N8nSettingsPanel = () => {
 
   if (settings && !loaded) {
     setWebhookUrl(getSetting('n8n_webhook_url') || '');
-    setMinFollowers(getSetting('influence_min_followers') || '5000');
-    setDiscountPercent(getSetting('influence_discount_percent') || '20');
     setAutoReturnEnabled(getSetting('auto_return_enabled') === 'true');
     setNoResponseMinutes(getSetting('no_response_minutes') || '30');
     setLoaded(true);
   }
 
   const saveWebhook = () => upsertSetting.mutate({ key: 'n8n_webhook_url', value: webhookUrl });
-  const saveInfluence = () => {
-    upsertSetting.mutate({ key: 'influence_min_followers', value: minFollowers });
-    upsertSetting.mutate({ key: 'influence_discount_percent', value: discountPercent });
-  };
 
   const handleTestConnection = () => {
     testConnection.mutate(webhookUrl, {
@@ -131,31 +123,6 @@ const N8nSettingsPanel = () => {
               {testConnection.isPending ? 'Testando...' : 'Testar Conexão'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Influence Rules */}
-      <Card className="card-cinematic rounded-xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Instagram className="h-5 w-5 text-accent" />
-            <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Paga com Influência</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Mín. Seguidores</Label>
-              <Input type="number" value={minFollowers} onChange={e => setMinFollowers(e.target.value)} className="input-glow" />
-            </div>
-            <div>
-              <Label>% Desconto</Label>
-              <Input type="number" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="input-glow" />
-            </div>
-          </div>
-          <Button onClick={saveInfluence} disabled={upsertSetting.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            Salvar Regras
-          </Button>
         </CardContent>
       </Card>
 
