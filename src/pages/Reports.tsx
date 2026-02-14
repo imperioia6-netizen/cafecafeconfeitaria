@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
@@ -8,15 +7,14 @@ import { usePeriodReport, useProductionVsSales } from '@/hooks/useReports';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
-const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery', ifood: 'iFood' };
 const PIE_COLORS = ['hsl(24,60%,23%)', 'hsl(36,70%,50%)', 'hsl(142,60%,40%)', 'hsl(0,72%,51%)', 'hsl(210,60%,50%)'];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-strong rounded-lg px-4 py-3 shadow-xl">
+    <div className="glass-card rounded-xl px-4 py-3 depth-shadow border-none">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="text-sm font-bold font-mono-numbers">R$ {payload[0].value.toFixed(2)}</p>
+      <p className="text-sm font-bold font-mono-numbers text-accent">R$ {payload[0].value.toFixed(2)}</p>
     </div>
   );
 };
@@ -40,9 +38,9 @@ const PeriodTab = ({ days }: { days: number }) => {
           { label: 'Ticket Médio', value: `R$ ${data.avgTicket.toFixed(2)}` },
           { label: 'Período Anterior', value: `R$ ${data.prevTotal.toFixed(2)}`, muted: true },
         ].map((kpi, i) => (
-          <Card key={kpi.label} className={`card-premium gradient-border opacity-0 animate-fade-in`} style={{ animationDelay: `${i * 100}ms` }}>
-            <CardContent className="pt-5 pb-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+          <div key={kpi.label} className="card-cinematic shine-effect gradient-border rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="p-5 relative z-10">
+              <p className="text-xs text-muted-foreground uppercase tracking-[0.15em]">{kpi.label}</p>
               <p className={`text-2xl font-bold font-mono-numbers mt-1 ${kpi.muted ? 'text-muted-foreground' : ''}`}>{kpi.value}</p>
               {kpi.trend !== undefined && (
                 <div className="flex items-center gap-1 mt-1.5">
@@ -52,17 +50,17 @@ const PeriodTab = ({ days }: { days: number }) => {
                   </span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         {data.daily.length > 0 && (
-          <Card className="card-premium">
-            <CardHeader><CardTitle className="text-base">Faturamento Diário</CardTitle></CardHeader>
-            <CardContent>
+          <div className="card-cinematic rounded-xl">
+            <div className="p-6">
+              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Faturamento Diário</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={data.daily}>
                   <defs>
@@ -71,21 +69,21 @@ const PeriodTab = ({ days }: { days: number }) => {
                       <stop offset="95%" stopColor="hsl(36, 70%, 50%)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 20%, 90%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 20%, 90%)" strokeOpacity={0.3} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(24, 10%, 45%)' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: 'hsl(24, 10%, 45%)' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="total" stroke="hsl(36, 70%, 50%)" strokeWidth={2.5} fill="url(#reportGradient)" />
                 </AreaChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {paymentData.length > 0 && (
-          <Card className="card-premium">
-            <CardHeader><CardTitle className="text-base">Por Forma de Pagamento</CardTitle></CardHeader>
-            <CardContent>
+          <div className="card-cinematic rounded-xl">
+            <div className="p-6">
+              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Por Forma de Pagamento</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie data={paymentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={40}
@@ -96,19 +94,17 @@ const PeriodTab = ({ days }: { days: number }) => {
                   <Tooltip formatter={(v: number) => `R$ ${v.toFixed(2)}`} />
                 </PieChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Production vs Sales */}
-      <Card className="card-premium">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ArrowUpDown className="h-4 w-4" /> Produção × Venda
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="card-cinematic rounded-xl">
+        <div className="p-6">
+          <h3 className="flex items-center gap-2 text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <ArrowUpDown className="h-4 w-4 text-accent" /> Produção × Venda
+          </h3>
           {pvsLoading ? (
             <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : !prodVsSales?.length ? (
@@ -116,9 +112,10 @@ const PeriodTab = ({ days }: { days: number }) => {
           ) : (
             <div className="space-y-2">
               {prodVsSales.map((r: any) => (
-                <div key={r.recipe_id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors">
+                <div key={r.recipe_id} className="flex items-center justify-between p-4 rounded-xl border border-border/20 hover:border-accent/20 hover:shadow-md transition-all duration-300 group"
+                  style={{ borderLeft: '3px solid hsl(36 70% 50% / 0.3)' }}>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm">{r.name}</p>
+                    <p className="font-semibold text-sm group-hover:text-accent transition-colors">{r.name}</p>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                       <span>Prod: <strong className="font-mono-numbers">{r.produced}</strong></span>
                       <span>Venda: <strong className="font-mono-numbers">{r.sold}</strong></span>
@@ -126,7 +123,8 @@ const PeriodTab = ({ days }: { days: number }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Badge variant={r.wastePercent > 20 ? 'destructive' : 'secondary'} className="text-xs">
+                    <Badge variant={r.wastePercent > 20 ? 'destructive' : 'secondary'}
+                      className={`text-xs ${r.wastePercent > 20 ? 'glow-destructive' : ''}`}>
                       {r.wastePercent.toFixed(1)}% perda
                     </Badge>
                     <span className="font-mono-numbers font-semibold text-sm">R$ {r.soldRevenue.toFixed(2)}</span>
@@ -135,8 +133,8 @@ const PeriodTab = ({ days }: { days: number }) => {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
@@ -148,15 +146,22 @@ const Reports = () => {
     <AppLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-muted-foreground mt-1">Análise de desempenho</p>
+          <h1 className="page-title">Relatórios</h1>
+          <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Análise de desempenho</p>
         </div>
 
         <Tabs value={period} onValueChange={setPeriod}>
-          <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="7" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">7 dias</TabsTrigger>
-            <TabsTrigger value="15" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">15 dias</TabsTrigger>
-            <TabsTrigger value="30" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">30 dias</TabsTrigger>
+          <TabsList className="bg-transparent border border-border/30 p-1 gap-1">
+            {['7', '15', '30'].map(v => (
+              <TabsTrigger key={v} value={v}
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none relative transition-all"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                {v} dias
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all data-[state=active]:bg-accent"
+                  style={{ background: period === v ? 'hsl(36 70% 50%)' : 'transparent', boxShadow: period === v ? '0 0 8px hsl(36 70% 50% / 0.3)' : 'none' }} />
+              </TabsTrigger>
+            ))}
           </TabsList>
           <TabsContent value="7"><PeriodTab days={7} /></TabsContent>
           <TabsContent value="15"><PeriodTab days={15} /></TabsContent>

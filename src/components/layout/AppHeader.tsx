@@ -37,12 +37,15 @@ const AppHeader = () => {
   const alertCount = alerts?.length ?? 0;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 glass-strong">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
+      {/* Subtle gradient border at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+
       <div className="animate-fade-in">
         <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-          {getGreeting()}, {firstName}
+          {getGreeting()}, <span className="text-gradient-gold">{firstName}</span>
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground/70 font-mono text-xs tracking-wide">
           {clock.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           {' · '}
           {clock.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -54,14 +57,14 @@ const AppHeader = () => {
         {alertCount > 0 ? (
           <Badge
             variant="destructive"
-            className="cursor-pointer gap-1.5 px-3 py-1.5 animate-glow-pulse"
+            className="cursor-pointer gap-1.5 px-3 py-1.5 animate-glow-pulse glow-destructive"
             onClick={() => navigate('/alerts')}
           >
             <Bell className="h-3.5 w-3.5" />
             {alertCount} alerta{alertCount > 1 ? 's' : ''}
           </Badge>
         ) : (
-          <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 bg-success/10 text-success border-success/20">
+          <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 bg-success/10 text-success border-success/20 glow-success">
             <CheckCircle className="h-3.5 w-3.5" />
             Tudo certo
           </Badge>
@@ -70,11 +73,11 @@ const AppHeader = () => {
         {/* Notifications bell */}
         <button
           onClick={() => navigate('/alerts')}
-          className="relative p-2 rounded-lg transition-colors hover:bg-muted"
+          className="relative p-2 rounded-xl transition-all duration-300 hover:bg-muted/50 hover:shadow-md"
         >
           <Bell className="h-5 w-5 text-muted-foreground" />
           {alertCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-glow-pulse">
               {alertCount > 9 ? '9+' : alertCount}
             </span>
           )}
@@ -82,11 +85,14 @@ const AppHeader = () => {
 
         {/* Avatar */}
         <button onClick={() => navigate('/profile')} className="flex items-center gap-3 group">
-          <Avatar className="h-9 w-9 ring-2 ring-border group-hover:ring-primary/30 transition-all">
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-9 w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 rounded-full ring-2 ring-accent/0 group-hover:ring-accent/30 transition-all duration-500 group-hover:scale-110" />
+          </div>
         </button>
       </div>
     </header>

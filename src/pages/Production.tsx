@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,18 +45,16 @@ const Production = () => {
     <AppLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Produção</h1>
-          <p className="text-muted-foreground mt-1">Registrar produção do dia</p>
+          <h1 className="page-title">Produção</h1>
+          <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Registrar produção do dia</p>
         </div>
 
-        <Card className="card-premium gradient-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Coffee className="h-5 w-5 text-primary" />
+        <div className="card-cinematic gradient-border border-shine rounded-xl">
+          <div className="p-6 space-y-5">
+            <h3 className="flex items-center gap-2 font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <Coffee className="h-5 w-5 text-accent animate-float" />
               Nova Produção
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
+            </h3>
             {recipesLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : !recipes?.length ? (
@@ -68,7 +65,7 @@ const Production = () => {
                   <div className="space-y-2">
                     <Label>Receita</Label>
                     <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
-                      <SelectTrigger className="h-11"><SelectValue placeholder="Selecione a receita" /></SelectTrigger>
+                      <SelectTrigger className="h-11 input-glow"><SelectValue placeholder="Selecione a receita" /></SelectTrigger>
                       <SelectContent>
                         {recipes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                       </SelectContent>
@@ -76,15 +73,21 @@ const Production = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="weight">Peso produzido (kg)</Label>
-                    <Input id="weight" type="number" step="0.1" min="0" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="Ex: 3.2" className="h-11" />
+                    <Input id="weight" type="number" step="0.1" min="0" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="Ex: 3.2" className="h-11 input-glow" />
                   </div>
                 </div>
 
                 {/* Receipt-style preview */}
                 {recipe && slices > 0 && (
-                  <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-6 space-y-4 animate-scale-in">
-                    <div className="text-center border-b border-dashed border-border pb-3">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Prévia da Produção</p>
+                  <div className="rounded-xl animate-scale-in space-y-4 p-6"
+                    style={{
+                      background: 'radial-gradient(ellipse at 50% 30%, hsl(36 70% 50% / 0.05), hsl(var(--muted) / 0.3))',
+                      border: '2px dashed hsl(var(--border) / 0.5)',
+                    }}
+                  >
+                    <div className="text-center pb-3">
+                      <div className="separator-gradient mb-3" />
+                      <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Prévia da Produção</p>
                       <p className="text-lg font-bold mt-1">{recipe.name}</p>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -94,7 +97,7 @@ const Production = () => {
                         { icon: DollarSign, label: 'Custo/fatia', value: `R$ ${costPerUnit.toFixed(2)}` },
                         { icon: TrendingUp, label: 'Margem/fatia', value: `R$ ${marginPerSlice.toFixed(2)}`, color: marginPerSlice > 0 },
                       ].map(stat => (
-                        <div key={stat.label} className="text-center">
+                        <div key={stat.label} className="text-center glass rounded-lg p-3">
                           <div className="flex justify-center mb-1">
                             <stat.icon className="h-4 w-4 text-muted-foreground" />
                           </div>
@@ -108,7 +111,10 @@ const Production = () => {
                     {/* Visual slice bar */}
                     <div className="flex gap-0.5 justify-center flex-wrap">
                       {Array.from({ length: Math.min(slices, 40) }).map((_, i) => (
-                        <div key={i} className="h-3 w-3 rounded-sm bg-primary/20 animate-scale-in" style={{ animationDelay: `${i * 20}ms` }} />
+                        <div key={i} className="h-3 w-3 rounded-sm animate-scale-in" style={{
+                          animationDelay: `${i * 20}ms`,
+                          background: `hsl(24 ${60 - i}% ${23 + i * 0.5}%)`,
+                        }} />
                       ))}
                       {slices > 40 && <span className="text-xs text-muted-foreground ml-1">+{slices - 40}</span>}
                     </div>
@@ -116,31 +122,37 @@ const Production = () => {
                 )}
 
                 <Button onClick={handleSubmit} disabled={!recipe || slices <= 0 || createProduction.isPending}
-                  className="w-full md:w-auto h-11 bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20">
-                  {createProduction.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Confirmar Produção
+                  className="w-full md:w-auto h-11 shine-effect"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%), hsl(24 60% 23%))',
+                    boxShadow: '0 4px 20px hsl(24 60% 23% / 0.3)',
+                  }}
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    {createProduction.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Confirmar Produção
+                  </span>
                 </Button>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Today's history as timeline */}
-        <Card className="card-premium">
-          <CardHeader>
-            <CardTitle className="text-lg">Produção de Hoje</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Today's history */}
+        <div className="card-cinematic rounded-xl">
+          <div className="p-6">
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Produção de Hoje</h3>
             {prodsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : !productions?.length ? (
               <p className="text-sm text-muted-foreground text-center py-6">Nenhuma produção registrada hoje.</p>
             ) : (
               <div className="relative space-y-0">
-                <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+                <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background: 'linear-gradient(180deg, hsl(36 70% 50% / 0.4), transparent)' }} />
                 {productions.map((p: any) => (
-                  <div key={p.id} className="relative flex items-start gap-4 py-3 pl-1">
-                    <div className="relative z-10 h-[10px] w-[10px] rounded-full mt-1.5 bg-accent ring-4 ring-background" />
+                  <div key={p.id} className="relative flex items-start gap-4 py-3 pl-1 hover:translate-x-1 transition-transform duration-300">
+                    <div className="relative z-10 h-[10px] w-[10px] rounded-full mt-1.5 bg-accent ring-4 ring-background"
+                      style={{ boxShadow: '0 0 8px hsl(36 70% 50% / 0.3)' }} />
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-sm">{p.recipes?.name ?? '—'}</span>
@@ -156,8 +168,8 @@ const Production = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
