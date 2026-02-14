@@ -1,68 +1,79 @@
 
 
-# Ficha de Funcionario -- Media de Vendas e Nota de Atendimento
+# Reestruturar Pagina de Estoque: Estoque, Vitrine e Alertas
 
 ## Resumo
 
-Ao clicar no card de um funcionario na pagina de Equipe, abrira um Sheet lateral (mesmo padrao do CustomerDetailSheet) exibindo a ficha completa com: dados pessoais, estatisticas de vendas (total, media diaria, ticket medio) e nota de atendimento editavel pelo Owner.
+Reorganizar a pagina de Estoque em 3 abas com funcoes distintas:
 
-## Como vai funcionar
+- **Estoque**: Gerenciamento de ingredientes (materias-primas) com quantidades, unidades e controle de nivel
+- **Vitrine**: Produtos prontos em exposicao (atual aba de "Estoque" -- bolos/fatias produzidos)
+- **Alertas**: Notificacoes de ingredientes acabando, produtos na vitrine perto da validade, e estoque baixo
 
-```text
---- Ficha do Funcionario ---
+## Alteracoes no Banco de Dados
 
-[Avatar]  Vitor
-          Proprietario
-          Tel: (11) 99999-9999
-          Aniversario: 14 de fevereiro
-
--------------------------------
-  DESEMPENHO DE VENDAS
--------------------------------
-  Total de Vendas:       142
-  Faturamento Total:     R$ 18.430
-  Media por Dia:         R$ 614
-  Ticket Medio:          R$ 129
-
--------------------------------
-  NOTA DE ATENDIMENTO
--------------------------------
-  [★ ★ ★ ★ ☆]  4.0 / 5.0
-  (Owner pode clicar nas estrelas para alterar)
-
-  Observacao: [ campo de texto ]
-  [Salvar]
-```
-
-## Alteracoes
-
-### 1. Migracao SQL
-
-Adicionar colunas na tabela `profiles` para armazenar a nota de atendimento:
+Adicionar campos de controle de estoque na tabela `ingredients`:
 
 ```sql
-ALTER TABLE public.profiles
-  ADD COLUMN service_rating numeric DEFAULT NULL,
-  ADD COLUMN service_notes text DEFAULT NULL;
+ALTER TABLE public.ingredients
+  ADD COLUMN stock_quantity numeric DEFAULT 0,
+  ADD COLUMN min_stock numeric DEFAULT 0,
+  ADD COLUMN expiry_date date DEFAULT NULL;
 ```
 
-### 2. Hook (`src/hooks/useTeam.ts`)
+- `stock_quantity`: quantidade atual em estoque
+- `min_stock`: nivel minimo para gerar alerta
+- `expiry_date`: data de validade do lote atual
 
-- **`useEmployeeStats(userId)`**: busca vendas do funcionario (`sales` filtrado por `operator_id`), calcula total de vendas, faturamento total, media diaria e ticket medio
-- **`useUpdateServiceRating`**: mutation para atualizar `service_rating` e `service_notes` no perfil
+## Alteracoes nos Hooks
 
-### 3. Componente novo: `src/components/team/EmployeeSheet.tsx`
+### `src/hooks/useIngredientStock.ts` (novo)
 
-Sheet lateral contendo:
-- Dados pessoais (nome, telefone, aniversario, role)
-- Secao de KPIs de vendas com 4 metricas em grid
-- Sistema de estrelas clicavel (1-5) para nota de atendimento (editavel apenas pelo Owner)
-- Campo de observacao com botao salvar
-- Progress bar de engajamento baseado nas vendas
+- `useIngredientStock()`: lista todos os ingredientes com campos de estoque
+- `useAddIngredientStock()`: mutation para adicionar/atualizar quantidade de um ingrediente
+- `useUpdateIngredientStock()`: mutation para editar stock_quantity, min_stock e expiry_date
+- `useLowStockIngredients()`: query filtrando ingredientes onde `stock_quantity <= min_stock`
 
-### 4. Pagina (`src/pages/Team.tsx`)
+### `src/hooks/useAlerts.ts` (atualizado)
 
-- Adicionar estado `selectedMember` para controlar qual funcionario esta selecionado
-- Ao clicar no card, abrir o `EmployeeSheet`
-- Cursor pointer nos cards para indicar que sao clicaveis
+- Manter hooks existentes
+- Os alertas continuam vindo da tabela `alerts`, que ja suporta tipos `estoque_baixo` e `validade_12h`
+
+## Componentes Novos
+
+### `src/components/inventory/EstoqueTab.tsx`
+
+- Lista de ingredientes em cards com: nome, quantidade atual, unidade, nivel minimo, validade
+- Barra de progresso visual (quantidade atual vs minimo)
+- Botao para adicionar novo ingrediente (dialog com formulario: nome, quantidade, unidade, preco, estoque minimo, validade)
+- Botao de edicao rapida de quantidade (incrementar/decrementar)
+- Filtros: Todos, Baixo Estoque, Vencendo
+
+### `src/components/inventory/VitrineTab.tsx`
+
+- Extrair o conteudo atual de `InventoryContent` para este componente
+- Mesma logica de cards de produtos produzidos com fatias, tempo de vida, barra de vida
+- Filtros: Todos, Normal, Atencao, Critico
+
+### `src/components/inventory/AlertasTab.tsx`
+
+- Extrair o conteudo atual de `AlertsContent` para este componente
+- Mesma timeline de alertas com resolucao
+
+## Alteracoes na Pagina
+
+### `src/pages/Inventory.tsx`
+
+- Substituir as 2 abas (Estoque + Alertas) por 3 abas: **Estoque**, **Vitrine**, **Alertas**
+- Icones: `ShoppingBasket` para Estoque, `Store` para Vitrine, `AlertTriangle` para Alertas
+- Importar os 3 novos componentes de aba
+- Contador de alertas na aba de Alertas (ja existente)
+- Contador de itens na Vitrine (ja existente)
+- Contador de ingredientes no Estoque (novo)
+
+## Detalhes Tecnicos
+
+- O formulario de adicionar ingrediente reutiliza a tabela `ingredients` existente, apenas populando os novos campos
+- A logica de alertas automaticos (ingrediente acabando, validade proxima) pode ser adicionada futuramente via edge function ou trigger SQL
+- Os alertas manuais continuam funcionando pela tabela `alerts` existente
 
