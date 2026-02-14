@@ -1,61 +1,51 @@
 
 
-# Ficha de Producao Detalhada
+# Botoes de Editar e Excluir na Ficha de Producao
 
 ## Resumo
 
-Expandir a secao "Producao de Hoje" para funcionar como uma ficha de producao completa, mostrando para cada item os detalhes financeiros (custo, preco de venda, receita potencial) e um resumo totalizador no topo para o administrador analisar o panorama geral.
+Adicionar botoes de editar e excluir em cada item da timeline de producao, com dialogo de confirmacao para exclusao e modal de edicao para alterar peso/fatias.
 
 ## Alteracoes
 
-### 1. Query de producoes (`src/hooks/useProductions.ts`)
+### 1. Hook de exclusao e edicao (`src/hooks/useProductions.ts`)
 
-Incluir `sale_price` e `direct_cost` no select da query para ter os dados financeiros disponiveis:
+Criar dois novos hooks:
 
-```
-.select('*, recipes(name, category, sale_price, direct_cost)')
-```
+- **`useDeleteProduction`**: Deleta a producao e o registro de inventario associado (`production_id`), invalida queries de `productions` e `inventory`
+- **`useUpdateProduction`**: Atualiza `weight_produced_g`, `slices_generated` e `total_cost` de uma producao existente, e atualiza o `slices_available` no inventario correspondente
 
-### 2. Cada item da timeline (`src/pages/Production.tsx`)
+### 2. Botoes na timeline (`src/pages/Production.tsx`)
 
-Adicionar uma linha extra em cada producao mostrando:
+Adicionar no canto direito de cada item da timeline:
 
-- **Receita potencial**: `fatias x preco de venda` (em verde)
-- **Custo total**: valor ja existente
-- **Margem**: receita - custo
+- **Icone de lapis** (Pencil) para editar
+- **Icone de lixeira** (Trash2) para excluir
 
-Layout por item:
+Layout atualizado por item:
 
 ```text
-● bolo de murangu   [17 fatias]
+● bolo de murangu  [17 fatias]              [editar] [excluir]
   18:53  1.700g  Custo: R$ 102.00
-  Receita potencial: R$ 170.00  |  Margem: R$ 68.00
+  Receita: R$ 255.00  Margem: R$ 153.00
 ```
 
-### 3. Resumo totalizador no topo da secao
+### 3. Confirmacao de exclusao
 
-Antes da lista, exibir cards com totais do dia:
+Usar `AlertDialog` (mesmo padrao do RecipeCard) para confirmar antes de excluir. Ao confirmar, deleta producao e inventario associado.
 
-- **Total de producoes** (quantidade de registros)
-- **Total de fatias** (soma de todas as fatias)
-- **Custo total do dia** (soma dos custos)
-- **Receita potencial do dia** (soma de fatias x preco de venda de cada producao)
-- **Margem total** (receita - custo)
+### 4. Modal de edicao
 
-Layout:
+Usar `Dialog` com campos:
 
-```text
-+-------------+-------------+--------------+------------------+--------------+
-| Producoes   | Fatias      | Custo total  | Receita potencial| Margem total |
-|     3       |    52       | R$ 312.00    | R$ 520.00        | R$ 208.00    |
-+-------------+-------------+--------------+------------------+--------------+
-```
+- **Peso produzido (kg)**: input numerico pre-preenchido
+- **Preview automatico**: recalcula fatias, custo e receita em tempo real (mesma logica do formulario de nova producao)
+- Botao "Salvar" atualiza producao e inventario
 
-### 4. Detalhes tecnicos
+### 5. Detalhes tecnicos
 
-- Os totais serao calculados com `reduce` sobre o array `productions`
-- A receita potencial de cada item: `p.slices_generated * p.recipes.sale_price`
-- A margem de cada item: `receita potencial - p.total_cost`
-- Cores: receita potencial em verde (`text-success`), margem em verde se positiva / vermelho se negativa
-- Grid dos totalizadores: `grid-cols-2 md:grid-cols-5` com o mesmo estilo `glass rounded-lg` usado na previa
+- Exclusao: primeiro deletar inventario com `production_id`, depois deletar producao
+- Edicao: recalcular `slices_generated` e `total_cost` com base no novo peso e dados da receita (`slice_weight_g`, `direct_cost`)
+- Toast de sucesso/erro em ambas as acoes
+- Invalidar queries `productions` e `inventory` apos cada operacao
 
