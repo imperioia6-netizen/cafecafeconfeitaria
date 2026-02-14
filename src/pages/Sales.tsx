@@ -8,10 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles, UserCircle, Check, Pencil, Trash2, Save } from 'lucide-react';
+import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles, UserCircle, Check } from 'lucide-react';
 import { useInventory } from '@/hooks/useInventory';
-import { useCreateSale, useTodaySales, useUpdateSale, useDeleteSale, type CartItem } from '@/hooks/useSales';
+import { useCreateSale, useTodaySales, type CartItem } from '@/hooks/useSales';
 import { useAuth } from '@/hooks/useAuth';
 import { useCustomers } from '@/hooks/useCustomers';
 import { Constants } from '@/integrations/supabase/types';
@@ -22,26 +21,17 @@ const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'De
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
 
 const Sales = () => {
-  const { user, isOwner } = useAuth();
+  const { user } = useAuth();
   const { data: inventory, isLoading: invLoading } = useInventory();
   const { data: todaySales, isLoading: salesLoading } = useTodaySales();
   const { data: allCustomers } = useCustomers();
   const createSale = useCreateSale();
-  const updateSale = useUpdateSale();
-  const deleteSale = useDeleteSale();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [channel, setChannel] = useState<string>('balcao');
   const [payment, setPayment] = useState<string>('dinheiro');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-
-  // Edit/delete state
-  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
-  const [editChannel, setEditChannel] = useState<string>('');
-  const [editPayment, setEditPayment] = useState<string>('');
-  const [editTotal, setEditTotal] = useState<string>('');
-  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
 
   const availableItems = inventory?.filter(i => i.slices_available > 0) ?? [];
 
@@ -74,30 +64,6 @@ const Sales = () => {
     } catch (e: any) { toast.error(e.message || 'Erro ao registrar venda'); }
   };
 
-  const startEdit = (sale: any) => {
-    setEditingSaleId(sale.id);
-    setEditChannel(sale.channel);
-    setEditPayment(sale.payment_method);
-    setEditTotal(String(sale.total));
-  };
-
-  const handleUpdate = async () => {
-    if (!editingSaleId) return;
-    try {
-      await updateSale.mutateAsync({ id: editingSaleId, channel: editChannel as any, payment_method: editPayment as any, total: parseFloat(editTotal) || 0 });
-      toast.success('Venda atualizada!');
-      setEditingSaleId(null);
-    } catch (e: any) { toast.error(e.message || 'Erro ao atualizar'); }
-  };
-
-  const handleDelete = async () => {
-    if (!deletingSaleId) return;
-    try {
-      await deleteSale.mutateAsync(deletingSaleId);
-      toast.success('Venda excluída e estoque devolvido!');
-      setDeletingSaleId(null);
-    } catch (e: any) { toast.error(e.message || 'Erro ao excluir'); }
-  };
 
   return (
     <AppLayout>
@@ -286,67 +252,14 @@ const Sales = () => {
               <div className="space-y-2">
                 {todaySales.map((s: any) => (
                   <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-border/20 hover:border-accent/20 hover:shadow-md transition-all duration-300 group">
-                    {editingSaleId === s.id ? (
-                      <>
-                        <div className="flex items-center gap-2 flex-1 flex-wrap">
-                          <span className="text-sm text-muted-foreground font-mono-numbers">
-                            {new Date(s.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <Select value={editChannel} onValueChange={setEditChannel}>
-                            <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Constants.public.Enums.sales_channel.filter(c => c !== 'ifood').map(c => (
-                                <SelectItem key={c} value={c}>{channelLabels[c] ?? c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select value={editPayment} onValueChange={setEditPayment}>
-                            <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Constants.public.Enums.payment_method.map(p => (
-                                <SelectItem key={p} value={p}>{paymentLabels[p] ?? p}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number" className="w-24 h-7 text-xs" min={0} step="0.01"
-                            value={editTotal}
-                            onChange={e => setEditTotal(e.target.value)}
-                          />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-green-500" onClick={handleUpdate} disabled={updateSale.isPending}>
-                            {updateSale.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingSaleId(null)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground font-mono-numbers">
-                            {new Date(s.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <Badge variant="secondary">{channelLabels[s.channel] ?? s.channel}</Badge>
-                          <span className="text-xs text-muted-foreground">{paymentLabels[s.payment_method]}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono-numbers font-semibold group-hover:text-accent transition-colors">R$ {Number(s.total).toFixed(2)}</span>
-                          {isOwner && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(s)}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeletingSaleId(s.id)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground font-mono-numbers">
+                        {new Date(s.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Badge variant="secondary">{channelLabels[s.channel] ?? s.channel}</Badge>
+                      <span className="text-xs text-muted-foreground">{paymentLabels[s.payment_method]}</span>
+                    </div>
+                    <span className="font-mono-numbers font-semibold group-hover:text-accent transition-colors">R$ {Number(s.total).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -354,24 +267,6 @@ const Sales = () => {
           </div>
         </div>
 
-        {/* Delete confirmation dialog */}
-        <AlertDialog open={!!deletingSaleId} onOpenChange={open => { if (!open) setDeletingSaleId(null); }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação não pode ser desfeita. As fatias serão devolvidas ao estoque automaticamente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} disabled={deleteSale.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {deleteSale.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </AppLayout>
   );
