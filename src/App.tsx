@@ -10,6 +10,8 @@ import Recipes from "./pages/Recipes";
 import Production from "./pages/Production";
 import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
+import CashRegister from "./pages/CashRegister";
+import Reports from "./pages/Reports";
 import Alerts from "./pages/Alerts";
 import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/production" element={<Production />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/sales" element={<Sales />} />
+            <Route path="/cash-register" element={<CashRegister />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/team" element={<Team />} />
             <Route path="*" element={<NotFound />} />
