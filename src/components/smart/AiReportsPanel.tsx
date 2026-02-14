@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useAiReports, useGenerateReport } from '@/hooks/useSmartFeatures';
+import { useAiReports, useGenerateReport, useDeleteReport } from '@/hooks/useSmartFeatures';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, FileText, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Brain, FileText, Loader2, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,8 +16,20 @@ const periodLabels: Record<string, string> = {
 const AiReportsPanel = () => {
   const { data: reports, isLoading } = useAiReports();
   const generateMut = useGenerateReport();
+  const deleteMut = useDeleteReport();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [activePeriod, setActivePeriod] = useState(7);
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteMut.mutate(id, {
+      onSuccess: () => {
+        toast.success('Relatório excluído');
+        if (selectedReport === id) setSelectedReport(null);
+      },
+      onError: () => toast.error('Erro ao excluir relatório'),
+    });
+  };
 
   const handleGenerate = (days: number) => {
     setActivePeriod(days);
@@ -105,15 +117,25 @@ const AiReportsPanel = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{report.summary}</p>
-                  <div className="flex items-center gap-1 mt-1.5">
-                    {growth >= 0 ? (
-                      <TrendingUp className="h-3 w-3 text-emerald-400" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-destructive" />
-                    )}
-                    <span className={`text-xs font-medium ${growth >= 0 ? 'text-emerald-400' : 'text-destructive'}`}>
-                      {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
-                    </span>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-1">
+                      {growth >= 0 ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-destructive" />
+                      )}
+                      <span className={`text-xs font-medium ${growth >= 0 ? 'text-emerald-400' : 'text-destructive'}`}>
+                        {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDelete(report.id, e)}
+                      disabled={deleteMut.isPending}
+                      className="p-1 rounded-md hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Excluir relatório"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </button>
               );

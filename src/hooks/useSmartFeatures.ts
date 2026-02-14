@@ -86,3 +86,14 @@ export function useGenerateReport() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-reports'] }),
   });
 }
+
+export function useDeleteReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('ai_reports').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-reports'] }),
+  });
+}
