@@ -31,7 +31,6 @@ export function useCreateProduction() {
       slices_generated: number;
       total_cost: number;
     }) => {
-      // Insert production
       const { data: prod, error: prodErr } = await supabase
         .from('productions')
         .insert(input)
@@ -39,7 +38,6 @@ export function useCreateProduction() {
         .single();
       if (prodErr) throw prodErr;
 
-      // Insert inventory
       const { error: invErr } = await supabase.from('inventory').insert({
         production_id: prod.id,
         recipe_id: input.recipe_id,
@@ -48,6 +46,62 @@ export function useCreateProduction() {
       if (invErr) throw invErr;
 
       return prod;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['productions'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useDeleteProduction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (productionId: string) => {
+      // Delete inventory first (FK dependency)
+      const { error: invErr } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('production_id', productionId);
+      if (invErr) throw invErr;
+
+      const { error: prodErr } = await supabase
+        .from('productions')
+        .delete()
+        .eq('id', productionId);
+      if (prodErr) throw prodErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['productions'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useUpdateProduction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      weight_produced_g: number;
+      slices_generated: number;
+      total_cost: number;
+    }) => {
+      const { error: prodErr } = await supabase
+        .from('productions')
+        .update({
+          weight_produced_g: input.weight_produced_g,
+          slices_generated: input.slices_generated,
+          total_cost: input.total_cost,
+        })
+        .eq('id', input.id);
+      if (prodErr) throw prodErr;
+
+      const { error: invErr } = await supabase
+        .from('inventory')
+        .update({ slices_available: input.slices_generated })
+        .eq('production_id', input.id);
+      if (invErr) throw invErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['productions'] });

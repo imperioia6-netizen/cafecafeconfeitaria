@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock, Pencil, Trash2 } from 'lucide-react';
 import { useActiveRecipes } from '@/hooks/useRecipes';
-import { useCreateProduction, useTodayProductions } from '@/hooks/useProductions';
+import { useCreateProduction, useTodayProductions, useDeleteProduction, useUpdateProduction } from '@/hooks/useProductions';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -16,9 +18,48 @@ const Production = () => {
   const { data: recipes, isLoading: recipesLoading } = useActiveRecipes();
   const { data: productions, isLoading: prodsLoading } = useTodayProductions();
   const createProduction = useCreateProduction();
+  const deleteProduction = useDeleteProduction();
+  const updateProduction = useUpdateProduction();
 
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
   const [weightKg, setWeightKg] = useState('');
+
+  // Edit/Delete state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editProd, setEditProd] = useState<any | null>(null);
+  const [editWeightKg, setEditWeightKg] = useState('');
+
+  // Edit preview calculations
+  const editRecipe = editProd ? recipes?.find((r: any) => r.id === editProd.recipe_id) : null;
+  const editWeightG = parseFloat(editWeightKg) * 1000;
+  const editSlices = editRecipe && editWeightG > 0 ? Math.floor(editWeightG / Number(editRecipe.slice_weight_g)) : 0;
+  const editCostPerUnit = editRecipe?.direct_cost ? Number(editRecipe.direct_cost) : 0;
+  const editTotalCost = editCostPerUnit * editSlices;
+  const editSalePrice = editRecipe ? Number(editRecipe.sale_price) : 0;
+  const editRevenue = editSlices * editSalePrice;
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteProduction.mutateAsync(deleteId);
+      toast.success('Produção excluída com sucesso!');
+    } catch (e: any) { toast.error(e.message || 'Erro ao excluir'); }
+    setDeleteId(null);
+  };
+
+  const handleEdit = async () => {
+    if (!editProd || editSlices <= 0) return;
+    try {
+      await updateProduction.mutateAsync({
+        id: editProd.id,
+        weight_produced_g: editWeightG,
+        slices_generated: editSlices,
+        total_cost: editTotalCost,
+      });
+      toast.success('Produção atualizada!');
+      setEditProd(null);
+    } catch (e: any) { toast.error(e.message || 'Erro ao atualizar'); }
+  };
 
   const recipe = recipes?.find(r => r.id === selectedRecipeId);
   const weightG = parseFloat(weightKg) * 1000;
@@ -206,6 +247,14 @@ const Production = () => {
                               <span className={`font-mono-numbers ${pMargin >= 0 ? 'text-success' : 'text-destructive'}`}>Margem: R$ {pMargin.toFixed(2)}</span>
                             </div>
                           </div>
+                          <div className="flex gap-1 mt-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditProd(p); setEditWeightKg(String(Number(p.weight_produced_g) / 1000)); }}>
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(p.id)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -216,6 +265,61 @@ const Production = () => {
           </div>
         </div>
       </div>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produção?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação removerá a produção e o estoque associado. Não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editProd} onOpenChange={(open) => !open && setEditProd(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Produção — {editProd?.recipes?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editWeight">Peso produzido (kg)</Label>
+              <Input id="editWeight" type="number" step="0.1" min="0" value={editWeightKg} onChange={e => setEditWeightKg(e.target.value)} />
+            </div>
+            {editSlices > 0 && (
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="glass rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Fatias</p>
+                  <p className="text-lg font-bold font-mono-numbers">{editSlices}</p>
+                </div>
+                <div className="glass rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Custo</p>
+                  <p className="text-lg font-bold font-mono-numbers">R$ {editTotalCost.toFixed(2)}</p>
+                </div>
+                <div className="glass rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Receita</p>
+                  <p className="text-lg font-bold font-mono-numbers text-success">R$ {editRevenue.toFixed(2)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProd(null)}>Cancelar</Button>
+            <Button onClick={handleEdit} disabled={editSlices <= 0 || updateProduction.isPending}>
+              {updateProduction.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
