@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Alerts from "./pages/Alerts";
 import Team from "./pages/Team";
 import Profile from "./pages/Profile";
+import Crm from "./pages/Crm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/team" element={<Team />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/crm" element={<Crm />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
