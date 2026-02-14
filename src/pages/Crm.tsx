@@ -121,7 +121,7 @@ const Crm = () => {
                   value={tab.value}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-500 gap-1.5 border-0 ${
                     activeTab === tab.value
-                      ? 'text-primary-foreground depth-shadow scale-105'
+                      ? 'text-white depth-shadow scale-105'
                       : 'text-muted-foreground hover:bg-muted/60'
                   }`}
                   style={activeTab === tab.value ? {
