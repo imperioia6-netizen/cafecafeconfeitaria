@@ -1,27 +1,68 @@
 
 
-# Substituir Botao "Novo Cliente" por Botao WhatsApp
+# Botao WhatsApp com QR Code e Preparacao para API
 
-Remover o componente `CustomerForm` (botao "+ Novo Cliente") da barra de ferramentas da aba Clientes e adicionar um botao de WhatsApp no lugar.
+Ao clicar no botao WhatsApp na aba Clientes, abrir um Dialog/Modal com QR Code placeholder e instrucoes para conectar a API do WhatsApp Business.
 
 ---
 
-## Alteracao
+## O que sera feito
 
-**Arquivo: `src/pages/Crm.tsx`**
+### 1. Criar componente `WhatsAppConnectDialog`
 
-Na secao de busca/filtro da aba "Clientes" (linha ~113), remover o `<CustomerForm />` e substituir por um botao de WhatsApp que abre o WhatsApp Web/App com um link direto (`https://wa.me/`).
+Novo arquivo: `src/components/crm/WhatsAppConnectDialog.tsx`
 
-O botao tera:
-- Icone do WhatsApp (usando `MessageCircle` do Lucide, ja que nao ha icone nativo do WhatsApp)
-- Texto "WhatsApp"
-- Cor verde caracteristica do WhatsApp (`bg-emerald-500`)
-- Ao clicar, abre `https://wa.me/` em nova aba (permite ao usuario digitar o numero ou pode ser configurado)
+- Dialog modal elegante com visual cinematic (glass-card, gradientes escuros)
+- Exibe uma area de QR Code (placeholder com borda tracejada e icone de QR)
+- Campo de input para o usuario colar a URL/token da API do WhatsApp (ex: webhook URL ou API key)
+- Botao "Conectar" que salva a configuracao (inicialmente no estado local, preparado para futura integracao com Supabase)
+- Status de conexao: "Desconectado" (vermelho) / "Conectado" (verde)
+- Instrucoes breves sobre como obter acesso a API do WhatsApp Business
+
+### 2. Atualizar `Crm.tsx`
+
+- O botao WhatsApp existente passa a abrir o `WhatsAppConnectDialog` ao inves de `window.open`
+- Import do novo componente
+
+### 3. Estrutura do Dialog
+
+```text
++---------------------------------------+
+|        Conectar WhatsApp               |
++---------------------------------------+
+|                                        |
+|    +---------------------------+       |
+|    |                           |       |
+|    |     [QR Code Area]        |       |
+|    |     Escaneie com seu      |       |
+|    |     WhatsApp Business     |       |
+|    |                           |       |
+|    +---------------------------+       |
+|                                        |
+|    Status: ● Desconectado              |
+|                                        |
+|    API Webhook URL                     |
+|    [________________________]          |
+|                                        |
+|    API Token                           |
+|    [________________________]          |
+|                                        |
+|    [ Conectar ]  [ Cancelar ]          |
++---------------------------------------+
+```
 
 ## Detalhes Tecnicos
 
-- Remover import do `CustomerForm` em `Crm.tsx`
-- Adicionar import de `MessageCircle` do lucide-react (ou reutilizar existente)
-- Substituir `<CustomerForm />` por um `<Button>` com `onClick={() => window.open('https://wa.me/', '_blank')}`
-- Estilizacao: `bg-emerald-600 hover:bg-emerald-500 text-white`
+- O QR Code sera um placeholder visual (div com icone `QrCode` do lucide-react e borda tracejada) — pronto para receber um QR real quando a API for integrada
+- Campos `webhookUrl` e `apiToken` controlados por estado local
+- Botao "Conectar" mostra toast de sucesso e muda status para "Conectado"
+- Preparado para futura integracao: os campos ja estarao estruturados para enviar a uma edge function ou salvar em `crm_settings`
+- Usa componentes existentes: `Dialog`, `Input`, `Button`, `Badge` do shadcn/ui
+
+### Arquivos
+
+| Acao   | Arquivo                                      |
+|--------|----------------------------------------------|
+| Criar  | `src/components/crm/WhatsAppConnectDialog.tsx` |
+| Editar | `src/pages/Crm.tsx`                           |
 
