@@ -11,6 +11,8 @@ interface AuthContextType {
   roles: AppRole[];
   isOwner: boolean;
   isEmployee: boolean;
+  viewAs: AppRole | null;
+  setViewAs: (role: AppRole | null) => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -23,6 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [viewAs, setViewAsState] = useState<AppRole | null>(null);
+
+  const realIsOwner = roles.includes('owner');
+
+  const setViewAs = (role: AppRole | null) => {
+    if (!realIsOwner) return; // only owners can switch view
+    setViewAsState(role);
+  };
 
   const fetchRoles = async (userId: string) => {
     const { data } = await supabase
@@ -88,8 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       roles,
-      isOwner: roles.includes('owner'),
-      isEmployee: roles.includes('employee'),
+      isOwner: viewAs ? viewAs === 'owner' : realIsOwner,
+      isEmployee: viewAs ? viewAs === 'employee' : roles.includes('employee'),
+      viewAs,
+      setViewAs,
       signIn,
       signUp,
       signOut,
