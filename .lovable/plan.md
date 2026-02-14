@@ -1,50 +1,45 @@
 
 
-# Mover Inteligencia para dentro da Producao
+# Mover Alertas para dentro do Estoque
 
 ## Resumo
 
-Integrar as abas de "Inteligencia" (Promocoes 12h+ e Relatorios IA) como uma nova aba dentro da pagina de Producao, eliminando a rota `/smart` separada e o item do menu lateral.
+Integrar a pagina de Alertas como uma aba dentro da pagina de Estoque, seguindo o mesmo padrao usado na Producao (tabs). Remover o item "Alertas" do menu lateral e a rota separada.
 
 ## Alteracoes
 
-### 1. Pagina de Producao (`src/pages/Production.tsx`)
+### 1. Pagina de Estoque (`src/pages/Inventory.tsx`)
 
-Transformar a pagina em um layout com abas (Tabs):
+Adicionar layout com abas (Tabs):
 
-- **Aba "Producao"**: conteudo atual da pagina (formulario + ficha de producao)
-- **Aba "Promocoes 12h+"**: componente `AutoPromotionsPanel` (ja existe)
-- **Aba "Relatorios IA"**: componente `AiReportsPanel` (ja existe)
-
-As abas usarao o mesmo estilo visual dos tabs do SmartHub (pills com gradiente dourado).
+- **Aba "Estoque"**: conteudo atual (cards de inventario com filtros)
+- **Aba "Alertas"**: conteudo da pagina de Alertas (timeline de alertas com resolucao)
 
 ```text
-Producao
-Registrar producao do dia
+Estoque
+Controle em tempo real
 
-[Producao]  [Promocoes 12h+]  [Relatorios IA]
+[Estoque]  [Alertas (3)]
 
 (conteudo da aba selecionada)
 ```
 
+O badge com contagem de alertas ativos aparecera ao lado do titulo da aba "Alertas" para visibilidade imediata.
+
 ### 2. Menu lateral (`src/components/layout/AppSidebar.tsx`)
 
-Remover o item "Inteligencia" (`{ label: 'Inteligencia', icon: Brain, path: '/smart', ownerOnly: true }`) do grupo "Gestao".
+Remover o item `{ label: 'Alertas', icon: AlertTriangle, path: '/alerts', ownerOnly: true }` do grupo "Gestao".
 
 ### 3. Rotas (`src/App.tsx`)
 
-- Remover a rota `/smart` e o import de `SmartHub`
-- O arquivo `src/pages/SmartHub.tsx` pode ser mantido ou removido (nao causa impacto)
+Remover a rota `/alerts` e o import de `Alerts`.
 
-### 4. Visibilidade das abas de IA
+### 4. Detalhes tecnicos
 
-As abas "Promocoes 12h+" e "Relatorios IA" serao visiveis apenas para owners (`isOwner`), mantendo a mesma restricao de acesso que o SmartHub tinha. Funcionarios verao apenas a aba de Producao sem as tabs extras.
-
-### 5. Detalhes tecnicos
-
-- Importar `Tabs, TabsContent, TabsList, TabsTrigger` na pagina de Producao
-- Importar `AutoPromotionsPanel` e `AiReportsPanel`
-- Importar `Zap` e `Brain` do lucide-react para os icones das tabs
-- Usar `isOwner` do `useAuth()` (ja disponivel) para condicionar a exibicao
-- Estado local `activeTab` com valor padrao `'production'`
+- Extrair o conteudo da pagina de Alertas (`src/pages/Alerts.tsx`) para um componente reutilizavel `AlertsContent` dentro do proprio arquivo ou inline na pagina de Estoque
+- Importar `Tabs, TabsContent, TabsList, TabsTrigger` do shadcn
+- Importar `useActiveAlerts, useResolveAlert, useAlertCount` dos hooks existentes
+- Importar icones necessarios: `AlertTriangle, CheckCircle, Package, Clock, Trash2, HelpCircle`
+- A aba de Alertas sera visivel para todos os usuarios (nao requer `isOwner`), ja que alertas de estoque sao relevantes para a operacao
+- Estado local `activeTab` com valor padrao `'inventory'`
 
