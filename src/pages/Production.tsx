@@ -90,12 +90,13 @@ const Production = () => {
                       <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Prévia da Produção</p>
                       <p className="text-lg font-bold mt-1">{recipe.name}</p>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       {[
                         { icon: Layers, label: 'Fatias', value: String(slices) },
                         { icon: DollarSign, label: 'Custo total', value: `R$ ${totalCost.toFixed(2)}` },
                         { icon: DollarSign, label: 'Custo/fatia', value: `R$ ${costPerUnit.toFixed(2)}` },
                         { icon: TrendingUp, label: 'Margem/fatia', value: `R$ ${marginPerSlice.toFixed(2)}`, color: marginPerSlice > 0 },
+                        { icon: DollarSign, label: 'Receita total', value: `R$ ${(slices * salePrice).toFixed(2)}`, color: true },
                       ].map(stat => (
                         <div key={stat.label} className="text-center glass rounded-lg p-3">
                           <div className="flex justify-center mb-1">
