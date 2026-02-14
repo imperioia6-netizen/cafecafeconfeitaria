@@ -12,7 +12,7 @@ export function useTodayProductions() {
       today.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from('productions')
-        .select('*, recipes(name, category)')
+        .select('*, recipes(name, category, sale_price, direct_cost)')
         .gte('produced_at', today.toISOString())
         .order('produced_at', { ascending: false });
       if (error) throw error;

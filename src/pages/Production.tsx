@@ -139,36 +139,80 @@ const Production = () => {
           </div>
         </div>
 
-        {/* Today's history */}
+        {/* Today's history — Ficha de Produção */}
         <div className="card-cinematic rounded-xl">
           <div className="p-6">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Produção de Hoje</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Ficha de Produção — Hoje</h3>
             {prodsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : !productions?.length ? (
               <p className="text-sm text-muted-foreground text-center py-6">Nenhuma produção registrada hoje.</p>
-            ) : (
-              <div className="relative space-y-0">
-                <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background: 'linear-gradient(180deg, hsl(36 70% 50% / 0.4), transparent)' }} />
-                {productions.map((p: any) => (
-                  <div key={p.id} className="relative flex items-start gap-4 py-3 pl-1 hover:translate-x-1 transition-transform duration-300">
-                    <div className="relative z-10 h-[10px] w-[10px] rounded-full mt-1.5 bg-accent ring-4 ring-background"
-                      style={{ boxShadow: '0 0 8px hsl(36 70% 50% / 0.3)' }} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-sm">{p.recipes?.name ?? '—'}</span>
-                        <Badge variant="secondary" className="text-xs">{p.slices_generated} fatias</Badge>
+            ) : (() => {
+              const totals = productions.reduce((acc: any, p: any) => {
+                const pSalePrice = Number(p.recipes?.sale_price ?? 0);
+                const pRevenue = p.slices_generated * pSalePrice;
+                const pCost = Number(p.total_cost);
+                return {
+                  count: acc.count + 1,
+                  slices: acc.slices + p.slices_generated,
+                  cost: acc.cost + pCost,
+                  revenue: acc.revenue + pRevenue,
+                };
+              }, { count: 0, slices: 0, cost: 0, revenue: 0 });
+              const totalMargin = totals.revenue - totals.cost;
+
+              return (
+                <div className="space-y-6">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                      { label: 'Produções', value: String(totals.count), icon: Coffee },
+                      { label: 'Fatias', value: String(totals.slices), icon: Layers },
+                      { label: 'Custo total', value: `R$ ${totals.cost.toFixed(2)}`, icon: DollarSign },
+                      { label: 'Receita potencial', value: `R$ ${totals.revenue.toFixed(2)}`, icon: TrendingUp, color: 'text-success' },
+                      { label: 'Margem total', value: `R$ ${totalMargin.toFixed(2)}`, icon: TrendingUp, color: totalMargin >= 0 ? 'text-success' : 'text-destructive' },
+                    ].map(s => (
+                      <div key={s.label} className="glass rounded-lg p-3 text-center">
+                        <div className="flex justify-center mb-1"><s.icon className="h-4 w-4 text-muted-foreground" /></div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                        <p className={`text-lg font-bold font-mono-numbers ${s.color ?? ''}`}>{s.value}</p>
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(p.produced_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span>{Number(p.weight_produced_g).toLocaleString()}g</span>
-                        <span className="font-mono-numbers">R$ {Number(p.total_cost).toFixed(2)}</span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {/* Timeline */}
+                  <div className="relative space-y-0">
+                    <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background: 'linear-gradient(180deg, hsl(36 70% 50% / 0.4), transparent)' }} />
+                    {productions.map((p: any) => {
+                      const pSalePrice = Number(p.recipes?.sale_price ?? 0);
+                      const pRevenue = p.slices_generated * pSalePrice;
+                      const pMargin = pRevenue - Number(p.total_cost);
+                      return (
+                        <div key={p.id} className="relative flex items-start gap-4 py-3 pl-1 hover:translate-x-1 transition-transform duration-300">
+                          <div className="relative z-10 h-[10px] w-[10px] rounded-full mt-1.5 bg-accent ring-4 ring-background"
+                            style={{ boxShadow: '0 0 8px hsl(36 70% 50% / 0.3)' }} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-sm">{p.recipes?.name ?? '—'}</span>
+                              <Badge variant="secondary" className="text-xs">{p.slices_generated} fatias</Badge>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(p.produced_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>{Number(p.weight_produced_g).toLocaleString()}g</span>
+                              <span className="font-mono-numbers">Custo: R$ {Number(p.total_cost).toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1 text-xs">
+                              <span className="text-success font-mono-numbers">Receita: R$ {pRevenue.toFixed(2)}</span>
+                              <span className={`font-mono-numbers ${pMargin >= 0 ? 'text-success' : 'text-destructive'}`}>Margem: R$ {pMargin.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
