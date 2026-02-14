@@ -1,117 +1,123 @@
 
+# CRM Profissional — Design Cinematografico + Kanban de Leads
 
-# CRM Profissional — Upgrade Completo
-
-Redesign total do CRM com dashboard executivo, detalhes expandidos de cliente, KPIs em tempo real e interface de nivel enterprise.
-
----
-
-## Visao Geral das Melhorias
-
-### 1. Dashboard de KPIs no Topo da Pagina CRM
-Antes das abas, adicionar um painel de metricas executivas:
-- **Total de Clientes** (ativos/inativos/novos com mini grafico)
-- **Receita Acumulada** (soma de total_spent de todos os clientes)
-- **Taxa de Retencao** (clientes ativos vs total)
-- **Aniversarios Proximos** (proximo 7 dias)
-- **Clientes em Risco** (30d+ sem compra)
-- Layout: 5 cards horizontais com icones, numeros grandes em JetBrains Mono e mini-labels
-
-### 2. CustomerCard Expandido com Drawer de Detalhes
-O card atual e basico. O novo card tera:
-- **Avatar com iniciais** do nome (circulo colorido baseado no status)
-- **Barra de progresso** de engajamento (baseada em frequencia de compras)
-- **Ultimo produto** comprado (nao so o favorito)
-- **Tags visuais**: canal preferido, influenciador (se tiver seguidores alto)
-- **Ao clicar**: abre um **Sheet/Drawer lateral** com:
-  - Perfil completo do cliente
-  - Historico de mensagens CRM enviadas
-  - Historico de compras vinculadas
-  - Botoes de acao: editar, enviar mensagem via n8n, registrar desconto influencia
-  - Timeline visual das interacoes
-
-### 3. CustomerForm com Edicao Inline
-- O formulario atual so cria. Adicionar modo de edicao para clientes existentes
-- Botao "Editar" dentro do drawer do cliente
-- Pre-preencher campos com dados atuais
-- Botao de deletar cliente com confirmacao (AlertDialog)
-
-### 4. Aba Clientes Aprimorada
-- **Contadores visuais** acima da lista: "12 Ativos | 3 Inativos | 5 Novos" como badges clicaveis
-- **Ordenacao**: por nome, total gasto, ultima compra, data de cadastro
-- **Vista em tabela** alternativa (toggle entre cards e tabela)
-- **Estado vazio** com ilustracao e CTA mais claro
-
-### 5. Aba Aniversarios Aprimorada
-- **Calendario visual** no topo mostrando proximos 30 dias com pontos nos dias com aniversarios
-- **Separacao por semana**: "Esta Semana", "Proxima Semana", "Este Mes"
-- **Status do fluxo de 6 mensagens** por cliente (barra de progresso: 2/6 enviadas)
-- **Botao de enviar todas** pendentes de uma vez via n8n
-
-### 6. Aba Reativacao Aprimorada
-- **Segmentacao visual**: 30-60 dias (amarelo), 60-90 dias (laranja), 90+ dias (vermelho)
-- **Valor em risco** calculado (soma do total_spent dos inativos)
-- **Historico de tentativas** de reativacao por cliente
-- **Mensagem preview** antes de enviar via n8n
-- **Botao "Reativar Todos"** para disparo em lote
-
-### 7. Aba Social Seller Aprimorada
-- **Funil visual com barras** proporcionais (nao so numeros em cards)
-- **Taxa de conversao** entre cada estagio
-- **Drag-and-drop** simulado com botoes para avancar lead no funil
-- **Filtro por status** na lista de leads
-- **Detalhes do lead** expandiveis
-
-### 8. Aba Configuracoes Aprimorada
-- **Status de conexao** visual: indicador verde/vermelho se o webhook esta ativo
-- **Log de ultimas chamadas** ao n8n (ultimas 5 mensagens enviadas)
-- **Secao de templates** de mensagem configuravel
-- **Regras de influencia** mais detalhadas: faixas de seguidores com descontos diferentes
-
-### 9. Integracao na Pagina de Vendas
-- **Seletor de cliente** com combobox/search antes de finalizar venda
-- Opcao "Cliente nao identificado" (padrao)
-- Ao vincular, atualiza automaticamente `last_purchase_at` e `total_spent` do cliente
+Redesign completo do CRM para alinhar com o padrao visual do Dashboard (KPI cards com gradientes escuros, tipografia Playfair Display, animacoes staggered) e adicionar um sistema de quadro Kanban para gerenciar leads/negocios em andamento.
 
 ---
 
-## Detalhes Tecnicos
+## 1. Redesign dos KPI Cards (CrmDashboardKpis.tsx)
 
-### Novos Componentes
-- `src/components/crm/CrmDashboardKpis.tsx` — Painel de KPIs executivos
-- `src/components/crm/CustomerDetailSheet.tsx` — Drawer lateral com perfil completo, historico e acoes
-- `src/components/crm/CustomerStatusBadges.tsx` — Badges clicaveis de status (contadores)
+Trocar os KPI cards atuais (simples, fundo claro) pelo mesmo padrao do Dashboard principal:
+- Primeiro card com gradiente escuro marrom (igual ao "Faturamento" do Dashboard)
+- Todos os cards com `card-cinematic`, `animate-fade-in` e delays staggered
+- Icones com `animate-float` dentro de circulos
+- Numeros grandes em `font-mono-numbers` com `glow-gold` no primeiro
+- Sub-informacoes abaixo com formatacao identica ao Dashboard
+- Grid 5 colunas em desktop, 2 em mobile
 
-### Componentes Modificados
-- `src/components/crm/CustomerCard.tsx` — Avatar com iniciais, barra de engajamento, mais dados visuais, onClick abre drawer
-- `src/components/crm/CustomerForm.tsx` — Suporte a modo edicao (recebe customer opcional) + botao deletar
-- `src/components/crm/BirthdayTimeline.tsx` — Separacao por semana, barra de progresso de fluxo 6 msgs, botao enviar todos
-- `src/components/crm/ReactivationPanel.tsx` — Segmentacao por cores/gravidade, valor em risco, botao reativar todos
-- `src/components/crm/SocialFunnel.tsx` — Funil visual proporcional, taxas de conversao, botoes avancar status, filtro
-- `src/components/crm/N8nSettingsPanel.tsx` — Status de conexao visual, log de mensagens recentes
-- `src/pages/Crm.tsx` — KPIs no topo, estado vazio melhorado, toggle cards/tabela, ordenacao
-- `src/pages/Sales.tsx` — Combobox de selecao de cliente com busca
+## 2. Nova Aba: Kanban de Leads
 
-### Hooks Modificados
-- `src/hooks/useCustomers.ts` — Adicionar parametros de ordenacao
-- `src/hooks/useCrmMessages.ts` — Query por customer_id para historico no drawer
+Adicionar uma nova aba "Pipeline" no CRM com um quadro Kanban visual para gerenciar leads e negocios em andamento.
 
-### Nenhuma alteracao de banco de dados necessaria
-Todas as tabelas ja suportam as features. Os dados ja existem (crm_messages, customers, social_leads). Apenas a UI sera aprimorada.
+**Colunas do Kanban:**
+- **Novo Lead** — Primeiro contato, interesse inicial
+- **Em Negociacao** — Proposta enviada, aguardando resposta
+- **Proposta Aceita** — Fechamento proximo
+- **Convertido** — Virou cliente (movido automaticamente ao vincular venda)
+
+**Funcionalidades:**
+- Cada card mostra: nome, telefone, valor potencial, dias no estagio, notas
+- Botoes para mover lead entre colunas (avancar/retroceder)
+- Contadores por coluna com valor total potencial
+- Criar novo lead diretamente no kanban
+- Ao converter, opcao de transformar em cliente no CRM
+
+**Implementacao tecnica:**
+- Reutilizar a tabela `social_leads` existente, adicionando novos status via migration: `novo_lead`, `em_negociacao`, `proposta_aceita`, `convertido`
+- Adicionar colunas `potential_value` (numeric), `notes` (text), `stage_changed_at` (timestamptz) na tabela `social_leads`
+- Novo componente `LeadsKanban.tsx`
+- Atualizar `useSocialLeads.ts` para suportar os novos campos e status
+
+## 3. Migration SQL
+
+Alterar a tabela `social_leads` para suportar o Kanban:
+- Adicionar valores ao enum ou usar text para status: `novo_lead`, `em_negociacao`, `proposta_aceita`, `convertido` (alem dos existentes)
+- Adicionar colunas: `potential_value` (numeric default 0), `notes` (text), `name` (text), `phone` (text), `stage_changed_at` (timestamptz default now)
+
+## 4. Redesign da Pagina CRM (Crm.tsx)
+
+- Aplicar mesma estrutura do Dashboard: `space-y-8`, animacoes staggered
+- KPIs com design identico ao Dashboard
+- Nova aba "Pipeline" com icone Kanban (LayoutGrid ou Columns)
+- Tabs com estilo aprimorado
+- Melhorar estado vazio com design mais cinematografico
+
+## 5. Melhorias Visuais nas Abas Existentes
+
+**Aba Clientes:**
+- Status badges com animacao ao trocar filtro
+- Cards com hover mais pronunciado (depth-shadow)
+
+**Aba Aniversarios:**
+- Header com titulo em Playfair Display e gradiente
+- Cards com border-shine nos aniversarios de hoje
+
+**Aba Reativacao:**
+- KPI cards de resumo com mesmo padrao do Dashboard (gradiente escuro no primeiro)
+- Segmentacao visual mais pronunciada
+
+**Aba Config:**
+- Cards com gradientes sutis no header
+- Status de conexao com animacao pulse
+
+## 6. Componente LeadsKanban.tsx
+
+Quadro Kanban com 4 colunas lado a lado (scroll horizontal em mobile):
+- Cada coluna: header com titulo, contagem e valor total
+- Cards arrastados visualmente com botoes de acao
+- Dialog para criar/editar lead
+- Design: colunas com fundo sutil diferente, cards com card-cinematic
+- Cores por coluna: azul (novo), amarelo (negociacao), verde (proposta), dourado (convertido)
 
 ---
 
 ## Sequencia de Implementacao
 
-1. `CrmDashboardKpis` — KPIs executivos
-2. `CustomerDetailSheet` — Drawer de detalhes do cliente
-3. `CustomerCard` — Upgrade visual com avatar, engajamento, onClick
-4. `CustomerForm` — Modo edicao + deletar
-5. `Crm.tsx` — KPIs, ordenacao, toggle view, estados vazios
-6. `BirthdayTimeline` — Separacao semanal, progresso do fluxo
-7. `ReactivationPanel` — Segmentacao, valor em risco, lote
-8. `SocialFunnel` — Funil proporcional, taxas, avancar status
-9. `N8nSettingsPanel` — Status de conexao, log
-10. `Sales.tsx` — Seletor de cliente com busca
+1. Migration SQL — novos campos em `social_leads`
+2. `useSocialLeads.ts` — atualizar hook com novos campos
+3. `CrmDashboardKpis.tsx` — redesign com padrao do Dashboard
+4. `LeadsKanban.tsx` — novo componente Kanban completo
+5. `Crm.tsx` — nova aba Pipeline + redesign geral
+6. Melhorias visuais nas abas existentes (Birthday, Reactivation, Config)
 
-Tudo mantendo o design cinematografico (glass-card, shine-effect, gradientes dourados, Playfair Display, JetBrains Mono para numeros).
+---
+
+## Detalhes Tecnicos
+
+### Tabela social_leads (alteracoes)
+```text
+ALTER TABLE social_leads
+  ADD COLUMN IF NOT EXISTS name text,
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS potential_value numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS notes text,
+  ADD COLUMN IF NOT EXISTS stage_changed_at timestamptz DEFAULT now();
+```
+Status existentes serao mantidos e novos adicionados: `novo_lead`, `em_negociacao`, `proposta_aceita`.
+
+### LeadsKanban.tsx
+- Usa `useSocialLeads` para CRUD
+- 4 colunas em flex horizontal com `overflow-x-auto`
+- Cada coluna filtra leads por status
+- Botao "Mover" atualiza status e `stage_changed_at`
+- Dialog para criar lead com campos: nome, telefone, instagram, valor potencial, notas
+- Card mostra: nome, valor, dias no estagio, badge de status, notas truncadas
+
+### Design Visual
+Tudo alinhado com o Dashboard existente:
+- `card-cinematic`, `shine-effect`, `border-shine`
+- Gradientes escuros marrom no card principal
+- `font-mono-numbers` para valores
+- `glow-gold` para destaque
+- `animate-fade-in` com delays staggered
+- Tipografia Playfair Display para titulos
