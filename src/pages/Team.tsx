@@ -2,8 +2,8 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Users, Loader2, Phone, Cake } from 'lucide-react';
 import { useTeamMembers, useUpdateRole } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -57,6 +57,7 @@ const Team = () => {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <Avatar className="h-12 w-12">
+                          {m.photo_url && <AvatarImage src={m.photo_url} alt={m.name} />}
                           <AvatarFallback className="text-white font-bold" style={{ background: bgGradient }}>
                             {initials}
                           </AvatarFallback>
@@ -65,13 +66,11 @@ const Team = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate group-hover:text-accent transition-colors">{m.name}</p>
-                        <p className="text-xs text-muted-foreground">{m.phone ?? '—'}</p>
+                        {m.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{m.phone}</p>}
+                        {m.birthday && <p className="text-xs text-muted-foreground flex items-center gap-1"><Cake className="h-3 w-3" />{new Date(m.birthday).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</p>}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground">
-                        {m.birthday ? `🎂 ${new Date(m.birthday).toLocaleDateString('pt-BR')}` : ''}
-                      </div>
                       {isOwner && m.user_id !== user?.id ? (
                         <Select value={m.roles?.[0] || 'employee'} onValueChange={(val) => handleRoleChange(m.user_id, val)}>
                           <SelectTrigger className="w-[130px] h-8 text-xs glass">

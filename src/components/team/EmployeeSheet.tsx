@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Star, TrendingUp, DollarSign, BarChart3, Receipt, Loader2 } from 'lucide-react';
+import { Star, TrendingUp, DollarSign, BarChart3, Receipt, Loader2, Phone, Cake, Heart, Clock } from 'lucide-react';
 import { useEmployeeStats, useUpdateServiceRating } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -68,6 +68,7 @@ export default function EmployeeSheet({ member, open, onOpenChange }: EmployeeSh
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Avatar className="h-16 w-16">
+            {member.photo_url && <AvatarImage src={member.photo_url} alt={member.name} />}
             <AvatarFallback
               className="text-white font-bold text-lg"
               style={{ background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))' }}
@@ -84,10 +85,42 @@ export default function EmployeeSheet({ member, open, onOpenChange }: EmployeeSh
                 </Badge>
               ))}
             </div>
-            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-              {member.phone && <p>📞 {member.phone}</p>}
-              {member.birthday && <p>🎂 {new Date(member.birthday).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</p>}
-            </div>
+          </div>
+        </div>
+
+        {/* Dados Pessoais */}
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Dados Pessoais</h3>
+          <div className="card-cinematic rounded-lg p-4 space-y-2.5">
+            {member.phone && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{member.phone}</span>
+              </div>
+            )}
+            {member.birthday && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <Cake className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{new Date(member.birthday).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</span>
+              </div>
+            )}
+            {member.family_name && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <Heart className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>
+                  {member.family_name}
+                  {member.family_birthday && (
+                    <span className="text-muted-foreground"> — {new Date(member.family_birthday).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</span>
+                  )}
+                </span>
+              </div>
+            )}
+            {member.created_at && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">Membro desde {new Date(member.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+              </div>
+            )}
           </div>
         </div>
 
