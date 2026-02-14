@@ -1,68 +1,49 @@
 
 
-# Botao WhatsApp com QR Code e Preparacao para API
+# Padronizar Design dos Filtros e Abas do CRM com o Estoque
 
-Ao clicar no botao WhatsApp na aba Clientes, abrir um Dialog/Modal com QR Code placeholder e instrucoes para conectar a API do WhatsApp Business.
+Aplicar o mesmo estilo visual de "pills" arredondadas com gradiente dourado do Estoque nos botoes de abas e filtros do CRM.
 
 ---
 
-## O que sera feito
+## Problema Atual
 
-### 1. Criar componente `WhatsAppConnectDialog`
+- **Abas do CRM** (Clientes, Pipeline, Aniversarios, etc.) usam `TabsTrigger` com estilo padrao do shadcn
+- **Filtros de status** (Todos, Ativos, Inativos, Novos) usam `Badge` com cores distintas
+- **Estoque** usa botoes `<button>` com `rounded-full`, gradiente marrom/dourado no ativo, e fundo sutil no inativo — visual muito mais polido
 
-Novo arquivo: `src/components/crm/WhatsAppConnectDialog.tsx`
+## Solucao
 
-- Dialog modal elegante com visual cinematic (glass-card, gradientes escuros)
-- Exibe uma area de QR Code (placeholder com borda tracejada e icone de QR)
-- Campo de input para o usuario colar a URL/token da API do WhatsApp (ex: webhook URL ou API key)
-- Botao "Conectar" que salva a configuracao (inicialmente no estado local, preparado para futura integracao com Supabase)
-- Status de conexao: "Desconectado" (vermelho) / "Conectado" (verde)
-- Instrucoes breves sobre como obter acesso a API do WhatsApp Business
+### 1. Filtros de Status (Todos, Ativos, Inativos, Novos)
 
-### 2. Atualizar `Crm.tsx`
+Substituir os `Badge` clicaveis por botoes pill identicos aos do Estoque:
 
-- O botao WhatsApp existente passa a abrir o `WhatsAppConnectDialog` ao inves de `window.open`
-- Import do novo componente
+- `rounded-full`, `px-5 py-2`, `text-sm font-medium`
+- Ativo: `background: linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))` com `text-primary-foreground`, `depth-shadow`, `scale-105`
+- Inativo: `background: hsl(var(--muted) / 0.5)` com `text-muted-foreground`
+- Transicao suave: `transition-all duration-500`
 
-### 3. Estrutura do Dialog
+### 2. Abas do CRM (Clientes, Pipeline, Aniversarios, etc.)
 
-```text
-+---------------------------------------+
-|        Conectar WhatsApp               |
-+---------------------------------------+
-|                                        |
-|    +---------------------------+       |
-|    |                           |       |
-|    |     [QR Code Area]        |       |
-|    |     Escaneie com seu      |       |
-|    |     WhatsApp Business     |       |
-|    |                           |       |
-|    +---------------------------+       |
-|                                        |
-|    Status: ● Desconectado              |
-|                                        |
-|    API Webhook URL                     |
-|    [________________________]          |
-|                                        |
-|    API Token                           |
-|    [________________________]          |
-|                                        |
-|    [ Conectar ]  [ Cancelar ]          |
-+---------------------------------------+
-```
+Substituir o `TabsList` + `TabsTrigger` padrao por botoes pill com o mesmo estilo, mantendo a funcionalidade de `Tabs` por baixo. As tabs continuarao controlando o conteudo, mas os triggers terao aparencia de pills arredondadas com gradiente.
+
+- Aplicar o mesmo padrao visual: pill arredondada, gradiente no ativo
+- Manter os icones existentes (Users, Columns3, Cake, etc.)
 
 ## Detalhes Tecnicos
 
-- O QR Code sera um placeholder visual (div com icone `QrCode` do lucide-react e borda tracejada) — pronto para receber um QR real quando a API for integrada
-- Campos `webhookUrl` e `apiToken` controlados por estado local
-- Botao "Conectar" mostra toast de sucesso e muda status para "Conectado"
-- Preparado para futura integracao: os campos ja estarao estruturados para enviar a uma edge function ou salvar em `crm_settings`
-- Usa componentes existentes: `Dialog`, `Input`, `Button`, `Badge` do shadcn/ui
+### Arquivo Modificado
+- `src/pages/Crm.tsx`
 
-### Arquivos
+### Alteracoes Especificas
 
-| Acao   | Arquivo                                      |
-|--------|----------------------------------------------|
-| Criar  | `src/components/crm/WhatsAppConnectDialog.tsx` |
-| Editar | `src/pages/Crm.tsx`                           |
+**TabsList**: remover `glass-card border-border/30 p-1` e aplicar `flex gap-2 bg-transparent`
+
+**TabsTrigger**: sobrescrever estilo para usar:
+```
+className="px-5 py-2 rounded-full text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:depth-shadow data-[state=active]:scale-105 data-[state=inactive]:text-muted-foreground"
+style={ isActive ? { background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))' } : { background: 'hsl(var(--muted) / 0.5)' }}
+```
+
+**Filtros de status**: substituir `Badge` por `<button>` com estilo identico ao usado em `Inventory.tsx` (linhas 81-95).
 
