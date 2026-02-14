@@ -58,14 +58,14 @@ const Production = () => {
             {recipesLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : !recipes?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Cadastre receitas primeiro.</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Cadastre produtos primeiro.</p>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Receita</Label>
+                    <Label>Produto</Label>
                     <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
-                      <SelectTrigger className="h-11 input-glow"><SelectValue placeholder="Selecione a receita" /></SelectTrigger>
+                      <SelectTrigger className="h-11 input-glow"><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
                       <SelectContent>
                         {recipes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                       </SelectContent>

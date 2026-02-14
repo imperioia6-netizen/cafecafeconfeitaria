@@ -12,7 +12,7 @@ const Recipes = () => {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title">Receitas</h1>
+            <h1 className="page-title">Produtos</h1>
             <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Cadastrar e gerenciar produtos</p>
           </div>
           <RecipeForm />
@@ -25,8 +25,8 @@ const Recipes = () => {
         ) : !recipes?.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <ChefHat className="h-16 w-16 mb-4 opacity-15" />
-            <p className="text-sm">Nenhuma receita cadastrada.</p>
-            <p className="text-xs mt-1 text-muted-foreground/60">Clique em "Nova Receita" para começar.</p>
+            <p className="text-sm">Nenhum produto cadastrado.</p>
+            <p className="text-xs mt-1 text-muted-foreground/60">Clique em "Novo Produto" para começar.</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

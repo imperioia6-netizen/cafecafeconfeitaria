@@ -29,7 +29,7 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
   const toggleActive = async () => {
     try {
       await updateRecipe.mutateAsync({ id: recipe.id, active: !recipe.active });
-      toast.success(recipe.active ? 'Receita desativada' : 'Receita ativada');
+      toast.success(recipe.active ? 'Produto desativado' : 'Produto ativado');
     } catch { toast.error('Erro ao alterar status'); }
   };
 
@@ -91,7 +91,7 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md glass-card depth-shadow border-shine">
-          <DialogHeader><DialogTitle>Editar Receita</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Editar Produto</DialogTitle></DialogHeader>
           <RecipeForm recipe={recipe} onClose={() => setEditOpen(false)} />
         </DialogContent>
       </Dialog>
