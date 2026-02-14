@@ -65,6 +65,112 @@ export type Database = {
           },
         ]
       }
+      cash_closings: {
+        Row: {
+          cash_register_id: string
+          closed_at: string
+          closed_by: string
+          created_at: string
+          id: string
+          notes: string | null
+          total_sales: number
+          total_transactions: number
+        }
+        Insert: {
+          cash_register_id: string
+          closed_at?: string
+          closed_by: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          total_sales?: number
+          total_transactions?: number
+        }
+        Update: {
+          cash_register_id?: string
+          closed_at?: string
+          closed_by?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          total_sales?: number
+          total_transactions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_closings_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_registers: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          is_open: boolean
+          name: Database["public"]["Enums"]["cash_register_name"]
+          opened_at: string
+          opened_by: string
+          opening_balance: number
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name: Database["public"]["Enums"]["cash_register_name"]
+          opened_at?: string
+          opened_by: string
+          opening_balance?: number
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name?: Database["public"]["Enums"]["cash_register_name"]
+          opened_at?: string
+          opened_by?: string
+          opening_balance?: number
+        }
+        Relationships: []
+      }
+      closing_details: {
+        Row: {
+          closing_id: string
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          total: number
+          transaction_count: number
+        }
+        Insert: {
+          closing_id: string
+          id?: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          total?: number
+          transaction_count?: number
+        }
+        Update: {
+          closing_id?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          total?: number
+          transaction_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closing_details_closing_id_fkey"
+            columns: ["closing_id"]
+            isOneToOne: false
+            referencedRelation: "cash_closings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           created_at: string
@@ -346,6 +452,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          cash_register_id: string | null
           channel: Database["public"]["Enums"]["sales_channel"]
           created_at: string
           id: string
@@ -355,6 +462,7 @@ export type Database = {
           total: number
         }
         Insert: {
+          cash_register_id?: string | null
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
           id?: string
@@ -364,6 +472,7 @@ export type Database = {
           total?: number
         }
         Update: {
+          cash_register_id?: string | null
           channel?: Database["public"]["Enums"]["sales_channel"]
           created_at?: string
           id?: string
@@ -372,7 +481,15 @@ export type Database = {
           sold_at?: string
           total?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -410,6 +527,7 @@ export type Database = {
     Enums: {
       alert_type: "estoque_baixo" | "validade_12h" | "desperdicio" | "outro"
       app_role: "owner" | "employee" | "client"
+      cash_register_name: "caixa_1" | "caixa_2" | "delivery"
       inventory_status: "normal" | "atencao" | "critico"
       payment_method: "pix" | "credito" | "debito" | "dinheiro" | "refeicao"
       product_category:
@@ -549,6 +667,7 @@ export const Constants = {
     Enums: {
       alert_type: ["estoque_baixo", "validade_12h", "desperdicio", "outro"],
       app_role: ["owner", "employee", "client"],
+      cash_register_name: ["caixa_1", "caixa_2", "delivery"],
       inventory_status: ["normal", "atencao", "critico"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
       product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],

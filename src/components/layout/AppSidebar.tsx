@@ -9,6 +9,8 @@ import {
   Coffee,
   Users,
   AlertTriangle,
+  CreditCard,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,8 @@ const navItems = [
   { label: 'Produção', icon: Coffee, path: '/production', ownerOnly: false },
   { label: 'Estoque', icon: Package, path: '/inventory', ownerOnly: false },
   { label: 'Vendas', icon: ShoppingCart, path: '/sales', ownerOnly: false },
+  { label: 'Caixas', icon: CreditCard, path: '/cash-register', ownerOnly: false },
+  { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
   { label: 'Alertas', icon: AlertTriangle, path: '/alerts', ownerOnly: true },
   { label: 'Equipe', icon: Users, path: '/team', ownerOnly: true },
 ];
