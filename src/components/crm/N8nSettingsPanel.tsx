@@ -1,22 +1,26 @@
 import { useState } from 'react';
 import { useCrmSettings } from '@/hooks/useCrmSettings';
 import { useCrmN8n } from '@/hooks/useCrmN8n';
+import { useCrmMessages } from '@/hooks/useCrmMessages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Webhook, Zap, Instagram } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Webhook, Zap, Instagram, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 const N8nSettingsPanel = () => {
   const { data: settings, getSetting, upsertSetting } = useCrmSettings();
   const { testConnection } = useCrmN8n();
+  const { data: allMessages } = useCrmMessages();
 
   const [webhookUrl, setWebhookUrl] = useState('');
   const [minFollowers, setMinFollowers] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [connectionTested, setConnectionTested] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Load values once
   if (settings && !loaded) {
     setWebhookUrl(getSetting('n8n_webhook_url') || '');
     setMinFollowers(getSetting('influence_min_followers') || '5000');
@@ -30,13 +34,37 @@ const N8nSettingsPanel = () => {
     upsertSetting.mutate({ key: 'influence_discount_percent', value: discountPercent });
   };
 
+  const handleTestConnection = () => {
+    testConnection.mutate(webhookUrl, {
+      onSuccess: () => setConnectionTested('success'),
+      onError: () => setConnectionTested('error'),
+    });
+  };
+
+  // Recent messages log
+  const recentMessages = (allMessages || []).slice(0, 5);
+
   return (
     <div className="space-y-6">
+      {/* Webhook Config */}
       <Card className="card-cinematic rounded-xl">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Webhook className="h-5 w-5 text-accent" />
-            <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Webhook n8n</span>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-lg">
+              <Webhook className="h-5 w-5 text-accent" />
+              <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Webhook n8n</span>
+            </span>
+            {/* Connection status */}
+            {connectionTested === 'success' && (
+              <Badge className="bg-emerald-500/10 text-emerald-400 border-0 gap-1">
+                <CheckCircle2 className="h-3 w-3" />Conectado
+              </Badge>
+            )}
+            {connectionTested === 'error' && (
+              <Badge className="bg-red-500/10 text-red-400 border-0 gap-1">
+                <XCircle className="h-3 w-3" />Erro
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -55,16 +83,17 @@ const N8nSettingsPanel = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => testConnection.mutate(webhookUrl)}
+              onClick={handleTestConnection}
               disabled={testConnection.isPending || !webhookUrl}
               className="border-accent/30 text-accent hover:bg-accent/10"
             >
-              Testar Conexão
+              {testConnection.isPending ? 'Testando...' : 'Testar Conexão'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* Influence Rules */}
       <Card className="card-cinematic rounded-xl">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -86,6 +115,38 @@ const N8nSettingsPanel = () => {
           <Button onClick={saveInfluence} disabled={upsertSetting.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
             Salvar Regras
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity Log */}
+      <Card className="card-cinematic rounded-xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Clock className="h-5 w-5 text-accent" />
+            <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Últimas Mensagens</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentMessages.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Nenhuma mensagem registrada.</p>
+          ) : (
+            <div className="space-y-2">
+              {recentMessages.map(msg => (
+                <div key={msg.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border/20">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[9px] capitalize shrink-0">{msg.message_type.replace(/_/g, ' ')}</Badge>
+                    <span className="text-[10px] text-muted-foreground truncate">{msg.message_content?.slice(0, 40) || '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={msg.status === 'enviada' ? 'default' : msg.status === 'erro' ? 'destructive' : 'outline'} className="text-[9px]">{msg.status}</Badge>
+                    <span className="text-[9px] text-muted-foreground font-mono-numbers">
+                      {format(parseISO(msg.created_at), 'dd/MM HH:mm')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

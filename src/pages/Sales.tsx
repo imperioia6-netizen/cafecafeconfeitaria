@@ -6,12 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ShoppingCart, Loader2, Plus, Minus, X, Sparkles, UserCircle, Check } from 'lucide-react';
 import { useInventory } from '@/hooks/useInventory';
 import { useCreateSale, useTodaySales, type CartItem } from '@/hooks/useSales';
 import { useAuth } from '@/hooks/useAuth';
+import { useCustomers } from '@/hooks/useCustomers';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery', ifood: 'iFood' };
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
@@ -20,11 +24,14 @@ const Sales = () => {
   const { user } = useAuth();
   const { data: inventory, isLoading: invLoading } = useInventory();
   const { data: todaySales, isLoading: salesLoading } = useTodaySales();
+  const { data: allCustomers } = useCustomers();
   const createSale = useCreateSale();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [channel, setChannel] = useState<string>('balcao');
   const [payment, setPayment] = useState<string>('dinheiro');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
 
   const availableItems = inventory?.filter(i => i.slices_available > 0) ?? [];
 
@@ -142,6 +149,41 @@ const Sales = () => {
                         </div>
                       </div>
                     ))}
+
+                    {/* Customer Selector */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cliente (opcional)</Label>
+                      <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-start h-9 text-xs font-normal">
+                            <UserCircle className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                            {selectedCustomerId
+                              ? (allCustomers || []).find(c => c.id === selectedCustomerId)?.name || 'Cliente'
+                              : 'Não identificado'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar cliente..." className="text-xs" />
+                            <CommandList>
+                              <CommandEmpty>Nenhum cliente.</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem onSelect={() => { setSelectedCustomerId(null); setCustomerPopoverOpen(false); }}>
+                                  <Check className={cn("mr-2 h-3 w-3", !selectedCustomerId ? "opacity-100" : "opacity-0")} />
+                                  Não identificado
+                                </CommandItem>
+                                {(allCustomers || []).map(c => (
+                                  <CommandItem key={c.id} onSelect={() => { setSelectedCustomerId(c.id); setCustomerPopoverOpen(false); }}>
+                                    <Check className={cn("mr-2 h-3 w-3", selectedCustomerId === c.id ? "opacity-100" : "opacity-0")} />
+                                    {c.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">

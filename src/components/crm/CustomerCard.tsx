@@ -1,9 +1,9 @@
 import { type Customer } from '@/hooks/useCustomers';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { differenceInDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Phone, Mail, Instagram, Cake, ShoppingCart } from 'lucide-react';
+import { Phone, Mail, Instagram, Cake } from 'lucide-react';
 
 interface CustomerCardProps {
   customer: Customer;
@@ -18,53 +18,71 @@ const getTemperature = (lastPurchase: string | null) => {
   return { label: 'Frio', color: 'bg-red-500/20 text-red-400', dot: 'bg-red-400' };
 };
 
+const getInitials = (name: string) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+const statusBg: Record<string, string> = {
+  ativo: 'bg-emerald-500',
+  inativo: 'bg-red-500',
+  novo: 'bg-blue-500',
+};
+
 const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
   const temp = getTemperature(customer.last_purchase_at);
   const daysSince = customer.last_purchase_at
     ? differenceInDays(new Date(), parseISO(customer.last_purchase_at))
     : null;
 
+  const spentScore = Math.min(Number(customer.total_spent || 0) / 500, 1) * 50;
+  const recencyScore = daysSince !== null ? Math.max(0, 50 - daysSince) : 0;
+  const engagement = Math.round(spentScore + recencyScore);
+
   return (
-    <Card
-      className="card-cinematic cursor-pointer group"
+    <div
+      className="card-cinematic cursor-pointer group rounded-xl p-4"
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <h3 className="font-semibold text-foreground text-sm">{customer.name}</h3>
-            <div className="flex items-center gap-2 mt-1">
-              <div className={`h-2 w-2 rounded-full ${temp.dot}`} />
-              <Badge variant="outline" className={`text-[10px] ${temp.color} border-0`}>{temp.label}</Badge>
-              {daysSince !== null && (
-                <span className="text-[10px] text-muted-foreground">{daysSince}d sem comprar</span>
-              )}
-            </div>
+      <div className="flex items-start gap-3 mb-3">
+        <div className={`h-10 w-10 rounded-full ${statusBg[customer.status] || 'bg-muted'} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+          {getInitials(customer.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground text-sm truncate">{customer.name}</h3>
+          <div className="flex items-center gap-2 mt-0.5">
+            <div className={`h-1.5 w-1.5 rounded-full ${temp.dot}`} />
+            <Badge variant="outline" className={`text-[9px] ${temp.color} border-0`}>{temp.label}</Badge>
+            {daysSince !== null && (
+              <span className="text-[10px] text-muted-foreground">{daysSince}d</span>
+            )}
           </div>
-          <span className="font-mono-numbers text-sm font-semibold text-accent">
-            R$ {Number(customer.total_spent).toFixed(0)}
-          </span>
         </div>
+        <span className="font-mono-numbers text-sm font-bold text-accent shrink-0">
+          R$ {Number(customer.total_spent).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+        </span>
+      </div>
 
-        <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-          {customer.phone && (
-            <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone}</span>
-          )}
-          {customer.email && (
-            <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{customer.email}</span>
-          )}
-          {customer.instagram_handle && (
-            <span className="flex items-center gap-1"><Instagram className="h-3 w-3" />{customer.instagram_handle}</span>
-          )}
-          {customer.birthday && (
-            <span className="flex items-center gap-1">
-              <Cake className="h-3 w-3" />
-              {format(parseISO(customer.birthday), 'dd/MM', { locale: ptBR })}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Engagement mini bar */}
+      <div className="mb-3">
+        <Progress value={engagement} className="h-1" />
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+        {customer.phone && (
+          <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{customer.phone}</span>
+        )}
+        {customer.instagram_handle && (
+          <span className="flex items-center gap-1"><Instagram className="h-2.5 w-2.5" />{customer.instagram_handle}</span>
+        )}
+        {customer.instagram_followers >= 5000 && (
+          <Badge variant="outline" className="text-[8px] bg-accent/10 text-accent border-accent/30 py-0">⭐ Influencer</Badge>
+        )}
+        {customer.birthday && (
+          <span className="flex items-center gap-1">
+            <Cake className="h-2.5 w-2.5" />
+            {format(parseISO(customer.birthday), 'dd/MM', { locale: ptBR })}
+          </span>
+        )}
+      </div>
+    </div>
   );
 };
 
