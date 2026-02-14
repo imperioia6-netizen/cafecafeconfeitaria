@@ -1,24 +1,29 @@
 
-# Renomear "Receitas" para "Produtos"
+
+# Adicionar "Receita Total" na previa da producao
 
 ## Resumo
 
-Trocar todas as ocorrencias de "Receitas" para "Produtos" na interface do usuario. As rotas e nomes de arquivos internos permanecem iguais para evitar quebras.
+Adicionar um quinto card na previa da producao mostrando o valor total que as fatias irao gerar em vendas (fatias x preco de venda).
 
-## Alteracoes
+## Alteracao
 
-### 4 arquivos afetados
+### `src/pages/Production.tsx`
 
-1. **`src/components/layout/AppSidebar.tsx`** — Menu lateral: `'Receitas'` vira `'Produtos'`
+Na secao de stats da previa, adicionar um novo item ao array:
 
-2. **`src/pages/Recipes.tsx`** — Titulo da pagina: `'Receitas'` vira `'Produtos'`
+- **Label**: "Receita total" (ou "Faturamento")
+- **Valor**: `slices * salePrice`, formatado como `R$ X.XX`
+- **Icone**: `DollarSign`
+- **Cor**: verde (sempre positivo)
 
-3. **`src/pages/Index.tsx`** — Card de atalho no dashboard: `'Receitas'` vira `'Produtos'`
+O grid passa de `grid-cols-2 md:grid-cols-4` para `grid-cols-2 md:grid-cols-5` para acomodar o quinto card.
 
-4. **`src/pages/Production.tsx`** — Mensagem "Cadastre receitas primeiro" vira "Cadastre produtos primeiro"
+### Calculo
 
-### O que NAO muda
+```text
+Receita total = slices x salePrice
+```
 
-- Nomes de arquivos (`Recipes.tsx`, `useRecipes.ts`, etc.) permanecem iguais — sao internos e nao aparecem para o usuario
-- Rotas (`/recipes`) permanecem iguais
-- Tabela do banco (`recipes`) permanece igual
+As variaveis `slices` e `salePrice` ja existem no componente, nao e necessario nenhum dado adicional.
+
