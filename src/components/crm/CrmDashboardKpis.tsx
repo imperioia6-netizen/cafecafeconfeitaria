@@ -33,60 +33,61 @@ const CrmDashboardKpis = () => {
       label: 'Clientes',
       value: all.length,
       sub: `${active} ativos · ${inactive} inat. · ${newC} novos`,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
+      isFirst: true,
     },
     {
       icon: DollarSign,
       label: 'Receita Acumulada',
       value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`,
       sub: 'total histórico',
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10',
     },
     {
       icon: TrendingUp,
       label: 'Retenção',
       value: `${retentionRate}%`,
       sub: 'clientes ativos vs total',
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
     },
     {
       icon: Cake,
       label: 'Aniversários',
       value: upcomingBirthdays,
       sub: 'próximos 7 dias',
-      color: 'text-pink-400',
-      bgColor: 'bg-pink-500/10',
     },
     {
       icon: AlertTriangle,
       label: 'Em Risco',
       value: atRisk,
       sub: '30d+ sem comprar',
-      color: 'text-red-400',
-      bgColor: 'bg-red-500/10',
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       {kpis.map((kpi, i) => (
         <div
           key={kpi.label}
-          className="card-cinematic rounded-xl p-4 flex flex-col gap-2"
+          className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in animate-stagger-${i + 1} ${kpi.isFirst ? 'border-shine' : ''}`}
+          style={kpi.isFirst ? {
+            background: 'linear-gradient(135deg, hsl(24 60% 20%), hsl(24 50% 14%))',
+            color: 'hsl(36 40% 95%)',
+          } : undefined}
         >
-          <div className="flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg ${kpi.bgColor} flex items-center justify-center`}>
-              <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+          <div className="p-4 space-y-3 relative z-10">
+            <div className="flex items-center gap-2">
+              <div className={`rounded-full p-2 animate-float ${kpi.isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
+                <kpi.icon className={`h-4 w-4 ${kpi.isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
+              </div>
+              <span className={`text-[10px] uppercase tracking-widest font-medium ${kpi.isFirst ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                {kpi.label}
+              </span>
             </div>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{kpi.label}</span>
+            <p className={`font-mono-numbers text-2xl font-bold leading-none ${kpi.isFirst ? 'glow-gold' : 'text-foreground'}`}>
+              {kpi.value}
+            </p>
+            <p className={`text-[10px] ${kpi.isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
+              {kpi.sub}
+            </p>
           </div>
-          <p className="font-mono-numbers text-2xl font-bold text-foreground leading-none">
-            {kpi.value}
-          </p>
-          <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
         </div>
       ))}
     </div>

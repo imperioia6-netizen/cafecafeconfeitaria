@@ -15,7 +15,8 @@ import CrmDashboardKpis from '@/components/crm/CrmDashboardKpis';
 import BirthdayTimeline from '@/components/crm/BirthdayTimeline';
 import ReactivationPanel from '@/components/crm/ReactivationPanel';
 import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
-import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown } from 'lucide-react';
+import LeadsKanban from '@/components/crm/LeadsKanban';
+import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3 } from 'lucide-react';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
@@ -60,8 +61,9 @@ const Crm = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
+      <div className="space-y-8">
+        {/* Title */}
+        <div className="opacity-0 animate-fade-in animate-stagger-1">
           <h1 className="page-title-gradient">CRM</h1>
           <p className="text-sm text-muted-foreground mt-1">Relacionamento e marketing inteligente</p>
         </div>
@@ -73,6 +75,9 @@ const Crm = () => {
           <TabsList className="glass-card border-border/30 p-1">
             <TabsTrigger value="clientes" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
               <Users className="h-3.5 w-3.5" />Clientes
+            </TabsTrigger>
+            <TabsTrigger value="pipeline" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
+              <Columns3 className="h-3.5 w-3.5" />Pipeline
             </TabsTrigger>
             <TabsTrigger value="aniversarios" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
               <Cake className="h-3.5 w-3.5" />Aniversários
@@ -149,6 +154,10 @@ const Crm = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="pipeline">
+            <LeadsKanban />
+          </TabsContent>
+
           <TabsContent value="aniversarios">
             <BirthdayTimeline />
           </TabsContent>
@@ -157,14 +166,11 @@ const Crm = () => {
             <ReactivationPanel />
           </TabsContent>
 
-
-
           <TabsContent value="config">
             <N8nSettingsPanel />
           </TabsContent>
         </Tabs>
 
-        {/* Customer Detail Sheet */}
         <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} />
       </div>
     </AppLayout>

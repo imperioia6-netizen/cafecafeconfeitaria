@@ -681,7 +681,12 @@ export type Database = {
           followers_count: number | null
           id: string
           instagram_handle: string
+          name: string | null
+          notes: string | null
           offer_sent: string | null
+          phone: string | null
+          potential_value: number | null
+          stage_changed_at: string | null
           status: Database["public"]["Enums"]["social_lead_status"]
         }
         Insert: {
@@ -691,7 +696,12 @@ export type Database = {
           followers_count?: number | null
           id?: string
           instagram_handle: string
+          name?: string | null
+          notes?: string | null
           offer_sent?: string | null
+          phone?: string | null
+          potential_value?: number | null
+          stage_changed_at?: string | null
           status?: Database["public"]["Enums"]["social_lead_status"]
         }
         Update: {
@@ -701,7 +711,12 @@ export type Database = {
           followers_count?: number | null
           id?: string
           instagram_handle?: string
+          name?: string | null
+          notes?: string | null
           offer_sent?: string | null
+          phone?: string | null
+          potential_value?: number | null
+          stage_changed_at?: string | null
           status?: Database["public"]["Enums"]["social_lead_status"]
         }
         Relationships: [
@@ -774,6 +789,9 @@ export type Database = {
         | "mensagem_enviada"
         | "convertido"
         | "cliente"
+        | "novo_lead"
+        | "em_negociacao"
+        | "proposta_aceita"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -922,6 +940,9 @@ export const Constants = {
         "mensagem_enviada",
         "convertido",
         "cliente",
+        "novo_lead",
+        "em_negociacao",
+        "proposta_aceita",
       ],
     },
   },
