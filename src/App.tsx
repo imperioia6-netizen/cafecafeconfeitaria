@@ -12,7 +12,7 @@ import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
 import CashRegister from "./pages/CashRegister";
 import Reports from "./pages/Reports";
-import Alerts from "./pages/Alerts";
+
 import Team from "./pages/Team";
 import Profile from "./pages/Profile";
 import Crm from "./pages/Crm";
@@ -36,7 +36,7 @@ const App = () => (
             <Route path="/sales" element={<Sales />} />
             <Route path="/cash-register" element={<CashRegister />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/alerts" element={<Alerts />} />
+            
             <Route path="/team" element={<Team />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/crm" element={<Crm />} />
