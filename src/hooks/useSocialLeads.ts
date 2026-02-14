@@ -4,6 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 
 export type LeadStatus = 'novo_seguidor' | 'mensagem_enviada' | 'convertido' | 'cliente' | 'novo_lead' | 'em_negociacao' | 'proposta_aceita';
 
+export type LeadSource = 'instagram' | 'whatsapp' | 'indicacao' | 'site' | 'outro';
+export type LeadPriority = 'alta' | 'media' | 'baixa';
+
 export interface SocialLead {
   id: string;
   instagram_handle: string;
@@ -18,6 +21,11 @@ export interface SocialLead {
   potential_value: number;
   notes: string | null;
   stage_changed_at: string | null;
+  email: string | null;
+  source: LeadSource;
+  priority: LeadPriority;
+  follow_up_date: string | null;
+  product_interest: string | null;
 }
 
 export function useSocialLeads() {
@@ -34,7 +42,7 @@ export function useSocialLeads() {
   });
 
   const createLead = useMutation({
-    mutationFn: async (lead: { instagram_handle: string; followers_count?: number; name?: string; phone?: string; potential_value?: number; notes?: string; status?: string }) => {
+    mutationFn: async (lead: { instagram_handle: string; followers_count?: number; name?: string; phone?: string; potential_value?: number; notes?: string; status?: string; email?: string; source?: string; priority?: string; follow_up_date?: string; product_interest?: string }) => {
       const { data, error } = await supabase.from('social_leads').insert(lead as any).select().single();
       if (error) throw error;
       return data;
@@ -47,7 +55,7 @@ export function useSocialLeads() {
   });
 
   const updateLead = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; status?: string; customer_id?: string; offer_sent?: string; converted_at?: string; name?: string; phone?: string; potential_value?: number; notes?: string; stage_changed_at?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; status?: string; customer_id?: string; offer_sent?: string; converted_at?: string; name?: string; phone?: string; potential_value?: number; notes?: string; stage_changed_at?: string; email?: string; source?: string; priority?: string; follow_up_date?: string | null; product_interest?: string }) => {
       const { error } = await supabase.from('social_leads').update(updates as any).eq('id', id);
       if (error) throw error;
     },
