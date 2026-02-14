@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CreditCard,
   BarChart3,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const navItems = [
   { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
   { label: 'Alertas', icon: AlertTriangle, path: '/alerts', ownerOnly: true },
   { label: 'Equipe', icon: Users, path: '/team', ownerOnly: true },
+  { label: 'Meu Perfil', icon: UserCircle, path: '/profile', ownerOnly: false },
 ];
 
 const AppSidebar = () => {

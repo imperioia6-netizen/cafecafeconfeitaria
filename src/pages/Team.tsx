@@ -2,8 +2,11 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Loader2 } from 'lucide-react';
-import { useTeamMembers } from '@/hooks/useTeam';
+import { useTeamMembers, useUpdateRole } from '@/hooks/useTeam';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 const roleLabels: Record<string, string> = {
   owner: 'Proprietário',
@@ -13,6 +16,18 @@ const roleLabels: Record<string, string> = {
 
 const Team = () => {
   const { data: members, isLoading } = useTeamMembers();
+  const { isOwner, user } = useAuth();
+  const updateRole = useUpdateRole();
+
+  const handleRoleChange = (userId: string, newRole: string) => {
+    updateRole.mutate(
+      { userId, newRole: newRole as any },
+      {
+        onSuccess: () => toast.success('Role atualizada!'),
+        onError: () => toast.error('Erro ao atualizar role'),
+      }
+    );
+  };
 
   return (
     <AppLayout>
@@ -51,11 +66,27 @@ const Team = () => {
                       <TableCell>{m.phone ?? '—'}</TableCell>
                       <TableCell>{m.birthday ? new Date(m.birthday).toLocaleDateString('pt-BR') : '—'}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {m.roles?.map((r: string) => (
-                            <Badge key={r} variant="secondary">{roleLabels[r] ?? r}</Badge>
-                          ))}
-                        </div>
+                        {isOwner && m.user_id !== user?.id ? (
+                          <Select
+                            value={m.roles?.[0] || 'employee'}
+                            onValueChange={(val) => handleRoleChange(m.user_id, val)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="owner">Proprietário</SelectItem>
+                              <SelectItem value="employee">Funcionário</SelectItem>
+                              <SelectItem value="client">Cliente</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="flex gap-1">
+                            {m.roles?.map((r: string) => (
+                              <Badge key={r} variant="secondary">{roleLabels[r] ?? r}</Badge>
+                            ))}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
