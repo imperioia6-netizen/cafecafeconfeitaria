@@ -1,38 +1,61 @@
 
 
-# Adicionar seletor "Fatia ou Bolo Completo"
+# Ficha de Producao Detalhada
 
 ## Resumo
 
-Quando a categoria for **Bolo**, aparecera um seletor para o usuario escolher se vende por **fatia** ou por **bolo completo**. Se escolher fatia, o campo "Peso por fatia (g)" aparece. Se escolher bolo completo, esse campo some.
+Expandir a secao "Producao de Hoje" para funcionar como uma ficha de producao completa, mostrando para cada item os detalhes financeiros (custo, preco de venda, receita potencial) e um resumo totalizador no topo para o administrador analisar o panorama geral.
 
 ## Alteracoes
 
-### 1. Migracao SQL
+### 1. Query de producoes (`src/hooks/useProductions.ts`)
 
-Adicionar coluna `sell_mode` na tabela `recipes`:
+Incluir `sale_price` e `direct_cost` no select da query para ter os dados financeiros disponiveis:
 
-```sql
-ALTER TABLE recipes ADD COLUMN sell_mode text NOT NULL DEFAULT 'fatia';
+```
+.select('*, recipes(name, category, sale_price, direct_cost)')
 ```
 
-### 2. Formulario (`src/components/recipes/RecipeForm.tsx`)
+### 2. Cada item da timeline (`src/pages/Production.tsx`)
 
-- Adicionar `sell_mode` ao schema Zod: `z.enum(['fatia', 'inteiro']).default('fatia')`
-- Quando categoria = bolo: exibir seletor "Modo de venda" com opcoes **Fatia** e **Bolo Completo**
-- Campo "Peso por fatia (g)" aparece somente quando `sell_mode = 'fatia'`
-- Validacao `superRefine`: peso obrigatorio apenas se `category === 'bolo' && sell_mode === 'fatia'`
-- Labels do calculo em tempo real: "por fatia" vs "por unidade" conforme o modo
-- Payload do `onSubmit`: incluir `sell_mode` nos dados salvos
+Adicionar uma linha extra em cada producao mostrando:
 
-### 3. Layout do formulario (quando categoria = bolo)
+- **Receita potencial**: `fatias x preco de venda` (em verde)
+- **Custo total**: valor ja existente
+- **Margem**: receita - custo
+
+Layout por item:
 
 ```text
-[ Categoria      ] [ Modo de venda    ]
-[ Peso por fatia (g) ]   <-- so aparece se modo = fatia
+● bolo de murangu   [17 fatias]
+  18:53  1.700g  Custo: R$ 102.00
+  Receita potencial: R$ 170.00  |  Margem: R$ 68.00
 ```
 
-### 4. Tipos Supabase
+### 3. Resumo totalizador no topo da secao
 
-Regenerar tipos para incluir `sell_mode` na tabela `recipes`.
+Antes da lista, exibir cards com totais do dia:
+
+- **Total de producoes** (quantidade de registros)
+- **Total de fatias** (soma de todas as fatias)
+- **Custo total do dia** (soma dos custos)
+- **Receita potencial do dia** (soma de fatias x preco de venda de cada producao)
+- **Margem total** (receita - custo)
+
+Layout:
+
+```text
++-------------+-------------+--------------+------------------+--------------+
+| Producoes   | Fatias      | Custo total  | Receita potencial| Margem total |
+|     3       |    52       | R$ 312.00    | R$ 520.00        | R$ 208.00    |
++-------------+-------------+--------------+------------------+--------------+
+```
+
+### 4. Detalhes tecnicos
+
+- Os totais serao calculados com `reduce` sobre o array `productions`
+- A receita potencial de cada item: `p.slices_generated * p.recipes.sale_price`
+- A margem de cada item: `receita potencial - p.total_cost`
+- Cores: receita potencial em verde (`text-success`), margem em verde se positiva / vermelho se negativa
+- Grid dos totalizadores: `grid-cols-2 md:grid-cols-5` com o mesmo estilo `glass rounded-lg` usado na previa
 
