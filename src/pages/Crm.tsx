@@ -140,7 +140,7 @@ const Crm = () => {
             <div className="card-cinematic rounded-xl p-4 space-y-4">
               {/* Status pills */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider mr-1">Filtro:</span>
+                <span className="text-xs text-foreground font-medium uppercase tracking-wider mr-1">Filtro:</span>
                 {statusFilters.map(s => (
                   <button
                     key={s.key}
