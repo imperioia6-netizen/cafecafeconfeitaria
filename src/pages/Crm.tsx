@@ -14,9 +14,8 @@ import CustomerDetailSheet from '@/components/crm/CustomerDetailSheet';
 import CrmDashboardKpis from '@/components/crm/CrmDashboardKpis';
 import BirthdayTimeline from '@/components/crm/BirthdayTimeline';
 import ReactivationPanel from '@/components/crm/ReactivationPanel';
-import SocialFunnel from '@/components/crm/SocialFunnel';
 import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
-import { Search, Users, Cake, AlertTriangle, Instagram, Settings, LayoutGrid, List, ArrowUpDown } from 'lucide-react';
+import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown } from 'lucide-react';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
@@ -80,9 +79,6 @@ const Crm = () => {
             </TabsTrigger>
             <TabsTrigger value="reativacao" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />Reativação
-            </TabsTrigger>
-            <TabsTrigger value="social" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
-              <Instagram className="h-3.5 w-3.5" />Social Seller
             </TabsTrigger>
             <TabsTrigger value="config" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent gap-1.5">
               <Settings className="h-3.5 w-3.5" />Config
@@ -161,9 +157,7 @@ const Crm = () => {
             <ReactivationPanel />
           </TabsContent>
 
-          <TabsContent value="social">
-            <SocialFunnel />
-          </TabsContent>
+
 
           <TabsContent value="config">
             <N8nSettingsPanel />
