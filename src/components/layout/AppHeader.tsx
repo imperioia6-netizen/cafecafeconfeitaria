@@ -2,10 +2,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveAlerts } from '@/hooks/useAlerts';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, CheckCircle } from 'lucide-react';
+import { Bell, CheckCircle, UserCircle, LogOut, Eye, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui/dropdown-menu';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -14,8 +24,15 @@ function getGreeting() {
   return 'Boa noite';
 }
 
+const viewLabels: Record<string, string> = {
+  owner: 'Proprietário',
+  employee: 'Funcionário',
+  client: 'Cliente',
+};
+
 const AppHeader = () => {
-  const { user, roles } = useAuth();
+  const { user, roles, signOut, isOwner, viewAs, setViewAs } = useAuth();
+  const realIsOwner = roles.includes('owner');
   const { data: alerts } = useActiveAlerts();
   const navigate = useNavigate();
   const [profileName, setProfileName] = useState('');
@@ -38,7 +55,6 @@ const AppHeader = () => {
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
-      {/* Subtle gradient border at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
       <div className="animate-fade-in">
@@ -53,6 +69,19 @@ const AppHeader = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Simulated view badge */}
+        {viewAs && (
+          <Badge
+            variant="outline"
+            className="cursor-pointer gap-1.5 px-3 py-1.5 border-accent/40 text-accent animate-fade-in"
+            onClick={() => setViewAs(null)}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Visão: {viewLabels[viewAs]}
+            <span className="text-[10px] ml-1 opacity-60">✕</span>
+          </Badge>
+        )}
+
         {/* System status badge */}
         {alertCount > 0 ? (
           <Badge
@@ -83,17 +112,56 @@ const AppHeader = () => {
           )}
         </button>
 
-        {/* Avatar */}
-        <button onClick={() => navigate('/profile')} className="flex items-center gap-3 group">
-          <div className="relative">
-            <Avatar className="h-9 w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 rounded-full ring-2 ring-accent/0 group-hover:ring-accent/30 transition-all duration-500 group-hover:scale-110" />
-          </div>
-        </button>
+        {/* Avatar dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-3 group outline-none">
+              <div className="relative">
+                <Avatar className="h-9 w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full ring-2 ring-accent/0 group-hover:ring-accent/30 transition-all duration-500 group-hover:scale-110" />
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 bg-popover border-border shadow-xl z-50">
+            <DropdownMenuItem onClick={() => navigate('/profile')} className="gap-2 cursor-pointer">
+              <UserCircle className="h-4 w-4" />
+              Meu Perfil
+            </DropdownMenuItem>
+
+            {realIsOwner && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                    <Eye className="h-4 w-4" />
+                    Trocar Visão
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="bg-popover border-border shadow-xl z-50">
+                    {(['owner', 'employee', 'client'] as const).map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() => setViewAs(role === 'owner' ? null : role)}
+                        className={`cursor-pointer ${(!viewAs && role === 'owner') || viewAs === role ? 'bg-accent/20 font-semibold' : ''}`}
+                      >
+                        {viewLabels[role]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </>
+            )}
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
