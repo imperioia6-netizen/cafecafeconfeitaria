@@ -1,79 +1,61 @@
 
 
-# Reestruturar Pagina de Estoque: Estoque, Vitrine e Alertas
+# Enriquecer Ficha do Funcionario com Todas as Informacoes do Perfil
 
-## Resumo
+## Objetivo
 
-Reorganizar a pagina de Estoque em 3 abas com funcoes distintas:
+Garantir que a ficha lateral (EmployeeSheet) exiba **todos** os dados disponiveis do perfil do funcionario, incluindo campos que atualmente nao aparecem.
 
-- **Estoque**: Gerenciamento de ingredientes (materias-primas) com quantidades, unidades e controle de nivel
-- **Vitrine**: Produtos prontos em exposicao (atual aba de "Estoque" -- bolos/fatias produzidos)
-- **Alertas**: Notificacoes de ingredientes acabando, produtos na vitrine perto da validade, e estoque baixo
+## Dados disponiveis na tabela `profiles`
 
-## Alteracoes no Banco de Dados
+| Campo | Atual na ficha? | Acao |
+|-------|-----------------|------|
+| name | Sim | Manter |
+| phone | Sim | Manter |
+| birthday | Sim | Manter |
+| family_name | Nao | Adicionar |
+| family_birthday | Nao | Adicionar |
+| photo_url | Nao | Adicionar (exibir foto real no avatar se existir) |
+| service_rating | Sim | Manter |
+| service_notes | Sim | Manter |
+| roles (da user_roles) | Sim | Manter |
+| email (do auth.users) | Nao | Adicionar via user metadata |
+| created_at | Nao | Adicionar como "Membro desde" |
 
-Adicionar campos de controle de estoque na tabela `ingredients`:
+## Alteracoes
 
-```sql
-ALTER TABLE public.ingredients
-  ADD COLUMN stock_quantity numeric DEFAULT 0,
-  ADD COLUMN min_stock numeric DEFAULT 0,
-  ADD COLUMN expiry_date date DEFAULT NULL;
+### 1. Card na pagina Team (`src/pages/Team.tsx`)
+
+- Exibir telefone e aniversario de forma mais visivel no card
+- Mostrar foto real do usuario no Avatar quando `photo_url` existir
+
+### 2. EmployeeSheet (`src/components/team/EmployeeSheet.tsx`)
+
+Adicionar secao **Dados Pessoais** completa antes dos KPIs:
+
+```
+--- DADOS PESSOAIS ---
+Nome:              Vitor
+Telefone:          (11) 99999-9999
+Aniversario:       14 de fevereiro
+Familiar:          Maria (esposa)
+Aniv. Familiar:    22 de marco
+Membro desde:      janeiro de 2025
 ```
 
-- `stock_quantity`: quantidade atual em estoque
-- `min_stock`: nivel minimo para gerar alerta
-- `expiry_date`: data de validade do lote atual
+- Usar Avatar com `photo_url` real quando disponivel (AvatarImage + AvatarFallback)
+- Organizar os dados pessoais em rows com icones (Phone, Cake, Heart, Calendar, Mail)
+- Mostrar "Membro desde" usando `created_at` do perfil
 
-## Alteracoes nos Hooks
+### 3. Hook useTeamMembers (`src/hooks/useTeam.ts`)
 
-### `src/hooks/useIngredientStock.ts` (novo)
-
-- `useIngredientStock()`: lista todos os ingredientes com campos de estoque
-- `useAddIngredientStock()`: mutation para adicionar/atualizar quantidade de um ingrediente
-- `useUpdateIngredientStock()`: mutation para editar stock_quantity, min_stock e expiry_date
-- `useLowStockIngredients()`: query filtrando ingredientes onde `stock_quantity <= min_stock`
-
-### `src/hooks/useAlerts.ts` (atualizado)
-
-- Manter hooks existentes
-- Os alertas continuam vindo da tabela `alerts`, que ja suporta tipos `estoque_baixo` e `validade_12h`
-
-## Componentes Novos
-
-### `src/components/inventory/EstoqueTab.tsx`
-
-- Lista de ingredientes em cards com: nome, quantidade atual, unidade, nivel minimo, validade
-- Barra de progresso visual (quantidade atual vs minimo)
-- Botao para adicionar novo ingrediente (dialog com formulario: nome, quantidade, unidade, preco, estoque minimo, validade)
-- Botao de edicao rapida de quantidade (incrementar/decrementar)
-- Filtros: Todos, Baixo Estoque, Vencendo
-
-### `src/components/inventory/VitrineTab.tsx`
-
-- Extrair o conteudo atual de `InventoryContent` para este componente
-- Mesma logica de cards de produtos produzidos com fatias, tempo de vida, barra de vida
-- Filtros: Todos, Normal, Atencao, Critico
-
-### `src/components/inventory/AlertasTab.tsx`
-
-- Extrair o conteudo atual de `AlertsContent` para este componente
-- Mesma timeline de alertas com resolucao
-
-## Alteracoes na Pagina
-
-### `src/pages/Inventory.tsx`
-
-- Substituir as 2 abas (Estoque + Alertas) por 3 abas: **Estoque**, **Vitrine**, **Alertas**
-- Icones: `ShoppingBasket` para Estoque, `Store` para Vitrine, `AlertTriangle` para Alertas
-- Importar os 3 novos componentes de aba
-- Contador de alertas na aba de Alertas (ja existente)
-- Contador de itens na Vitrine (ja existente)
-- Contador de ingredientes no Estoque (novo)
+- Garantir que o select de profiles inclui todos os campos: `family_name`, `family_birthday`, `photo_url`, `created_at`, `service_rating`, `service_notes`
+- Ja faz `select('*')` entao todos os campos ja vem -- nenhuma alteracao necessaria no hook
 
 ## Detalhes Tecnicos
 
-- O formulario de adicionar ingrediente reutiliza a tabela `ingredients` existente, apenas populando os novos campos
-- A logica de alertas automaticos (ingrediente acabando, validade proxima) pode ser adicionada futuramente via edge function ou trigger SQL
-- Os alertas manuais continuam funcionando pela tabela `alerts` existente
+- Importar `AvatarImage` do componente Avatar para exibir foto real
+- Usar icones do Lucide: `Phone`, `Cake`, `Heart`, `Calendar`, `Clock` para os campos pessoais
+- Campos vazios (null) nao serao exibidos, mantendo a ficha limpa
+- Nenhuma alteracao de banco de dados necessaria -- todos os campos ja existem
 
