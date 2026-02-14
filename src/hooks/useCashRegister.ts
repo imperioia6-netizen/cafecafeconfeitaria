@@ -132,3 +132,27 @@ export function useCloseRegister() {
     },
   });
 }
+
+export function useDeleteClosing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (closingId: string) => {
+      const { error: detErr } = await supabase.from('closing_details').delete().eq('closing_id', closingId);
+      if (detErr) throw detErr;
+      const { error } = await supabase.from('cash_closings').delete().eq('id', closingId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cash_closings'] }),
+  });
+}
+
+export function useUpdateClosing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const { error } = await supabase.from('cash_closings').update({ notes }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cash_closings'] }),
+  });
+}
