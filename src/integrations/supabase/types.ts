@@ -454,23 +454,32 @@ export type Database = {
       ingredients: {
         Row: {
           created_at: string
+          expiry_date: string | null
           id: string
+          min_stock: number | null
           name: string
           price_per_unit: number
+          stock_quantity: number | null
           unit: string
         }
         Insert: {
           created_at?: string
+          expiry_date?: string | null
           id?: string
+          min_stock?: number | null
           name: string
           price_per_unit?: number
+          stock_quantity?: number | null
           unit?: string
         }
         Update: {
           created_at?: string
+          expiry_date?: string | null
           id?: string
+          min_stock?: number | null
           name?: string
           price_per_unit?: number
+          stock_quantity?: number | null
           unit?: string
         }
         Relationships: []
