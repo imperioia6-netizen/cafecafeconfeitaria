@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_reports: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metrics: Json | null
+          period_days: number
+          report_type: string
+          sent_at: string | null
+          sent_via: string | null
+          suggestions: Json | null
+          summary: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          period_days?: number
+          report_type?: string
+          sent_at?: string | null
+          sent_via?: string | null
+          suggestions?: Json | null
+          summary?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metrics?: Json | null
+          period_days?: number
+          report_type?: string
+          sent_at?: string | null
+          sent_via?: string | null
+          suggestions?: Json | null
+          summary?: string | null
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           action_taken: string | null
@@ -58,6 +97,69 @@ export type Database = {
           },
           {
             foreignKeyName: "alerts_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auto_promotions: {
+        Row: {
+          created_at: string
+          discount_percent: number
+          expires_at: string | null
+          hours_in_stock: number
+          id: string
+          inventory_id: string
+          message_content: string | null
+          original_price: number
+          promo_price: number
+          recipe_id: string
+          sent_via: string | null
+          sold_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percent?: number
+          expires_at?: string | null
+          hours_in_stock?: number
+          id?: string
+          inventory_id: string
+          message_content?: string | null
+          original_price?: number
+          promo_price?: number
+          recipe_id: string
+          sent_via?: string | null
+          sold_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          discount_percent?: number
+          expires_at?: string | null
+          hours_in_stock?: number
+          id?: string
+          inventory_id?: string
+          message_content?: string | null
+          original_price?: number
+          promo_price?: number
+          recipe_id?: string
+          sent_via?: string | null
+          sold_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_promotions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_promotions_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
