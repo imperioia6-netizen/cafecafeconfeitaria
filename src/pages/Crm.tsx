@@ -128,7 +128,7 @@ const Crm = () => {
                     background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
                   } : { background: 'hsl(var(--muted) / 0.5)' }}
                 >
-                  <tab.icon className="h-3.5 w-3.5" />{tab.label}
+                  <tab.icon className={`h-3.5 w-3.5 ${activeTab === tab.value ? 'text-white' : ''}`} />{tab.label}
                 </TabsTrigger>
               ))}
             </TabsList>
