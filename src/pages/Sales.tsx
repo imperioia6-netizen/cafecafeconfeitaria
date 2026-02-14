@@ -17,7 +17,7 @@ import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery', ifood: 'iFood' };
+const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery' };
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
 
 const Sales = () => {
@@ -191,7 +191,7 @@ const Sales = () => {
                         <Select value={channel} onValueChange={setChannel}>
                           <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {Constants.public.Enums.sales_channel.map(c => (
+                            {Constants.public.Enums.sales_channel.filter(c => c !== 'ifood').map(c => (
                               <SelectItem key={c} value={c}>{channelLabels[c]}</SelectItem>
                             ))}
                           </SelectContent>
