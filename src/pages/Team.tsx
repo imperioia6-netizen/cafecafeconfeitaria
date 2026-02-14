@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,6 +7,7 @@ import { Users, Loader2 } from 'lucide-react';
 import { useTeamMembers, useUpdateRole } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import EmployeeSheet from '@/components/team/EmployeeSheet';
 
 const roleLabels: Record<string, string> = { owner: 'Proprietário', employee: 'Funcionário', client: 'Cliente' };
 const avatarColors = [
@@ -20,6 +22,7 @@ const Team = () => {
   const { data: members, isLoading } = useTeamMembers();
   const { isOwner, user } = useAuth();
   const updateRole = useUpdateRole();
+  const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const handleRoleChange = (userId: string, newRole: string) => {
     updateRole.mutate(
@@ -49,7 +52,7 @@ const Team = () => {
               const initials = (m.name || '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
               const bgGradient = avatarColors[i % avatarColors.length];
               return (
-                <div key={m.id} className="card-cinematic rounded-xl opacity-0 animate-fade-in group" style={{ animationDelay: `${i * 80}ms` }}>
+                <div key={m.id} className="card-cinematic rounded-xl opacity-0 animate-fade-in group cursor-pointer" style={{ animationDelay: `${i * 80}ms` }} onClick={() => setSelectedMember(m)}>
                   <div className="p-6 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -97,6 +100,12 @@ const Team = () => {
             })}
           </div>
         )}
+
+        <EmployeeSheet
+          member={selectedMember}
+          open={!!selectedMember}
+          onOpenChange={(open) => { if (!open) setSelectedMember(null); }}
+        />
       </div>
     </AppLayout>
   );
