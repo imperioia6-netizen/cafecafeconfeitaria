@@ -15,7 +15,7 @@ const navGroups = [
     label: 'Gestão',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, path: '/', ownerOnly: true },
-      { label: 'Receitas', icon: ChefHat, path: '/recipes', ownerOnly: true },
+      { label: 'Produtos', icon: ChefHat, path: '/recipes', ownerOnly: true },
       { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
       { label: 'CRM', icon: Heart, path: '/crm', ownerOnly: true },
       { label: 'Inteligência', icon: Brain, path: '/smart', ownerOnly: true },

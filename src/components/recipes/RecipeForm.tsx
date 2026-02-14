@@ -119,7 +119,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       if (isEdit && recipe) {
         const photo_url = await uploadPhoto(recipe.id);
         await updateRecipe.mutateAsync({ id: recipe.id, ...payload, photo_url });
-        toast.success('Receita atualizada!');
+        toast.success('Produto atualizado!');
         onClose?.();
       } else {
         const created = await createRecipe.mutateAsync(payload as RecipeInsert);
@@ -127,14 +127,14 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         if (photo_url) {
           await updateRecipe.mutateAsync({ id: created.id, photo_url });
         }
-        toast.success('Receita criada!');
+        toast.success('Produto criado!');
         reset();
         setPhotoFile(null);
         setPhotoPreview(null);
         setOpen(false);
       }
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao salvar receita');
+      toast.error(e.message || 'Erro ao salvar produto');
     } finally {
       setUploading(false);
     }

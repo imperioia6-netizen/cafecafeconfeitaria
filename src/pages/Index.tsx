@@ -376,7 +376,7 @@ const Dashboard = () => {
         {/* ── Quick Access ── */}
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            { label: 'Receitas', desc: 'Cadastrar e gerenciar', icon: ChefHat, path: '/recipes' },
+            { label: 'Produtos', desc: 'Cadastrar e gerenciar', icon: ChefHat, path: '/recipes' },
             { label: 'Produção', desc: 'Registrar produção', icon: Coffee, path: '/production' },
             { label: 'Estoque', desc: 'Monitorar em tempo real', icon: Package, path: '/inventory' },
           ].map((item, i) => (
