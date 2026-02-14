@@ -132,7 +132,6 @@ const FormFields = ({ form, update }: { form: typeof emptyForm; update: (k: stri
         <SelectContent>
           <SelectItem value="balcao">Balcão</SelectItem>
           <SelectItem value="delivery">Delivery</SelectItem>
-          <SelectItem value="ifood">iFood</SelectItem>
         </SelectContent>
       </Select>
     </div>
