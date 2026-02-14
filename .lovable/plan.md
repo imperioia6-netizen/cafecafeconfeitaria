@@ -1,155 +1,152 @@
 
 
-# CRM + Marketing Inteligente para Cafe Cafe
+# CRM + Marketing Inteligente — Integrado com n8n
 
-Bloco completo de CRM com foco em retenção, reativação e conversão de clientes. Tudo integrado com IA (Lovable AI) para gerar mensagens humanizadas.
-
----
-
-## O que será construído
-
-### 1. Tabela de Clientes (customers)
-- Nome, telefone, email, Instagram, seguidores
-- Data de aniversário do cliente
-- Nome e aniversário do familiar mais próximo
-- Canal preferido (balcão/delivery)
-- Produto favorito (calculado automaticamente pelo histórico)
-- Data da última compra
-- Total gasto acumulado
-- Status: ativo / inativo / novo
-
-### 2. Vinculação de Vendas a Clientes
-- Campo `customer_id` na tabela `sales` (opcional, para vendas identificadas)
-- Ao registrar venda, opção de vincular a um cliente existente ou cadastrar novo
-
-### 3. Página CRM (/crm)
-Nova página no sidebar do owner com:
-- Lista de clientes com busca e filtros (ativos, inativos 30d+, novos)
-- Card de cliente com: histórico de compras, produto favorito, total gasto, dias desde última compra
-- Botão "Cadastrar Cliente" com formulário
-- Indicadores visuais: cliente quente (comprou recente), morno, frio (30d+ sem comprar)
-
-### 4. Fluxo de Aniversário (6 notificações)
-Tabela `crm_messages` para rastrear mensagens enviadas/pendentes:
-- 6 dias antes: "Falta 6 dias para o aniversário de [familiar]! Vamos preparar uma surpresa?"
-- 5 dias antes: Sugestão de cardápio para festa
-- 3 dias antes: "Ainda dá tempo! Temos uma promoção especial para você comemorar"
-- 1 dia antes: "Amanhã é o grande dia! Reserve seu bolo com 15% OFF"
-- No dia: "Feliz aniversário! Presente especial esperando por você"
-- Pós-aniversário: "Como foi a comemoração? Queremos ver as fotos!"
-
-O mesmo fluxo para o aniversário do próprio cliente.
-
-### 5. Reativação de Cliente Inativo (30 dias)
-- Sistema identifica automaticamente clientes sem compra há 30+ dias
-- Gera mensagem personalizada via IA: "Amamos ter você como cliente! Sabe aquele [produto favorito] que você sempre pedia? Temos 30% de desconto SÓ PRA VOCÊ. Isso não está em promoção na loja."
-- Mensagem marcada como "oferta oculta" (não aparece no cardápio geral)
-
-### 6. Funil Social Seller
-Tabela `social_leads` para rastrear novos seguidores:
-- Cadastro manual ou futura integração
-- Fluxo: Seguiu -> Mensagem automática com 30% cashback -> "Pague 1kg leve 1kg700"
-- Status: novo_seguidor -> mensagem_enviada -> convertido -> cliente
-
-### 7. Upsell por IA
-- Edge function que analisa os dados de vendas e cruza: "80% dos clientes que pedem bolo de morango também pedem suco natural"
-- Gera copy pronta para o Vitor passar aos vendedores
-- Dashboard mostra: "Esses 40% de upsell não estão entrando. Por que?"
-
-### 8. Paga com Influência
-- Campo `instagram_followers` no cliente
-- Regra configurável: X seguidores = Y% de desconto na comanda
-- Ex: 5000+ seguidores + 1 post = 20% off
-- Registro do post como comprovante
-
-### 9. Edge Function de IA para Mensagens
-Uma edge function `crm-ai` que usa Lovable AI para:
-- Gerar mensagens de aniversário humanizadas
-- Gerar mensagens de reativação personalizadas com o produto favorito
-- Gerar copy de upsell para vendedores
-- Gerar scripts de Social Seller
+Tudo conforme o plano aprovado, mas substituindo Lovable AI por chamadas a **webhooks do n8n** para geração de mensagens e automações.
 
 ---
 
-## Detalhes Técnicos
+## Mudança Principal: n8n no lugar de Lovable AI
 
-### Banco de Dados (Migration SQL)
+Em vez de uma edge function chamando o gateway de IA, o sistema usara:
 
-**Novas tabelas:**
+- **Edge function `crm-n8n`** que recebe o tipo de acao (aniversario, reativacao, upsell, social_seller) e os dados do cliente
+- Essa edge function faz um **POST para o webhook do n8n** configurado pelo usuario
+- O n8n processa a logica de IA, automacao de mensagens, e retorna o resultado
+- O usuario configura a URL do webhook do n8n nas **Configuracoes do CRM** dentro do app
 
-```text
-customers
-  - id, name, phone, email, instagram_handle, instagram_followers
-  - birthday, family_name, family_birthday
-  - preferred_channel, favorite_recipe_id
-  - last_purchase_at, total_spent, status (ativo/inativo/novo)
-  - created_at, updated_at
+---
 
-crm_messages
-  - id, customer_id, message_type (aniversario_cliente, aniversario_familiar, reativacao, social_seller, upsell)
-  - message_content, status (pendente/enviada/lida)
-  - scheduled_for, sent_at, created_at
+## O que sera construido (mesmo escopo do plano aprovado)
 
-social_leads
-  - id, instagram_handle, followers_count
-  - status (novo_seguidor, mensagem_enviada, convertido, cliente)
-  - customer_id (nullable, vincula quando converte)
-  - offer_sent, converted_at, created_at
+### 1. Migration SQL
+Criar todas as tabelas do CRM:
 
-influence_discounts
-  - id, customer_id, instagram_post_url
-  - followers_at_time, discount_percent, sale_id
-  - created_at
-```
-
-**Alterações em tabelas existentes:**
-- `sales` ganha coluna `customer_id` (nullable, FK para customers)
+- **customers** — nome, telefone, email, instagram, seguidores, aniversario do cliente e familiar, canal preferido, produto favorito, ultima compra, total gasto, status (ativo/inativo/novo)
+- **crm_messages** — tipo de mensagem, conteudo, status (pendente/enviada/lida), agendamento
+- **social_leads** — funil de seguidores do Instagram com status de conversao
+- **influence_discounts** — registro de descontos por influencia/seguidores
+- **Coluna `customer_id`** na tabela `sales` (nullable)
+- **Tabela `crm_settings`** — para armazenar a URL do webhook do n8n e configuracoes
 
 ### RLS Policies
 - Owner: acesso total a todas as tabelas CRM
-- Employee: leitura de clientes, criação de vendas vinculadas
-- Clientes não têm acesso direto ao CRM
+- Employee: leitura de clientes, criacao de vendas vinculadas
 
-### Novos Arquivos
+### 2. Edge Function `crm-n8n`
+Uma unica edge function que:
+- Recebe o tipo de acao: `aniversario_cliente`, `aniversario_familiar`, `reativacao`, `social_seller`, `upsell`
+- Envia os dados do cliente (nome, produto favorito, dias sem comprar, etc.) para o webhook do n8n
+- Recebe a resposta do n8n (mensagem gerada, acao sugerida)
+- Salva na tabela `crm_messages`
+- Trata erros de conexao e timeout
 
-**Hooks:**
-- `src/hooks/useCustomers.ts` — CRUD de clientes, busca, filtros
-- `src/hooks/useCrmMessages.ts` — Mensagens pendentes/enviadas
-- `src/hooks/useSocialLeads.ts` — Funil social seller
-- `src/hooks/useInfluence.ts` — Paga com influência
+### 3. Hooks de Dados
+- `useCustomers.ts` — CRUD de clientes, busca, filtros por status
+- `useCrmMessages.ts` — Mensagens pendentes e enviadas
+- `useSocialLeads.ts` — Funil social seller
+- `useInfluence.ts` — Paga com influencia
+- `useCrmSettings.ts` — Configuracao do webhook n8n
 
-**Páginas:**
-- `src/pages/Crm.tsx` — Dashboard CRM principal com abas: Clientes, Aniversários, Reativação, Social Seller
+### 4. Pagina CRM (`/crm`)
+Dashboard com abas:
 
-**Componentes:**
-- `src/components/crm/CustomerCard.tsx` — Card de cliente com histórico
-- `src/components/crm/CustomerForm.tsx` — Formulário de cadastro
-- `src/components/crm/BirthdayTimeline.tsx` — Timeline de aniversários próximos
-- `src/components/crm/ReactivationPanel.tsx` — Painel de clientes inativos
-- `src/components/crm/SocialFunnel.tsx` — Funil visual de conversão
+**Aba Clientes:**
+- Lista com busca e filtros (ativos, inativos 30d+, novos)
+- Indicadores visuais: quente (compra recente), morno, frio (30d+ sem comprar)
+- Card expandido com historico de compras, produto favorito, total gasto
+- Botao "Cadastrar Cliente"
 
-**Edge Function:**
-- `supabase/functions/crm-ai/index.ts` — Geração de mensagens via Lovable AI
+**Aba Aniversarios:**
+- Timeline de aniversarios proximos (cliente + familiar)
+- Fluxo de 6 mensagens automaticas
+- Botao "Gerar Mensagem via n8n" que dispara o webhook
+- Status de cada mensagem no fluxo
 
-**Modificações:**
-- `src/pages/Sales.tsx` — Adicionar seletor de cliente na venda
-- `src/components/layout/AppSidebar.tsx` — Adicionar item "CRM" no menu
-- `src/App.tsx` — Adicionar rota /crm
+**Aba Reativacao:**
+- Painel de clientes inativos (30d+ sem compra)
+- Geracao automatica de oferta personalizada via n8n
+- Marcacao como "oferta oculta"
 
-### Sidebar
-Nova entrada no grupo "Gestão":
-- CRM (icone: Heart ou Users) — ownerOnly: true
+**Aba Social Seller:**
+- Funil visual: novo seguidor -> mensagem enviada -> convertido -> cliente
+- Cadastro de leads do Instagram
+- Disparo de oferta via n8n
+
+**Aba Configuracoes:**
+- Campo para URL do webhook do n8n
+- Teste de conexao com o webhook
+- Configuracoes de "Paga com Influencia" (regras de desconto por seguidores)
+
+### 5. Componentes
+- `CustomerCard.tsx` — Card com historico e indicador de temperatura
+- `CustomerForm.tsx` — Formulario de cadastro
+- `BirthdayTimeline.tsx` — Timeline de aniversarios
+- `ReactivationPanel.tsx` — Painel de inativos
+- `SocialFunnel.tsx` — Funil visual de conversao
+- `N8nSettingsPanel.tsx` — Configuracao do webhook
+
+### 6. Integracao na Pagina de Vendas
+- Seletor opcional de cliente ao registrar venda
+- Opcao de cadastrar cliente novo inline
+
+### 7. Sidebar + Rota
+- Item "CRM" no grupo Gestao (ownerOnly)
+- Rota `/crm` no App.tsx
 
 ---
 
-## Sequência de Implementação
+## Como funciona a integracao com n8n
 
-1. Migration SQL (tabelas + RLS)
-2. Edge function `crm-ai`
-3. Hooks de dados
-4. Página CRM com todas as abas
-5. Componentes individuais
-6. Integração na página de Vendas (vincular cliente)
-7. Sidebar + rota
+```text
+[App CRM] ---> [Edge Function crm-n8n] ---> [Webhook n8n]
+                                                  |
+                                            [n8n processa]
+                                            [Gera mensagem IA]
+                                            [Retorna resultado]
+                                                  |
+[App CRM] <--- [Edge Function crm-n8n] <--- [Resposta n8n]
+       |
+  [Salva em crm_messages]
+  [Exibe no dashboard]
+```
 
-Tudo seguindo o design cinematográfico já estabelecido (glass-card, shine-effect, gradientes dourados, depth-shadow).
+O usuario configura no app a URL do webhook do n8n. No n8n, ele monta os fluxos de automacao (pode usar OpenAI, Google Gemini, ou qualquer outro servico de IA dentro do n8n).
+
+---
+
+## Detalhes Tecnicos
+
+### Edge Function `crm-n8n`
+- Busca a URL do webhook na tabela `crm_settings`
+- Faz POST com `{ action_type, customer_data }` para o n8n
+- Usa `mode: "no-cors"` nao sera necessario pois e server-side
+- Timeout de 30s para aguardar resposta do n8n
+- Se o n8n nao responder, salva mensagem como "erro" e notifica o usuario
+
+### Tabela `crm_settings`
+```text
+crm_settings
+  - id, key (text unique), value (text)
+  - Ex: key="n8n_webhook_url", value="https://meu-n8n.app/webhook/xxx"
+  - Ex: key="influence_min_followers", value="5000"
+  - Ex: key="influence_discount_percent", value="20"
+```
+
+### Design Visual
+Tudo seguindo o padrao cinematografico existente:
+- glass-card, shine-effect, gradientes dourados
+- depth-shadow, glow-gold, font Playfair Display
+- Indicadores de temperatura do cliente com cores (verde/amarelo/vermelho)
+
+---
+
+## Sequencia de Implementacao
+
+1. Migration SQL (tabelas customers, crm_messages, social_leads, influence_discounts, crm_settings + alteracao em sales + RLS)
+2. Edge function `crm-n8n` (webhook para n8n)
+3. Hooks de dados (useCustomers, useCrmMessages, useSocialLeads, useInfluence, useCrmSettings)
+4. Pagina CRM com todas as abas + componentes
+5. Integracao na pagina de Vendas (vincular cliente)
+6. Sidebar + rota
+
