@@ -24,9 +24,10 @@ const employeeNav: NavItem[] = [
 
 interface MobileBottomNavProps {
   onOpenMore: () => void;
+  onCloseSidebar: () => void;
 }
 
-const MobileBottomNav = ({ onOpenMore }: MobileBottomNavProps) => {
+const MobileBottomNav = ({ onOpenMore, onCloseSidebar }: MobileBottomNavProps) => {
   const { isOwner } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ const MobileBottomNav = ({ onOpenMore }: MobileBottomNavProps) => {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => { onCloseSidebar(); navigate(item.path); }}
               className="flex flex-col items-center justify-center gap-[6px] flex-1 relative transition-transform duration-150 active:scale-[0.85]"
             >
               {/* Active pill glow behind icon */}

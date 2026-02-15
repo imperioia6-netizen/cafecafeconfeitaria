@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Coffee } from 'lucide-react';
 import AppSidebar from './AppSidebar';
 import AppHeader from './AppHeader';
@@ -11,13 +11,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, loading, viewAs } = useAuth();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
-  // On mobile, sidebar starts closed
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
     else setSidebarOpen(true);
-  }, [isMobile]);
+  }, [location.pathname, isMobile]);
 
   if (loading) {
     return (
@@ -56,7 +56,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </main>
       </div>
       {isMobile && (
-        <MobileBottomNav onOpenMore={() => setSidebarOpen(true)} />
+        <MobileBottomNav onOpenMore={() => setSidebarOpen(true)} onCloseSidebar={() => setSidebarOpen(false)} />
       )}
     </div>
   );
