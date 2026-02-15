@@ -1,37 +1,29 @@
 
+# Remover Caixinhas dos Icones no Dashboard
 
-# Upgrade da Fonte dos Numeros
+## O que sera feito
 
-## Analise
+Remover o container quadrado arredondado (`rounded-xl p-2.5 bg-primary/10`) que envolve os icones nos KPI cards do dashboard. Os icones ficarao soltos ao lado do titulo, sem background -- visual mais limpo e moderno.
 
-A imagem de referencia (2a foto) usa numeros com uma fonte sans-serif geometrica, limpa e moderna -- provavelmente **Inter** com `font-variant-numeric: tabular-nums`. Atualmente o app usa **JetBrains Mono** (monospace) para numeros, que tem um visual mais "developer" e menos premium.
+## Arquivo modificado
 
-## Mudanca
+### `src/pages/Index.tsx` (linha 53-55)
 
-Trocar JetBrains Mono por **Inter** (peso 500-700) para todos os numeros, mantendo `tabular-nums` para alinhamento. Inter e a fonte mais usada em dashboards premium modernos e combina com o estilo da referencia.
+**Antes:**
+```
+<div className="rounded-xl p-2.5 animate-float bg-primary/10">
+  <Icon className="h-4 w-4 text-primary" />
+</div>
+```
 
-## Arquivos Modificados
+**Depois:**
+```
+<Icon className="h-5 w-5 text-primary" />
+```
 
-### 1. `src/index.css`
+- Remover a `div` wrapper com background, padding e border-radius
+- Manter o icone direto no flex container
+- Aumentar levemente o icone de `h-4 w-4` para `h-5 w-5` para compensar a ausencia do container
+- Para o card "Faturamento" (primeiro/destacado), manter a cor accent com o glow sutil
 
-- No `@import` do Google Fonts, substituir `JetBrains Mono` por `Inter` com pesos 400, 500, 600, 700
-- Na classe `.font-mono-numbers`, trocar `font-family` de `'JetBrains Mono', monospace` para `'Inter', sans-serif` e manter `font-variant-numeric: tabular-nums`
-- Aumentar levemente o `letter-spacing` para `-0.02em` (tracking mais apertado como na referencia)
-
-### 2. `src/pages/Index.tsx`
-
-- No KpiCard, ajustar o valor "Hoje" para usar `font-semibold` ou `font-bold` com a nova fonte (sem mudanca de classe, apenas garantir que `font-mono-numbers` esta aplicado corretamente)
-- Nos valores de 7d/30d, garantir consistencia com `font-mono-numbers`
-
-### 3. `src/components/cashregister/DayKpis.tsx`
-
-- Garantir que os valores usam `font-mono-numbers` consistentemente
-
-### 4. `src/components/crm/CrmDashboardKpis.tsx`
-
-- Mesma verificacao de consistencia
-
-## Resultado
-
-Numeros com visual limpo, geometrico e premium -- identico ao estilo da referencia. Sem fonte monospace, com tracking apertado e peso forte para autoridade visual.
-
+1 arquivo, 1 mudanca cirurgica.
