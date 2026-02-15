@@ -50,9 +50,7 @@ const KpiCard = ({
       <div className="p-3 md:p-5 relative z-10">
         {/* Header: icon + title */}
         <div className="flex items-center gap-2.5 mb-3">
-          <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
-            <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
-          </div>
+          <Icon className={`h-5 w-5 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
           <span className={`text-sm font-medium ${isFirst ? 'text-white/90' : 'text-muted-foreground'}`}>
             {title}
           </span>
