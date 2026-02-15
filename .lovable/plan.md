@@ -1,32 +1,25 @@
 
 
-# Restaurar Avatar no Header do Cardapio
+# Corrigir Avatar e Navegacao no Cardapio
 
 ## Problema
 
-O icone de avatar/perfil sumiu do header do cardapio digital. Na imagem, so aparece o icone do carrinho. Precisa adicionar o avatar de volta ao lado do carrinho.
+O avatar no header do cardapio nao tem acao ao clicar para usuarios nao-simulando. O botao esta com `onClick={undefined}`, entao nada acontece. Usuarios anonimos tambem nao tem como fazer login.
 
 ## Alteracoes
 
 ### `src/pages/Cardapio.tsx`
 
-- Importar `Avatar`, `AvatarFallback` de `@/components/ui/avatar` e o icone `UserCircle` do lucide
-- No header, apos o botao do carrinho, adicionar um avatar circular:
-  - Se o usuario estiver logado (simulando cliente), mostrar as iniciais do usuario
-  - Se nao estiver logado, mostrar um icone generico de usuario (`UserCircle`)
-- O avatar tera estilo consistente com o header escuro: borda sutil, fundo semi-transparente
-- Para usuarios logados simulando, clicar no avatar pode acionar a saida da simulacao (aproveitando a funcionalidade existente do badge "Visao: Cliente")
+1. **Avatar clicavel para perfil**: Trocar `onClick={isSimulating ? exitSimulation : undefined}` por `onClick={() => isSimulating ? exitSimulation() : navigate('/profile')}`
+   - Usuarios logados em simulacao: clicam para sair da simulacao
+   - Usuarios logados normais: clicam para ir ao perfil
 
-### Layout do header atualizado
-
-```text
-[🍰 Cardapio]  [---busca---]  [carrinho] [avatar]
-```
+2. **Icone anonimo clicavel para login**: Trocar o `<div>` do icone `UserCircle` por um `<button>` com `onClick={() => navigate('/auth')}` para que visitantes possam fazer login
 
 ## Detalhes Tecnicos
 
-- Buscar o nome do perfil via `supabase.from('profiles')` quando logado, similar ao que o `AppHeader` ja faz
-- Mostrar iniciais no `AvatarFallback` com fundo accent
-- Para visitantes anonimos, mostrar icone `UserCircle` com estilo sutil
-- Garantir que toda a logica de carrinho, checkout, categorias e pedidos continue funcionando sem alteracoes
+- Linha ~199: mudar de `onClick={isSimulating ? exitSimulation : undefined}` para `onClick={() => isSimulating ? exitSimulation() : navigate('/profile')}`
+- Linha ~208: mudar `<div>` para `<button onClick={() => navigate('/auth')}>`
+- O `navigate` ja esta importado e disponivel no componente
+- Nenhuma outra alteracao necessaria
 
