@@ -1,41 +1,26 @@
 
+# Reposicionar o Botao "Visao: Cliente"
 
-# Melhorar Design dos Cards do Cardapio
+## Problema
+O badge "Visao: Cliente" esta posicionado em `fixed top-3 right-3` com `z-[60]`, sobrepondo os icones de carrinho e perfil no header fixo.
 
-## O que muda
+## Solucao
+Mover o badge para o **topo da pagina**, acima do header fixo, como uma barra fina de aviso. Assim nao conflita com nenhum elemento interativo.
 
-Redesign dos cards de produto na pagina `/cardapio` para um visual mais limpo e elegante, com tipografia melhorada.
+### Alteracoes em `src/pages/Cardapio.tsx`
 
-## Alteracoes em `src/pages/Cardapio.tsx`
+1. **Remover o badge flutuante** (linhas 166-177) da posicao `fixed top-3 right-3`
+2. **Criar uma barra fixa no topo** (`fixed top-0`) com `z-[60]`, fundo `bg-warning`, altura compacta (~32px), largura total, com o texto "Visao: Cliente" centralizado e o botao X a direita
+3. **Ajustar o header** de `top-0` para `top-8` (abaixo da barra de simulacao quando ativa)
+4. **Ajustar o padding-top** do container principal de `pt-[73px]` para `pt-[105px]` quando simulando, e manter `pt-[73px]` quando nao
 
-### Cards de produto (linhas 266-316)
-
-- Trocar `card-cinematic` por classes diretas com fundo creme/bege claro (`bg-card`), borda sutil e `rounded-2xl` para cantos mais suaves
-- Aumentar `aspect-ratio` da imagem para `[4/3]` com `rounded-t-2xl` na imagem
-- Nome do produto: trocar de `text-sm font-semibold` para `text-[15px] font-medium` com `font-family: 'DM Sans'` (ja importada no projeto) para leitura mais limpa
-- Preco: trocar `font-mono-numbers` (JetBrains Mono) para `'DM Sans'` com `font-semibold tracking-wide text-base` -- visual mais moderno e legivel, sem monospace
-- Botao de adicionar (+): manter circular com `bg-accent` mas aumentar levemente para `w-9 h-9`
-- Adicionar `shadow-sm hover:shadow-md` para elevacao suave no hover em vez do `translateY` atual
-- Padding interno do conteudo: `p-4` em vez de `p-3`
-
-### Resultado visual esperado:
+### Resultado visual:
 
 ```text
-+---------------------------+
-|                           |
-|   [Foto do produto]      |
-|   (rounded-t, aspect 4/3)|
-|                           |
-+---------------------------+
-|  Nome do Produto          |
-|                           |
-|  R$ 115,00          (+)   |
-+---------------------------+
+[===== Visao: Cliente  [X] ======]  <- barra fina fixa no topo
+[== HEADER (busca + carrinho) ===]  <- header logo abaixo
+[== CATEGORIAS ==================]
 ```
 
-- Fonte do nome: DM Sans, peso medio, tamanho 15px
-- Fonte do preco: DM Sans, peso semibold, tracking mais aberto
-- Card: fundo claro, borda sutil, sombra leve, cantos arredondados 2xl
-
 ### Arquivo alterado:
-- `src/pages/Cardapio.tsx` -- redesign dos cards e tipografia
+- `src/pages/Cardapio.tsx`
