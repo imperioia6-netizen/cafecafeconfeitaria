@@ -5,6 +5,7 @@ import { Coffee } from 'lucide-react';
 import AppSidebar from './AppSidebar';
 import AppHeader from './AppHeader';
 import MobileBottomNav from './MobileBottomNav';
+import PageTransition from './PageTransition';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
@@ -50,8 +51,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         }`}
       >
         <AppHeader onToggleSidebar={toggleSidebar} />
-        <main className="flex-1 p-3 md:p-8 pb-20 md:pb-8 animate-fade-in">
-          {children}
+        <main className="flex-1 p-3 md:p-8 pb-20 md:pb-8">
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
       {isMobile && (
