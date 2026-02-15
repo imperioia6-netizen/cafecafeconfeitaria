@@ -929,7 +929,7 @@ const Orders = () => {
           </ScrollArea>
 
           {cart.length > 0 && (
-            <div className="p-5 pt-3 border-t border-border/20 space-y-3 safe-area-bottom">
+            <div className="p-5 pt-3 pb-28 md:pb-5 border-t border-border/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total</span>
                 <span className="text-xl font-bold font-mono-numbers text-gradient-gold">R$ {cartTotal.toFixed(2)}</span>
