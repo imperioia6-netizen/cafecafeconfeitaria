@@ -81,7 +81,7 @@ const Sales = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-5 md:space-y-8">
+      <div className="space-y-5 md:space-y-8 pb-28 md:pb-0">
         <div>
           <h1 className="page-title">Vendas</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Ponto de venda</p>
@@ -133,7 +133,7 @@ const Sales = () => {
                             )}
                           </div>
                         </div>
-                        <div className="rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 flex-shrink-0" style={{ background: 'hsl(36 70% 50% / 0.1)' }}>
+                        <div className="rounded-full p-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 md:group-hover:scale-110 flex-shrink-0" style={{ background: 'hsl(36 70% 50% / 0.1)' }}>
                           <Plus className="h-4 w-4 text-accent" />
                         </div>
                       </button>
@@ -171,15 +171,15 @@ const Sales = () => {
                           />
                         </div>
                         <div className="flex items-center gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                          <Button size="icon" variant="ghost" className="h-9 w-9 md:h-7 md:w-7" onClick={() => {
                             if (item.quantity > 1) setCart(cart.map(c => c.inventory_id === item.inventory_id ? { ...c, quantity: c.quantity - 1 } : c));
                             else setCart(cart.filter(c => c.inventory_id !== item.inventory_id));
                           }}><Minus className="h-3 w-3" /></Button>
                           <span className="font-mono-numbers text-sm w-6 text-center font-semibold">{item.quantity}</span>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                          <Button size="icon" variant="ghost" className="h-9 w-9 md:h-7 md:w-7" onClick={() => {
                             if (item.quantity < item.max_available) setCart(cart.map(c => c.inventory_id === item.inventory_id ? { ...c, quantity: c.quantity + 1 } : c));
                           }}><Plus className="h-3 w-3" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setCart(cart.filter(c => c.inventory_id !== item.inventory_id))}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 md:h-7 md:w-7 text-destructive" onClick={() => setCart(cart.filter(c => c.inventory_id !== item.inventory_id))}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>

@@ -561,7 +561,7 @@ const Orders = () => {
                                   <span className="font-mono-numbers text-xs text-muted-foreground">R$ {Number(item.subtotal).toFixed(2)}</span>
                                   <Button
                                     size="icon" variant="ghost"
-                                    className="h-6 w-6 opacity-0 group-hover/item:opacity-100 text-destructive/60 hover:text-destructive transition-opacity"
+                                    className="h-8 w-8 md:h-6 md:w-6 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 text-destructive/60 hover:text-destructive transition-opacity"
                                     onClick={() => removeOrderItem.mutate(item.id)}
                                   >
                                     <X className="h-3 w-3" />
