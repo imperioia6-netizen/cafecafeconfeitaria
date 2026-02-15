@@ -1,62 +1,48 @@
 
-# Correcao: Sidebar Abrindo/Fechando ao Navegar pelo Mobile
 
-## Diagnostico
+# Correcao Definitiva: Flash da Sidebar ao Navegar no Mobile
 
-O problema tem duas causas:
+## Causa Raiz
 
-1. **Nao ha fechamento automatico da sidebar ao trocar de rota no mobile.** Se a sidebar estiver aberta (via "Mais") e o usuario clicar em um item da navbar inferior, a navegacao acontece mas a sidebar permanece aberta, causando conflito visual -- o Sheet (overlay escuro + painel lateral) continua em tela durante a transicao de pagina, criando o efeito de "abrir e fechar" rapido.
+O `AppLayout` e montado DENTRO de cada pagina (ex: `<AppLayout>conteudo</AppLayout>`). Quando o usuario navega entre rotas, o React desmonta e remonta o `AppLayout`. No momento da montagem:
 
-2. **Os botoes da navbar nao fecham a sidebar.** Os botoes de navegacao (Inicio, Pedidos, Vendas, Estoque) apenas chamam `navigate()` sem fechar a sidebar antes, o que gera sobreposicao visual durante a transicao.
+1. `useIsMobile()` retorna `false` no primeiro render (o estado interno comeca como `undefined`, e `!!undefined = false`)
+2. `useState(!isMobile)` resolve para `useState(!false)` = `useState(true)`
+3. O `sidebarOpen` comeca como `true` -- o Sheet renderiza aberto
+4. Somente depois, o `useEffect` roda e seta `setSidebarOpen(false)`
+5. Esse ciclo abrir-fechar e o flash visivel
 
 ## Solucao
 
-### 1. `src/components/layout/AppLayout.tsx`
+### Mudanca 1: `src/components/layout/AppLayout.tsx`
 
-Adicionar um `useEffect` que fecha a sidebar automaticamente sempre que a rota muda no mobile. Isso garante que qualquer navegacao (seja pela navbar, header ou sidebar) feche o painel lateral de forma limpa.
+Substituir o estado inicial `useState(!isMobile)` por uma verificacao direta do tamanho da janela, sem depender do hook (que precisa de um ciclo de efeito):
 
 ```tsx
-import { useLocation } from 'react-router-dom';
+// ANTES:
+const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
-// Dentro do componente:
-const location = useLocation();
+// DEPOIS:
+const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+```
 
+Isso garante que no mobile o estado JA comeca como `false`, sem precisar esperar o efeito. O Sheet nunca abre involuntariamente.
+
+### Mudanca 2 (mesmo arquivo): Simplificar o useEffect
+
+O `useEffect` atual tambem pode causar problemas ao setar `true` no desktop durante mudancas de rota. Simplificar para apenas fechar no mobile:
+
+```tsx
 useEffect(() => {
   if (isMobile) setSidebarOpen(false);
 }, [location.pathname, isMobile]);
 ```
 
-Remover o `useEffect` antigo que apenas reagia a `isMobile`, pois este novo cobre ambos os casos (mudanca de rota E mudanca de dispositivo).
-
-### 2. `src/components/layout/MobileBottomNav.tsx`
-
-Adicionar uma prop `onCloseSidebar` e chamar antes de navegar, garantindo que a sidebar feche ANTES da navegacao para evitar qualquer flash visual:
-
-```tsx
-interface MobileBottomNavProps {
-  onOpenMore: () => void;
-  onCloseSidebar: () => void;
-}
-
-// No onClick de cada item:
-onClick={() => {
-  onCloseSidebar();
-  navigate(item.path);
-}}
-```
-
-### 3. `src/components/layout/AppLayout.tsx` (passagem da prop)
-
-Passar a nova prop para o componente:
-```tsx
-<MobileBottomNav
-  onOpenMore={() => setSidebarOpen(true)}
-  onCloseSidebar={() => setSidebarOpen(false)}
-/>
-```
+Remover o `else setSidebarOpen(true)` que forçava abertura no desktop a cada mudanca de rota.
 
 ## Resultado
 
-- Navegar pela barra inferior fecha a sidebar instantaneamente (sem flash)
-- Navegar pela propria sidebar tambem fecha automaticamente (pelo useEffect de rota)
-- Transicoes limpas e fluidas entre paginas no mobile
+- Zero flash ao navegar no mobile -- sidebar nunca abre involuntariamente
+- Navegacao limpa e fluida entre todas as paginas
+- Desktop continua funcionando normalmente (sidebar inicia aberta e mantem estado)
+
