@@ -17,8 +17,7 @@ const PageTransition = ({ children }: { children: ReactNode }) => {
 
   return (
     <div
-      className={entering ? 'animate-fade-in' : ''}
-      style={entering ? { animationDuration: '300ms' } : undefined}
+      className={entering ? 'animate-page-enter' : ''}
     >
       {children}
     </div>

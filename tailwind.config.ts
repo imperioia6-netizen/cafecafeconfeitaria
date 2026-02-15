@@ -125,6 +125,10 @@ export default {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        "page-enter": {
+          "0%": { opacity: "0", transform: "translateX(16px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -139,6 +143,7 @@ export default {
         "shine-sweep": "shine-sweep 0.8s ease-out forwards",
         "gradient-shift": "gradient-shift 8s ease-in-out infinite",
         "ring-rotate": "ring-rotate 12s linear infinite",
+        "page-enter": "page-enter 280ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards",
       },
     },
   },
