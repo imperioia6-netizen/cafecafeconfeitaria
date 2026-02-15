@@ -1,74 +1,64 @@
 
 
-# Dialog de Detalhes do Produto no Cardapio Digital
+# Seletor Local / Delivery no Cardapio Digital
 
 ## O que muda
 
-Atualmente, clicar no botao "+" de um produto no cardapio apenas adiciona +1 silenciosamente. A proposta e adicionar um **Dialog de preview** identico ao que ja existe na tela de Pedidos do atendente, permitindo que o cliente:
-
-- Veja a foto ampliada do produto
-- Veja nome, categoria e preco
-- Ajuste a quantidade com botoes [-] e [+]
-- Escreva observacoes (ex: "sem acucar", "metade morango")
-- Veja o subtotal dinamico antes de adicionar
+Atualmente o seletor "Retirada / Entrega" fica escondido dentro do Sheet de checkout. A proposta e trazer essa escolha para o topo da pagina, logo abaixo do banner, de forma bem visivel e intuitiva. Toda a experiencia se adapta conforme a escolha.
 
 ## Como funciona
 
-- Clicar no **card do produto** (foto ou nome) abre o Dialog de detalhes
-- O botao "+" no canto inferior direito do card continua funcionando como atalho rapido (+1 sem dialog)
-- Se o item ja esta no carrinho, o dialog abre pre-preenchido com quantidade e observacao atuais
-- O botao principal do dialog mostra "+ Adicionar -- R$ XX,XX" com o subtotal calculado
+### 1. Toggle no topo da pagina (abaixo do banner)
+
+Um seletor estilizado com dois botoes lado a lado, fixo abaixo do banner:
+- **No Local** (icone Store) -- selecionado por padrao
+- **Delivery** (icone MapPin)
+
+O seletor fica em uma faixa propria com fundo sutil, sempre visivel antes de comecar a navegar os produtos.
+
+### 2. Adaptacoes visuais por modo
+
+**Modo "No Local":**
+- Header mostra "Cardapio" normalmente
+- Barra flutuante do carrinho mostra "Fazer Pedido"
+- No checkout: campos de endereco ficam ocultos
+- Mensagem de sucesso: "Aguarde o preparo. Voce sera chamado quando estiver pronto."
+
+**Modo "Delivery":**
+- Header mostra um badge "Delivery" ao lado do titulo
+- Barra flutuante mostra "Pedir Delivery"
+- No checkout: campos de endereco aparecem automaticamente (ja existem)
+- Validacao exige endereco e numero preenchidos
+- Mensagem de sucesso: "Seu pedido sera entregue no endereco informado."
+
+### 3. Remover seletor duplicado do checkout
+
+Como o toggle agora fica na pagina principal, o seletor de "Como Receber" dentro do Sheet de checkout e removido. O modo ja esta definido antes de abrir o carrinho.
 
 ## Detalhes tecnicos
 
-### Arquivo unico alterado: `src/pages/Cardapio.tsx`
+### Arquivo alterado: `src/pages/Cardapio.tsx`
 
-1. **Atualizar tipo `CartItem`**: adicionar campo `notes?: string` para armazenar observacoes por item
+1. **Mover o seletor de delivery para o topo**: criar uma secao entre o banner e as categorias com dois botoes estilizados (No Local / Delivery) usando o estado `deliveryMode` ja existente
 
-2. **Novos estados**:
-   - `selectedProduct`: o produto clicado (ou null)
-   - `dialogQty`: quantidade no dialog
-   - `dialogNotes`: observacao no dialog
+2. **Estilo do seletor**: dois botoes com icones, fundo com gradiente sutil, o botao ativo ganha borda dourada e fundo destacado -- consistente com o design atual
 
-3. **Dialog de produto**: componente inline com:
-   - Foto do produto ocupando o topo (aspect-ratio 16/9, rounded)
-   - Nome do produto em bold + categoria em texto menor
-   - Preco unitario em destaque (estilo dourado, consistente com o design)
-   - Controles de quantidade: botoes [-] / [+] com campo central
-   - Textarea para observacoes com placeholder
-   - Botao "Adicionar -- R$ subtotal" com gradiente dourado, full-width
+3. **Adaptar textos dinamicamente**:
+   - Barra flutuante: texto do botao muda conforme o modo
+   - Tela de sucesso: mensagem muda conforme o modo
+   - Header: badge opcional no modo delivery
 
-4. **Logica de adicao com notas**: ao confirmar no dialog, o `addToCart` passa a aceitar quantidade e notas, substituindo o item existente no carrinho (merge inteligente)
+4. **Checkout Sheet**: remover o bloco do RadioGroup de "Como Receber" e manter os campos de endereco condicionais ao `deliveryMode === 'delivery'` diretamente
 
-5. **Evento de clique no card**: separar o clique na area do card (abre dialog) do clique no botao "+" (atalho rapido sem dialog)
+5. **Nenhuma mudanca no backend**: o `delivery_mode` ja e enviado na chamada da Edge Function
 
-6. **Passar `notes` no checkout**: atualizar `handleSubmitOrder` para enviar as observacoes de cada item na chamada da Edge Function `public-order`
-
-7. **Exibir observacoes no Sheet do carrinho**: mostrar a nota de cada item abaixo do nome, em texto pequeno e cinza
-
-### Layout do Dialog
+### Layout do seletor
 
 ```text
-+----------------------------------+
-|  [X]                             |
-|      [  Foto do produto  ]       |
-|                                  |
-|  Nome do Produto                 |
-|  Categoria                       |
-|                                  |
-|  R$ 115,00 /unidade              |
-|                                  |
-|  QUANTIDADE                      |
-|  [-]     1     [+]               |
-|                                  |
-|  OBSERVACOES                     |
-|  [Ex: sem acucar, fatia grande ] |
-|                                  |
-|  [+ Adicionar -- R$ 115,00]     |
-+----------------------------------+
++--------------------------------------------------+
+|   [Store] No Local    |    [MapPin] Delivery      |
++--------------------------------------------------+
 ```
 
-### Edge Function `public-order`
-
-Verificar se a funcao ja aceita `notes` por item. Se nao, atualizar para receber e salvar no campo `notes` da tabela `order_items` (coluna adicionada na migracao anterior).
+Posicionado logo abaixo do banner, antes da secao "Nossos Produtos".
 
