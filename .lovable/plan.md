@@ -1,103 +1,61 @@
 
-# Pagina Separada de Pedidos (Comandas)
 
-## Resumo
+# Cardapio Digital (Visao do Cliente)
 
-Criar uma pagina dedicada para gerenciar pedidos/comandas em andamento, separada das vendas finalizadas. Funcionarios podem criar, visualizar e finalizar pedidos. Ao finalizar um pedido, ele vira uma venda automaticamente.
+## Objetivo
 
-## Fluxo do Sistema
+Criar uma pagina publica de cardapio digital que o cliente acessa para visualizar os produtos disponiveis -- sem login, sem sidebar, sem funcionalidades de gestao. Apenas um catalogo bonito e navegavel, inspirado no layout do iFood (imagem de referencia).
 
-```text
-+------------------+       Finalizar        +------------------+
-|    PEDIDOS       | ---------------------> |     VENDAS       |
-|  (em andamento)  |   converte pedido      |  (finalizadas)   |
-|                  |   em venda + desconta  |                  |
-|  - comanda       |   estoque              |  - historico     |
-|  - mesa          |                        |  - caixa         |
-|  - cliente       |                        |  - relatorios    |
-|  - itens         |                        |                  |
-+------------------+                        +------------------+
-```
+## Nova Pagina: `/cardapio`
 
-## Banco de Dados
+Uma pagina standalone (sem AppLayout, sem autenticacao) contendo:
 
-### Nova tabela `orders`
+### Header fixo
+- Logo/nome do estabelecimento no canto esquerdo
+- Barra de busca centralizada
+- Visual limpo, fundo branco/claro
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid PK | Identificador |
-| operator_id | uuid NOT NULL | Quem criou o pedido |
-| order_number | text | Numero da comanda |
-| table_number | text | Numero da mesa |
-| customer_name | text | Nome do cliente |
-| status | enum `order_status` | `aberto`, `finalizado`, `cancelado` |
-| channel | sales_channel | Canal (balcao, delivery) |
-| notes | text | Observacoes gerais |
-| created_at | timestamptz | Data de criacao |
-| closed_at | timestamptz | Data de finalizacao |
+### Categorias
+- Pills horizontais com emojis (Todas, Bebidas, Lanches, Doces, Padaria, etc.)
+- Scroll horizontal em mobile
+- Estilo semelhante a imagem de referencia (pills arredondadas com icone + texto)
 
-### Nova tabela `order_items`
+### Grid de Produtos
+- Cards grandes com:
+  - Foto do produto (aspecto 1:1 ou 4:3, arredondado)
+  - Nome do produto
+  - Preco em destaque (R$ XX,XX)
+  - Botao "Adicionar" vermelho (visual, sem funcionalidade de carrinho -- apenas cardapio)
+- Grid responsivo: 2 colunas mobile, 3-4 colunas desktop, 5 colunas telas grandes
+- Apenas produtos ativos (`active = true`) sao exibidos
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid PK | Identificador |
-| order_id | uuid FK | Referencia ao pedido |
-| recipe_id | uuid | Produto |
-| inventory_id | uuid | Lote do estoque |
-| quantity | integer | Quantidade |
-| unit_price | numeric | Preco unitario |
-| subtotal | numeric | Subtotal |
+### Diferenca da pagina de Pedidos
+- **Sem login** -- rota publica
+- **Sem sidebar/header** do sistema
+- **Sem carrinho** -- e apenas visualizacao do cardapio
+- **Sem gestao de pedidos** -- sem comanda, mesa, finalizacao
+- Dados vem de `recipes` (produtos ativos), nao de `inventory`
 
-### RLS Policies
+## Alteracoes
 
-- Owner: ALL em ambas tabelas
-- Employee: SELECT + INSERT + UPDATE em `orders` (filtrado por `operator_id = auth.uid()`)
-- Employee: SELECT + INSERT em `order_items`
-
-## Novos Arquivos
-
-### `src/hooks/useOrders.ts`
-
-Hook com:
-- `useOpenOrders()` -- lista pedidos com status `aberto`, incluindo itens e receitas
-- `useCreateOrder()` -- cria pedido com itens
-- `useAddOrderItem()` -- adiciona item a pedido existente
-- `useRemoveOrderItem()` -- remove item de pedido
-- `useFinalizeOrder()` -- muda status para `finalizado`, cria venda automaticamente (reutiliza logica do `useCreateSale`) e desconta estoque
-- `useCancelOrder()` -- muda status para `cancelado`
-
-### `src/pages/Orders.tsx`
-
-Pagina com duas secoes:
-
-**1. Novo Pedido (lado esquerdo)**
-- Catalogo de produtos disponiveis (com foto e preco, igual a pagina de Vendas)
-- Clique para adicionar ao pedido
-
-**2. Pedidos Abertos (lado direito / abaixo)**
-- Cards de cada pedido aberto mostrando:
-  - Comanda, mesa, nome do cliente
-  - Lista de itens com quantidades
-  - Total parcial
-  - Botoes: "Adicionar Item", "Finalizar" (abre dialog de pagamento), "Cancelar"
-
-**Dialog de Finalizacao:**
-- Selecionar metodo de pagamento
-- Confirmar total
-- Ao confirmar: cria venda, desconta estoque, fecha pedido
-
-## Alteracoes em Arquivos Existentes
-
-### `src/components/layout/AppSidebar.tsx`
-- Adicionar item "Pedidos" com icone `ClipboardList` no grupo Operacional, antes de Vendas
-- `ownerOnly: false` (acessivel a funcionarios)
+### Novo arquivo: `src/pages/Cardapio.tsx`
+- Pagina standalone sem AppLayout
+- Usa `useActiveRecipes()` para listar produtos ativos
+- Filtro por categoria e busca por nome
+- Layout inspirado na referencia iFood: header limpo, pills de categoria, grid de cards com fotos grandes e botao "Adicionar"
+- Tema claro (fundo branco) independente do tema do sistema
+- Responsivo mobile-first
 
 ### `src/App.tsx`
-- Adicionar rota `/orders` apontando para `Orders`
+- Adicionar rota `/cardapio` apontando para a nova pagina
+- Rota fora do AppLayout (sem autenticacao)
 
 ## Detalhes Tecnicos
 
-- O enum `order_status` sera criado via migracao: `CREATE TYPE order_status AS ENUM ('aberto', 'finalizado', 'cancelado')`
-- Ao finalizar, a logica reutiliza o mesmo fluxo de criacao de venda (insert em `sales` + `sale_items` + update `inventory`)
-- Pedidos cancelados nao afetam estoque (itens nao sao descontados ate a finalizacao)
-- Campos de comanda e mesa aceitam texto livre com `maxLength` para seguranca
+- A pagina nao usa `AppLayout` (que redireciona para `/auth` se nao logado)
+- Usa `useActiveRecipes()` que ja existe e faz `select('*').eq('active', true)`
+- Nao precisa de RLS especial -- a policy `Authenticated can read active recipes` ja existe, mas precisaremos garantir que usuarios anonimos tambem possam ler (ou usar `anon` key que ja esta configurada)
+- O botao "Adicionar" sera visual apenas (placeholder para futura funcionalidade de pedido online)
+- Cores do botao: vermelho solido (#DC2626) seguindo a referencia iFood
+- Tipografia: sans-serif limpa para o cardapio publico
+
