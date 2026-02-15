@@ -629,9 +629,9 @@ const Orders = () => {
 
       {/* ===== FLOATING CART BAR (portal to escape transform context) ===== */}
       {cart.length > 0 && createPortal(
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
           <div
-            className="rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4"
+            className="rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-3 py-3 md:px-5 md:py-3.5 flex items-center justify-between gap-4"
             style={{ background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.95))' }}
           >
             <button
@@ -639,7 +639,7 @@ const Orders = () => {
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div
-                className="h-10 w-10 rounded-full flex items-center justify-center text-primary-foreground relative"
+                className="h-9 w-9 rounded-full flex items-center justify-center text-primary-foreground relative"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
               >
                 <ShoppingCart className="h-5 w-5" />
@@ -649,7 +649,7 @@ const Orders = () => {
               </div>
               <div className="text-left">
                 <p className="text-xs text-muted-foreground">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</p>
-                <p className="font-bold font-mono-numbers text-foreground">R$ {cartTotal.toFixed(2)}</p>
+                <p className="font-bold font-mono-numbers text-sm md:text-base text-foreground">R$ {cartTotal.toFixed(2)}</p>
               </div>
             </button>
             <div className="flex items-center gap-2">
@@ -663,7 +663,7 @@ const Orders = () => {
               </Button>
               <Button
                 size="sm"
-                className="rounded-xl text-xs gap-1.5 px-5 text-primary-foreground"
+                className="rounded-xl text-xs gap-1.5 px-3 md:px-5 text-primary-foreground"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
                 onClick={handleCreateOrder}
                 disabled={createOrder.isPending}
