@@ -223,20 +223,21 @@ const Cardapio = () => {
       {/* Categories section */}
       <section className={`sticky ${isSimulating ? 'top-[105px]' : 'top-[73px]'} z-40 bg-background/90 backdrop-blur-xl border-b border-border/50`}>
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <h2 className="text-lg font-semibold mb-3 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-lg font-semibold mb-3 tracking-tight text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             Nossos Produtos
           </h2>
-          <div className="separator-gradient mb-3" />
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="separator-gradient mb-4 opacity-60" />
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar">
             {categoryFilters.map(c => (
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-[13px] font-medium tracking-wide whitespace-nowrap transition-all ${
                   category === c.key
-                    ? 'bg-accent text-accent-foreground shadow-md glow-accent'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    ? 'bg-accent text-accent-foreground shadow-sm'
+                    : 'bg-card text-secondary-foreground border border-border/60 hover:bg-card/80'
                 }`}
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
                 <span>{c.emoji}</span>
                 {c.label}
