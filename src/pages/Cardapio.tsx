@@ -230,7 +230,7 @@ const Cardapio = () => {
   const dialogSubtotal = selectedProduct ? dialogQty * selectedProduct.sale_price : 0;
 
   return (
-    <div className={`min-h-screen bg-background hero-gradient text-foreground pb-24 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
+    <div className={`min-h-screen bg-background hero-gradient text-foreground pb-20 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
       {/* Simulation top bar */}
       {isSimulating && (
         <div className="fixed top-0 left-0 right-0 h-8 bg-warning z-[60] flex items-center justify-center">
@@ -523,7 +523,7 @@ const Cardapio = () => {
 
       {/* Floating cart bar */}
       {cartCount > 0 && (
-        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 backdrop-blur-xl border-t border-sidebar-border shadow-[0_-4px_20px_rgba(0,0,0,0.2)]" style={{ background: 'hsl(24 35% 15% / 0.95)' }}>
+        <div className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl border-t border-sidebar-border shadow-[0_-4px_20px_rgba(0,0,0,0.2)]" style={{ background: 'hsl(24 35% 15% / 0.95)' }}>
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
