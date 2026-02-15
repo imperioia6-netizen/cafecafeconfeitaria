@@ -698,7 +698,41 @@ const Cardapio = () => {
                 </div>
               </div>
 
-              {/* ── Section: Delivery Address (delivery mode only) ── */}
+              {/* ── Section: Delivery Mode Toggle ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Truck className="h-4 w-4 text-accent" />
+                  <span className="text-xs font-semibold uppercase tracking-widest text-accent" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Tipo de Entrega
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setDeliveryMode('pickup')}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      deliveryMode === 'pickup'
+                        ? 'bg-accent text-accent-foreground shadow-md'
+                        : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                    }`}
+                    style={{ fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    <Store className="h-4 w-4" />
+                    Retirar no Local
+                  </button>
+                  <button
+                    onClick={() => setDeliveryMode('delivery')}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      deliveryMode === 'delivery'
+                        ? 'bg-accent text-accent-foreground shadow-md'
+                        : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                    }`}
+                    style={{ fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Delivery
+                  </button>
+                </div>
+              </div>
               {deliveryMode === 'delivery' && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="flex items-center gap-2 mb-3">
