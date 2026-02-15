@@ -106,16 +106,24 @@ const Cardapio = () => {
   // Success screen
   if (success) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+      <div className="min-h-screen bg-background hero-gradient flex items-center justify-center px-4">
         <div className="text-center max-w-sm space-y-6">
-          <CheckCircle2 className="h-20 w-20 text-green-500 mx-auto" />
-          <h1 className="text-2xl font-bold text-gray-900">Pedido enviado!</h1>
-          <p className="text-gray-500">Seu pedido <span className="font-semibold text-gray-900">{success.order_number}</span> foi recebido com sucesso.</p>
-          <p className="text-lg font-bold text-gray-900">Total: R$ {success.total.toFixed(2).replace('.', ',')}</p>
-          <p className="text-sm text-gray-400">Aguarde o preparo. Você será chamado quando estiver pronto.</p>
+          <div className="w-20 h-20 mx-auto rounded-full bg-accent/20 flex items-center justify-center">
+            <CheckCircle2 className="h-12 w-12 text-accent" />
+          </div>
+          <h1 className="text-3xl font-bold text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Pedido enviado!
+          </h1>
+          <p className="text-muted-foreground">
+            Seu pedido <span className="font-semibold text-foreground">{success.order_number}</span> foi recebido com sucesso.
+          </p>
+          <p className="text-xl font-bold text-foreground font-mono-numbers">
+            Total: R$ {success.total.toFixed(2).replace('.', ',')}
+          </p>
+          <p className="text-sm text-muted-foreground">Aguarde o preparo. Você será chamado quando estiver pronto.</p>
           <button
             onClick={handleNewOrder}
-            className="w-full py-3 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+            className="w-full py-3 rounded-full bg-accent text-accent-foreground font-semibold hover:brightness-110 transition-all shadow-md"
           >
             Fazer novo pedido
           </button>
@@ -125,64 +133,85 @@ const Cardapio = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 pb-24" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+    <div className="min-h-screen bg-background hero-gradient text-foreground pb-24">
       {/* Simulation badge */}
       {isSimulating && (
         <div className="fixed top-3 right-3 z-[60]">
           <button
             onClick={exitSimulation}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold shadow-lg hover:bg-amber-600 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning text-warning-foreground text-xs font-semibold shadow-lg hover:brightness-110 transition-all"
           >
             Visão: Cliente
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <h1 className="text-xl font-bold text-red-600 whitespace-nowrap">🍰 Cardápio</h1>
+
+      {/* Header - dark cinematic */}
+      <header className="sticky top-0 z-50 border-b border-sidebar-border shadow-lg" style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Playfair Display', serif" }}>
+            🍰 Cardápio
+          </h1>
           <div className="flex-1 max-w-lg mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sidebar-foreground/50" />
             <input
               type="text"
               placeholder="Buscar no cardápio..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-gray-100 border-none text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-sidebar-accent/60 backdrop-blur-sm border border-sidebar-border text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
             />
           </div>
+          {/* Cart icon in header */}
+          <button
+            onClick={() => cartCount > 0 && setCheckoutOpen(true)}
+            className="relative p-2 rounded-full hover:bg-sidebar-accent/50 transition-colors"
+          >
+            <ShoppingCart className="h-5 w-5 text-sidebar-foreground" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
-      {/* Categories */}
-      <nav className="sticky top-[61px] z-40 bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
-          {categoryFilters.map(c => (
-            <button
-              key={c.key}
-              onClick={() => setCategory(c.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                category === c.key
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <span>{c.emoji}</span>
-              {c.label}
-            </button>
-          ))}
+      {/* Categories section */}
+      <section className="sticky top-[73px] z-40 bg-background/90 backdrop-blur-xl border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <h2 className="text-lg font-semibold mb-3 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Nossos Produtos
+          </h2>
+          <div className="separator-gradient mb-3" />
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {categoryFilters.map(c => (
+              <button
+                key={c.key}
+                onClick={() => setCategory(c.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  category === c.key
+                    ? 'bg-accent text-accent-foreground shadow-md glow-accent'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                <span>{c.emoji}</span>
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </nav>
+      </section>
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
+          <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg">Nenhum produto encontrado</p>
           </div>
         ) : (
@@ -192,34 +221,34 @@ const Cardapio = () => {
               return (
                 <div
                   key={recipe.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow overflow-hidden group"
+                  className="card-cinematic overflow-hidden group"
                 >
-                  <div className="aspect-square bg-gray-50 overflow-hidden">
+                  <div className="aspect-[4/3] bg-muted overflow-hidden">
                     {recipe.photo_url ? (
                       <img
                         src={recipe.photo_url}
                         alt={recipe.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-5xl">
+                      <div className="w-full h-full flex items-center justify-center text-5xl bg-secondary/50">
                         {recipe.category === 'bolo' ? '🎂' : recipe.category === 'torta' ? '🥧' : recipe.category === 'salgado' ? '🥪' : recipe.category === 'bebida' ? '🥤' : recipe.category === 'doce' ? '🍬' : '🍴'}
                       </div>
                     )}
                   </div>
                   <div className="p-3 space-y-2">
-                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-tight">
+                    <h3 className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">
                       {recipe.name}
                     </h3>
                     <div className="flex items-end justify-between">
-                      <p className="text-base font-bold text-gray-900">
+                      <p className="text-base font-bold text-foreground font-mono-numbers">
                         R$ {Number(recipe.sale_price).toFixed(2).replace('.', ',')}
                       </p>
                       {qty === 0 ? (
                         <button
                           onClick={() => addToCart(recipe)}
-                          className="flex items-center justify-center w-8 h-8 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                          className="flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all shadow-sm"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -227,14 +256,14 @@ const Cardapio = () => {
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => removeFromCart(recipe.id)}
-                            className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                            className="flex items-center justify-center w-7 h-7 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="text-sm font-bold w-5 text-center">{qty}</span>
+                          <span className="text-sm font-bold w-5 text-center font-mono-numbers">{qty}</span>
                           <button
                             onClick={() => addToCart(recipe)}
-                            className="flex items-center justify-center w-7 h-7 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            className="flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -251,22 +280,22 @@ const Cardapio = () => {
 
       {/* Floating cart bar */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t border-sidebar-border shadow-[0_-4px_20px_rgba(0,0,0,0.2)]" style={{ background: 'hsl(24 35% 15% / 0.95)' }}>
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <ShoppingCart className="h-6 w-6 text-red-600" />
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <ShoppingCart className="h-6 w-6 text-accent" />
+                <span className="absolute -top-2 -right-2 bg-accent text-accent-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {cartCount}
                 </span>
               </div>
-              <span className="text-lg font-bold text-gray-900">
+              <span className="text-lg font-bold text-sidebar-foreground font-mono-numbers">
                 R$ {cartTotal.toFixed(2).replace('.', ',')}
               </span>
             </div>
             <button
               onClick={() => setCheckoutOpen(true)}
-              className="px-6 py-2.5 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md"
+              className="px-6 py-2.5 rounded-full bg-accent text-accent-foreground font-semibold hover:brightness-110 transition-all shadow-md glow-accent"
             >
               Fazer Pedido
             </button>
@@ -276,9 +305,11 @@ const Cardapio = () => {
 
       {/* Checkout dialog */}
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="max-w-md mx-auto bg-white">
+        <DialogContent className="max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Confirmar Pedido</DialogTitle>
+            <DialogTitle className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Confirmar Pedido
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
@@ -301,22 +332,22 @@ const Cardapio = () => {
               />
             </div>
 
-            <div className="border-t pt-3 space-y-2 max-h-48 overflow-y-auto">
+            <div className="border-t border-border pt-3 space-y-2 max-h-48 overflow-y-auto">
               {cart.map(item => (
                 <div key={item.recipe_id} className="flex justify-between items-center text-sm">
-                  <span className="text-gray-700">
+                  <span className="text-muted-foreground">
                     {item.quantity}x {item.name}
                   </span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-foreground font-mono-numbers">
                     R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div className="border-t pt-3 flex justify-between items-center">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="text-xl font-bold text-red-600">
+            <div className="border-t border-border pt-3 flex justify-between items-center">
+              <span className="font-bold text-foreground">Total</span>
+              <span className="text-xl font-bold text-accent font-mono-numbers">
                 R$ {cartTotal.toFixed(2).replace('.', ',')}
               </span>
             </div>
@@ -324,7 +355,7 @@ const Cardapio = () => {
             <Button
               onClick={handleSubmitOrder}
               disabled={sending || !customerName.trim()}
-              className="w-full bg-red-600 hover:bg-red-700 text-white rounded-full h-12 text-base font-semibold"
+              className="w-full bg-accent hover:brightness-110 text-accent-foreground rounded-full h-12 text-base font-semibold"
             >
               {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirmar Pedido'}
             </Button>
