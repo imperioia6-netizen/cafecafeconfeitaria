@@ -629,7 +629,7 @@ const Orders = () => {
 
       {/* ===== FLOATING CART BAR (portal to escape transform context) ===== */}
       {cart.length > 0 && createPortal(
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
           <div
             className="rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4"
             style={{ background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.95))' }}
