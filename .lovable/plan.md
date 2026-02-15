@@ -1,40 +1,37 @@
 
+# Corrigir Avatar no Cardapio: Menu de Escolha de Painel
 
-# Correcao: Sidebar Abrindo/Fechando ao Clicar na Navbar
+## Problema
 
-## Causa Raiz
-
-O `MobileBottomNav` e o overlay do `Sheet` (sidebar mobile) usam o mesmo `z-index: 50`. Quando a sidebar esta aberta, o overlay do Sheet cobre toda a tela -- incluindo a area da navbar inferior. Ao clicar em um item da navbar:
-
-1. O clique atinge primeiro o overlay do Sheet, fechando a sidebar
-2. O clique tambem propaga para o botao da navbar por baixo
-3. Se for o botao "Mais", a sidebar reabre imediatamente -- criando o efeito de abrir/fechar repetido
+Na pagina do Cardapio (visao cliente), ao clicar no avatar, a funcao `exitSimulation()` e chamada diretamente (linha 316 de `Cardapio.tsx`), que faz `setViewAs(null)` e `navigate('/')` -- voltando automaticamente para o painel admin sem dar escolha ao usuario.
 
 ## Solucao
 
-Duas mudancas cirurgicas:
+Substituir o botao simples do avatar por um `DropdownMenu` com as opcoes de troca de visao (Proprietario, Funcionario, Cliente), igual ao que ja existe no `AppHeader.tsx`. Assim o usuario pode escolher para qual painel deseja ir.
 
-### 1. `src/components/layout/MobileBottomNav.tsx`
+## Arquivo modificado
 
-Elevar o `z-index` da navbar para `z-[60]`, acima do overlay do Sheet (`z-50`). Isso garante que a navbar sempre fique por cima e receba cliques diretamente, sem interferencia do overlay.
+### `src/pages/Cardapio.tsx` (linha 315-323)
 
-```
-z-50  -->  z-[60]
-```
-
-### 2. `src/components/layout/AppLayout.tsx`
-
-Adicionar `e.stopPropagation()` no `onOpenMore` para evitar que o clique no "Mais" propague para elementos abaixo, e garantir que navegacao nos outros botoes feche a sidebar se estiver aberta.
-
-Tambem mudar o `onOpenMore` para usar um toggle mais seguro:
-
+**Antes:**
 ```tsx
-<MobileBottomNav onOpenMore={() => setSidebarOpen(true)} />
+<button onClick={() => isSimulating ? exitSimulation() : navigate('/profile')} className="cursor-pointer">
+  <Avatar ...>...</Avatar>
+</button>
 ```
 
-Permanece igual, pois o problema real e o z-index.
+**Depois:**
+Substituir por um `DropdownMenu` com:
+- Item "Meu Perfil" (navega para `/profile` e sai da simulacao)
+- Submenu "Trocar Visao" com opcoes: Proprietario (`setViewAs(null)` + `navigate('/')`), Funcionario (`setViewAs('employee')` + `navigate('/')`), Cliente (mantem na pagina atual)
+- Item "Sair" (signOut)
 
-## Resultado
+Importar `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent` dos componentes UI, e os icones `Eye`, `LogOut` do lucide-react.
 
-A navbar fica sempre acessivel por cima de qualquer overlay. Clicar nos itens navega normalmente sem interferir na sidebar. O botao "Mais" abre a sidebar sem conflito.
+## Detalhes tecnicos
 
+- Reutilizar o mesmo padrao visual do dropdown do `AppHeader.tsx`
+- A opcao ativa fica destacada com `bg-accent/20 font-semibold`
+- Manter o avatar visual identico (tamanho, borda dourada)
+- Ao trocar para Owner ou Employee, navegar para `/` (dashboard)
+- Ao trocar para Cliente, manter em `/cardapio`
