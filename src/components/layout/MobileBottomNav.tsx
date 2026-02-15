@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, ShoppingCart, Package, MoreHorizontal, Coffee } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, ShoppingCart, Package, MoreHorizontal, Coffee, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface NavItem {
@@ -12,7 +12,7 @@ const ownerNav: NavItem[] = [
   { path: '/', label: 'Início', icon: LayoutDashboard },
   { path: '/orders', label: 'Pedidos', icon: ClipboardList },
   { path: '/sales', label: 'Vendas', icon: ShoppingCart },
-  { path: '/inventory', label: 'Estoque', icon: Package },
+  { path: '/crm', label: 'CRM', icon: Heart },
 ];
 
 const employeeNav: NavItem[] = [
