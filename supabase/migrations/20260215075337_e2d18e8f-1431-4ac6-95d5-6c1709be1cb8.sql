@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ADD COLUMN weight_kg numeric;

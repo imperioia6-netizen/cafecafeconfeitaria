@@ -18,6 +18,7 @@ const schema = z.object({
   category: z.enum(['bolo', 'torta', 'salgado', 'bebida', 'doce', 'outro']),
   sell_mode: z.enum(['fatia', 'inteiro']).default('fatia'),
   slice_weight_g: z.coerce.number().optional(),
+  weight_kg: z.coerce.number().optional(),
   sale_price: z.coerce.number().min(0.01, 'Preço obrigatório'),
   direct_cost: z.coerce.number().min(0).nullable(),
 }).superRefine((data, ctx) => {
@@ -26,6 +27,13 @@ const schema = z.object({
       code: z.ZodIssueCode.custom,
       message: 'Peso por fatia obrigatório para bolos vendidos por fatia',
       path: ['slice_weight_g'],
+    });
+  }
+  if (data.category === 'bolo' && data.sell_mode === 'inteiro' && (!data.weight_kg || data.weight_kg < 0.1)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Peso do bolo obrigatório (mínimo 0.1 Kg)',
+      path: ['weight_kg'],
     });
   }
 });
@@ -59,6 +67,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       category: recipe.category,
       sell_mode: (recipe as any).sell_mode || 'fatia',
       slice_weight_g: recipe.category === 'bolo' ? Number(recipe.slice_weight_g) : undefined,
+      weight_kg: (recipe as any).weight_kg ? Number((recipe as any).weight_kg) : undefined,
       sale_price: Number(recipe.sale_price),
       direct_cost: recipe.direct_cost ? Number(recipe.direct_cost) : null,
     } : {
@@ -66,6 +75,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       category: 'bolo',
       sell_mode: 'fatia',
       slice_weight_g: 250,
+      weight_kg: undefined,
       sale_price: 0,
       direct_cost: null,
     },
@@ -119,6 +129,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         ...data,
         sell_mode: data.category === 'bolo' ? data.sell_mode : 'fatia',
         slice_weight_g: (data.category === 'bolo' && data.sell_mode === 'fatia') ? (data.slice_weight_g ?? 250) : 250,
+        weight_kg: (data.category === 'bolo' && data.sell_mode === 'inteiro') ? data.weight_kg : null,
         min_stock: 0,
       };
 
@@ -221,6 +232,14 @@ export default function RecipeForm({ recipe, onClose }: Props) {
           <Label htmlFor="slice_weight_g">Peso por fatia (g)</Label>
           <Input id="slice_weight_g" type="number" {...register('slice_weight_g')} />
           {errors.slice_weight_g && <p className="text-xs text-destructive">{errors.slice_weight_g.message}</p>}
+        </div>
+      )}
+
+      {isBolo && !isFatia && (
+        <div className="space-y-2">
+          <Label htmlFor="weight_kg">Peso do bolo (Kg)</Label>
+          <Input id="weight_kg" type="number" step="0.1" {...register('weight_kg')} placeholder="Ex: 1.5" />
+          {errors.weight_kg && <p className="text-xs text-destructive">{errors.weight_kg.message}</p>}
         </div>
       )}
 

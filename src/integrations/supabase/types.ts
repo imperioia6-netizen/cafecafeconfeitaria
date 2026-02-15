@@ -762,6 +762,7 @@ export type Database = {
           sell_mode: string
           slice_weight_g: number
           updated_at: string
+          weight_kg: number | null
         }
         Insert: {
           active?: boolean
@@ -776,6 +777,7 @@ export type Database = {
           sell_mode?: string
           slice_weight_g?: number
           updated_at?: string
+          weight_kg?: number | null
         }
         Update: {
           active?: boolean
@@ -790,6 +792,7 @@ export type Database = {
           sell_mode?: string
           slice_weight_g?: number
           updated_at?: string
+          weight_kg?: number | null
         }
         Relationships: []
       }

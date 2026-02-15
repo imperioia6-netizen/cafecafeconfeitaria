@@ -111,7 +111,11 @@ export default function RecipeCard({ recipe, index = 0, readOnly = false }: { re
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground/70 pt-1">
-            <span>Fatia: {Number(recipe.slice_weight_g)}g</span>
+            <span>
+              {(recipe as any).sell_mode === 'inteiro' && (recipe as any).weight_kg
+                ? `${Number((recipe as any).weight_kg)} Kg`
+                : `Fatia: ${Number(recipe.slice_weight_g)}g`}
+            </span>
             <span>Est. mín: {recipe.min_stock}</span>
           </div>
         </div>
