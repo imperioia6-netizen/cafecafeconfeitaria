@@ -1,37 +1,62 @@
 
-# Corrigir Avatar no Cardapio: Menu de Escolha de Painel
+# Correcao: Sidebar Abrindo/Fechando ao Navegar pelo Mobile
 
-## Problema
+## Diagnostico
 
-Na pagina do Cardapio (visao cliente), ao clicar no avatar, a funcao `exitSimulation()` e chamada diretamente (linha 316 de `Cardapio.tsx`), que faz `setViewAs(null)` e `navigate('/')` -- voltando automaticamente para o painel admin sem dar escolha ao usuario.
+O problema tem duas causas:
+
+1. **Nao ha fechamento automatico da sidebar ao trocar de rota no mobile.** Se a sidebar estiver aberta (via "Mais") e o usuario clicar em um item da navbar inferior, a navegacao acontece mas a sidebar permanece aberta, causando conflito visual -- o Sheet (overlay escuro + painel lateral) continua em tela durante a transicao de pagina, criando o efeito de "abrir e fechar" rapido.
+
+2. **Os botoes da navbar nao fecham a sidebar.** Os botoes de navegacao (Inicio, Pedidos, Vendas, Estoque) apenas chamam `navigate()` sem fechar a sidebar antes, o que gera sobreposicao visual durante a transicao.
 
 ## Solucao
 
-Substituir o botao simples do avatar por um `DropdownMenu` com as opcoes de troca de visao (Proprietario, Funcionario, Cliente), igual ao que ja existe no `AppHeader.tsx`. Assim o usuario pode escolher para qual painel deseja ir.
+### 1. `src/components/layout/AppLayout.tsx`
 
-## Arquivo modificado
+Adicionar um `useEffect` que fecha a sidebar automaticamente sempre que a rota muda no mobile. Isso garante que qualquer navegacao (seja pela navbar, header ou sidebar) feche o painel lateral de forma limpa.
 
-### `src/pages/Cardapio.tsx` (linha 315-323)
-
-**Antes:**
 ```tsx
-<button onClick={() => isSimulating ? exitSimulation() : navigate('/profile')} className="cursor-pointer">
-  <Avatar ...>...</Avatar>
-</button>
+import { useLocation } from 'react-router-dom';
+
+// Dentro do componente:
+const location = useLocation();
+
+useEffect(() => {
+  if (isMobile) setSidebarOpen(false);
+}, [location.pathname, isMobile]);
 ```
 
-**Depois:**
-Substituir por um `DropdownMenu` com:
-- Item "Meu Perfil" (navega para `/profile` e sai da simulacao)
-- Submenu "Trocar Visao" com opcoes: Proprietario (`setViewAs(null)` + `navigate('/')`), Funcionario (`setViewAs('employee')` + `navigate('/')`), Cliente (mantem na pagina atual)
-- Item "Sair" (signOut)
+Remover o `useEffect` antigo que apenas reagia a `isMobile`, pois este novo cobre ambos os casos (mudanca de rota E mudanca de dispositivo).
 
-Importar `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent` dos componentes UI, e os icones `Eye`, `LogOut` do lucide-react.
+### 2. `src/components/layout/MobileBottomNav.tsx`
 
-## Detalhes tecnicos
+Adicionar uma prop `onCloseSidebar` e chamar antes de navegar, garantindo que a sidebar feche ANTES da navegacao para evitar qualquer flash visual:
 
-- Reutilizar o mesmo padrao visual do dropdown do `AppHeader.tsx`
-- A opcao ativa fica destacada com `bg-accent/20 font-semibold`
-- Manter o avatar visual identico (tamanho, borda dourada)
-- Ao trocar para Owner ou Employee, navegar para `/` (dashboard)
-- Ao trocar para Cliente, manter em `/cardapio`
+```tsx
+interface MobileBottomNavProps {
+  onOpenMore: () => void;
+  onCloseSidebar: () => void;
+}
+
+// No onClick de cada item:
+onClick={() => {
+  onCloseSidebar();
+  navigate(item.path);
+}}
+```
+
+### 3. `src/components/layout/AppLayout.tsx` (passagem da prop)
+
+Passar a nova prop para o componente:
+```tsx
+<MobileBottomNav
+  onOpenMore={() => setSidebarOpen(true)}
+  onCloseSidebar={() => setSidebarOpen(false)}
+/>
+```
+
+## Resultado
+
+- Navegar pela barra inferior fecha a sidebar instantaneamente (sem flash)
+- Navegar pela propria sidebar tambem fecha automaticamente (pelo useEffect de rota)
+- Transicoes limpas e fluidas entre paginas no mobile
