@@ -370,12 +370,33 @@
   .nav-icon-active {
     animation: nav-icon-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
+
+  /* ── Nav Spotlight Pulse ── */
+  .nav-spotlight {
+    animation: spotlight-pulse 2.5s ease-in-out infinite;
+  }
+
+  /* ── Nav Cinema Background Noise ── */
+  .nav-cinema-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
 }
 
 @keyframes nav-icon-pop {
   0% { transform: scale(0.85); }
   60% { transform: scale(1.08); }
   100% { transform: scale(1); }
+}
+
+@keyframes spotlight-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 @layer utilities {
