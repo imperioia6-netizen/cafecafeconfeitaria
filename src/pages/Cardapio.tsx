@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare, Package, ClipboardList, Truck, Hash } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
@@ -550,105 +550,136 @@ const Cardapio = () => {
       <Sheet open={checkoutOpen} onOpenChange={setCheckoutOpen}>
         <SheetContent
           side="right"
-          className="w-full max-w-md p-0 border-l border-gray-200 flex flex-col bg-white"
+          className="w-full max-w-md p-0 border-l border-border/40 flex flex-col bg-card"
         >
-          {/* Header */}
-          <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
+          {/* ── Header ── */}
+          <SheetHeader className="px-5 pt-6 pb-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#8B6914] flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5 text-white" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(36 70% 50% / 0.15), hsl(36 70% 50% / 0.25))' }}>
+                <ShoppingCart className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <SheetTitle className="text-xl font-bold text-gray-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <SheetTitle className="text-xl font-bold text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                   Meu Carrinho
                 </SheetTitle>
-                <p className="text-xs text-gray-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                   {cartCount} {cartCount === 1 ? 'item' : 'itens'}
                 </p>
               </div>
             </div>
           </SheetHeader>
+          <div className="mx-5 mt-4 separator-gradient" />
 
-          <ScrollArea className="flex-1 px-6">
-            <div className="py-5 space-y-6">
-              {/* Cart items */}
+          {/* ── Scrollable content ── */}
+          <ScrollArea className="flex-1">
+            <div className="px-5 py-5 space-y-6">
+
+              {/* ── Section: Cart Items ── */}
               <div>
-                <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Itens do Carrinho
-                </span>
-                <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package className="h-4 w-4 text-accent" />
+                  <span className="text-xs font-semibold uppercase tracking-widest text-accent" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Itens do Carrinho
+                  </span>
+                </div>
+                <div className="space-y-2.5">
                   {cart.map(item => (
-                    <div key={item.recipe_id} className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div key={item.recipe_id} className="relative flex items-center gap-3 bg-card border border-border/50 rounded-xl p-3.5 shadow-sm">
+                      {/* Remove button - top right */}
+                      <button
+                        onClick={() => setCart(prev => prev.filter(c => c.recipe_id !== item.recipe_id))}
+                        className="absolute top-2 right-2 p-0.5 rounded-full hover:bg-secondary/60 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+
+                      {/* Product image */}
+                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-secondary/50 flex-shrink-0">
                         {item.photo_url ? (
                           <img src={item.photo_url} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-50">🍰</div>
+                          <div className="w-full h-full flex items-center justify-center text-2xl bg-secondary/30">🍰</div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.name}</p>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0 pr-4">
+                        <p className="text-sm font-medium text-foreground truncate leading-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                          {item.name}
+                        </p>
                         {item.notes && (
-                          <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 truncate">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
                             <MessageSquare className="h-3 w-3 flex-shrink-0" />
                             {item.notes}
                           </p>
                         )}
-                        <p className="text-sm font-semibold text-[#8B6914] font-mono mt-0.5">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-sm font-semibold text-accent mt-1 font-mono-numbers">
+                          R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                        </p>
                       </div>
+
+                      {/* Quantity controls */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button onClick={() => removeFromCart(item.recipe_id)} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                          <Minus className="h-3 w-3 text-gray-600" />
+                        <button
+                          onClick={() => removeFromCart(item.recipe_id)}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center hover:bg-secondary/60 transition-colors"
+                        >
+                          <Minus className="h-3 w-3 text-muted-foreground" />
                         </button>
-                        <span className="text-sm font-bold w-5 text-center text-gray-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.quantity}</span>
-                        <button onClick={() => quickAddToCart({ id: item.recipe_id, name: item.name, sale_price: item.price, photo_url: item.photo_url })} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                          <Plus className="h-3 w-3 text-gray-600" />
+                        <span className="text-sm font-bold w-6 text-center text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => quickAddToCart({ id: item.recipe_id, name: item.name, sale_price: item.price, photo_url: item.photo_url })}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center hover:bg-secondary/60 transition-colors"
+                        >
+                          <Plus className="h-3 w-3 text-muted-foreground" />
                         </button>
                       </div>
-                      <button onClick={() => setCart(prev => prev.filter(c => c.recipe_id !== item.recipe_id))} className="p-1 rounded hover:bg-gray-100 transition-colors flex-shrink-0">
-                        <X className="h-4 w-4 text-gray-400" />
-                      </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Delivery address fields (only when delivery mode) */}
+              {/* ── Section: Delivery Address (delivery mode only) ── */}
               {deliveryMode === 'delivery' && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    Endereço de Entrega
-                  </span>
-                  <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="h-4 w-4 text-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-widest text-accent" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      Endereço de Entrega
+                    </span>
+                  </div>
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="address" className="text-xs text-gray-600">Endereço *</Label>
+                      <Label htmlFor="address" className="text-xs font-medium text-muted-foreground">Endereço *</Label>
                       <Input
                         id="address"
                         placeholder="Rua, Avenida..."
                         value={address}
                         onChange={e => setAddress(e.target.value)}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                        className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="addressNumber" className="text-xs text-gray-600">Número *</Label>
+                        <Label htmlFor="addressNumber" className="text-xs font-medium text-muted-foreground">Número *</Label>
                         <Input
                           id="addressNumber"
                           placeholder="123"
                           value={addressNumber}
                           onChange={e => setAddressNumber(e.target.value)}
-                          className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                          className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="addressComplement" className="text-xs text-gray-600">Complemento</Label>
+                        <Label htmlFor="addressComplement" className="text-xs font-medium text-muted-foreground">Complemento</Label>
                         <Input
                           id="addressComplement"
                           placeholder="Apto, Bloco..."
                           value={addressComplement}
                           onChange={e => setAddressComplement(e.target.value)}
-                          className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                          className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                         />
                       </div>
                     </div>
@@ -656,62 +687,71 @@ const Cardapio = () => {
                 </div>
               )}
 
-              {/* Pickup: order number */}
+              {/* ── Section: Pickup data (local mode) ── */}
               {deliveryMode === 'pickup' && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    Dados do Pedido
-                  </span>
-                  <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ClipboardList className="h-4 w-4 text-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-widest text-accent" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      Dados do Pedido
+                    </span>
+                  </div>
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="orderNumber" className="text-xs text-gray-600">Número da Comanda *</Label>
-                      <Input
-                        id="orderNumber"
-                        placeholder="Ex: 42"
-                        value={orderNumber}
-                        onChange={e => setOrderNumber(e.target.value)}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
-                      />
+                      <Label htmlFor="orderNumber" className="text-xs font-medium text-muted-foreground">Número da Comanda *</Label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                        <Input
+                          id="orderNumber"
+                          placeholder="Ex: 42"
+                          value={orderNumber}
+                          onChange={e => setOrderNumber(e.target.value)}
+                          className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 pl-9 focus:border-accent/40 focus:ring-accent/10"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="name" className="text-xs text-gray-600">Nome *</Label>
+                      <Label htmlFor="name" className="text-xs font-medium text-muted-foreground">Nome *</Label>
                       <Input
                         id="name"
                         placeholder="Seu nome"
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                        className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Delivery: customer data with required phone */}
+              {/* ── Section: Customer data (delivery mode) ── */}
               {deliveryMode === 'delivery' && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    Dados do Cliente
-                  </span>
-                  <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UserCircle className="h-4 w-4 text-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-widest text-accent" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      Dados do Cliente
+                    </span>
+                  </div>
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="name" className="text-xs text-gray-600">Nome *</Label>
+                      <Label htmlFor="name" className="text-xs font-medium text-muted-foreground">Nome *</Label>
                       <Input
                         id="name"
                         placeholder="Seu nome"
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                        className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="phone" className="text-xs text-gray-600">Telefone *</Label>
+                      <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground">Telefone *</Label>
                       <Input
                         id="phone"
                         placeholder="(11) 99999-9999"
                         value={customerPhone}
                         onChange={e => setCustomerPhone(e.target.value)}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                        className="h-11 rounded-xl bg-secondary/30 border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:border-accent/40 focus:ring-accent/10"
                       />
                     </div>
                   </div>
@@ -720,29 +760,47 @@ const Cardapio = () => {
             </div>
           </ScrollArea>
 
-          {/* Footer - Total & CTA */}
-          <div className="px-6 py-5 border-t border-gray-100 space-y-4 bg-white">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-gray-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>Total</span>
-              <span className="text-2xl font-bold text-[#8B6914] font-mono">
-                R$ {cartTotal.toFixed(2).replace('.', ',')}
-              </span>
+          {/* ── Footer: Total & CTA ── */}
+          <div className="bg-card">
+            <div className="mx-5 separator-gradient" />
+            <div className="px-5 py-5 space-y-4">
+              {/* Subtotal per item */}
+              <div className="space-y-1.5">
+                {cart.map(item => (
+                  <div key={item.recipe_id} className="flex justify-between text-xs text-muted-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    <span className="truncate max-w-[60%]">{item.quantity}× {item.name}</span>
+                    <span className="font-mono-numbers">R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total */}
+              <div className="flex justify-between items-center">
+                <span className="text-base font-bold text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>Total</span>
+                <span className="text-2xl font-bold text-accent font-mono-numbers">
+                  R$ {cartTotal.toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={handleSubmitOrder}
+                disabled={sending || !customerName.trim() || (deliveryMode === 'pickup' && !orderNumber.trim()) || (deliveryMode === 'delivery' && (!customerPhone.trim() || !address.trim() || !addressNumber.trim()))}
+                className="w-full h-12 rounded-full font-semibold text-white text-base hover:brightness-110 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #8B6914, #A67C00)' }}
+              >
+                {sending ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : 'Finalizar Pedido'}
+              </button>
+
+              {/* Clear cart */}
+              <button
+                onClick={() => { setCart([]); setCheckoutOpen(false); }}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Limpar carrinho
+              </button>
             </div>
-            <Button
-              onClick={handleSubmitOrder}
-              disabled={sending || !customerName.trim() || (deliveryMode === 'pickup' && !orderNumber.trim()) || (deliveryMode === 'delivery' && (!customerPhone.trim() || !address.trim() || !addressNumber.trim()))}
-              className="w-full rounded-full h-12 text-base font-semibold text-white hover:brightness-110 transition-all"
-              style={{ backgroundColor: '#8B6914' }}
-            >
-              {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Finalizar Pedido'}
-            </Button>
-            <button
-              onClick={() => { setCart([]); setCheckoutOpen(false); }}
-              className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Limpar carrinho
-            </button>
           </div>
         </SheetContent>
       </Sheet>
