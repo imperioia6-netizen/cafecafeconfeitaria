@@ -364,43 +364,40 @@ const Orders = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title">Cardápio</h1>
-            <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Monte o pedido do cliente</p>
+            <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">
+              {editingOrder
+                ? `Editando Pedido #${editingOrder.order_number || editingOrder.id.slice(0, 4)}`
+                : 'Monte o pedido do cliente'}
+            </p>
           </div>
-          {openOrders && openOrders.length > 0 && (
+          {openOrders && openOrders.length > 0 && !editingOrder && (
             <Badge className="text-xs px-3 py-1.5 rounded-full font-semibold" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}>
               {openOrders.length} pedido{openOrders.length > 1 ? 's' : ''} aberto{openOrders.length > 1 ? 's' : ''}
             </Badge>
           )}
         </div>
 
-        {/* Order metadata bar */}
-        <div className="glass-card rounded-2xl p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />Comanda</Label>
-              <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº comanda" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} maxLength={20} />
+        {/* Editing banner */}
+        {editingOrder && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Pencil className="h-4 w-4 text-accent" />
+              <span className="font-medium text-foreground">
+                Adicionando itens ao pedido
+                {editingOrder.order_number ? ` #${editingOrder.order_number}` : ''}
+                {editingOrder.customer_name ? ` · ${editingOrder.customer_name}` : ''}
+              </span>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Mesa</Label>
-              <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº mesa" value={tableNumber} onChange={e => setTableNumber(e.target.value)} maxLength={10} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />Cliente</Label>
-              <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nome do cliente" value={customerName} onChange={e => setCustomerName(e.target.value)} maxLength={100} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground">Canal</Label>
-              <Select value={channel} onValueChange={setChannel}>
-                <SelectTrigger className="h-9 rounded-xl border-border/30 bg-background/50"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Constants.public.Enums.sales_channel.filter(c => c !== 'ifood').map(c => (
-                    <SelectItem key={c} value={c}>{channelLabels[c]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-destructive/70 hover:text-destructive rounded-lg gap-1 shrink-0"
+              onClick={() => { setEditingOrder(null); setCart([]); setOrderNumber(''); setTableNumber(''); setCustomerName(''); }}
+            >
+              <X className="h-3.5 w-3.5" /> Cancelar
+            </Button>
           </div>
-        </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -677,16 +674,14 @@ const Orders = () => {
       {/* ===== FLOATING CART BAR (portal to escape transform context) ===== */}
       {cart.length > 0 && createPortal(
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
-          <div
-            className="rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-3 py-3 md:px-5 md:py-3.5 flex items-center justify-between gap-4"
+          <button
+            onClick={() => setCartSheetOpen(true)}
+            className="w-full rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-4 py-3 md:px-5 md:py-3.5 flex items-center justify-between gap-4 transition-all hover:shadow-3xl active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.95))' }}
           >
-            <button
-              onClick={() => setCartSheetOpen(true)}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
+            <div className="flex items-center gap-3">
               <div
-                className="h-9 w-9 rounded-full flex items-center justify-center text-primary-foreground relative"
+                className="h-9 w-9 rounded-full flex items-center justify-center text-primary-foreground relative shrink-0"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
               >
                 <ShoppingCart className="h-5 w-5" />
@@ -698,38 +693,22 @@ const Orders = () => {
                 <p className="text-xs text-muted-foreground">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</p>
                 <p className="font-bold font-mono-numbers text-sm md:text-base text-foreground">R$ {cartTotal.toFixed(2)}</p>
               </div>
-            </button>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-xl text-xs gap-1"
-                onClick={() => setCartSheetOpen(true)}
-              >
-                <Eye className="h-3.5 w-3.5" /> Ver
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-xl text-xs gap-1.5 px-3 md:px-5 text-primary-foreground"
-                style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
-                onClick={handleCreateOrder}
-                disabled={createOrder.isPending}
-              >
-                {(createOrder.isPending || addOrderItem.isPending) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                {editingOrder ? `Adicionar ao Pedido #${editingOrder.order_number || editingOrder.id.slice(0, 4)}` : 'Criar Pedido'}
-              </Button>
-              {editingOrder && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-xl text-xs gap-1 text-destructive/70 hover:text-destructive"
-                  onClick={() => { setEditingOrder(null); setCart([]); setOrderNumber(''); setTableNumber(''); setCustomerName(''); }}
-                >
-                  <X className="h-3.5 w-3.5" /> Cancelar
-                </Button>
-              )}
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              {editingOrder && (
+                <Badge variant="outline" className="text-[10px] border-accent/40 text-accent font-semibold rounded-full">
+                  Editando #{editingOrder.order_number || editingOrder.id.slice(0, 4)}
+                </Badge>
+              )}
+              <span
+                className="inline-flex items-center gap-1.5 rounded-xl text-xs font-semibold px-4 py-2 text-primary-foreground"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                {editingOrder ? 'Ver Itens' : 'Ver Carrinho'}
+              </span>
+            </div>
+          </button>
         </div>,
         document.body
       )}
@@ -911,6 +890,42 @@ const Orders = () => {
                 ))}
               </div>
             )}
+
+            {/* ===== DADOS DO PEDIDO (metadata section) ===== */}
+            {cart.length > 0 && !editingOrder && (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border/20" />
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Dados do Pedido</span>
+                  <div className="h-px flex-1 bg-border/20" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />Comanda</Label>
+                    <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} maxLength={20} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Mesa</Label>
+                    <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº" value={tableNumber} onChange={e => setTableNumber(e.target.value)} maxLength={10} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />Cliente</Label>
+                    <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nome" value={customerName} onChange={e => setCustomerName(e.target.value)} maxLength={100} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Canal</Label>
+                    <Select value={channel} onValueChange={setChannel}>
+                      <SelectTrigger className="h-9 rounded-xl border-border/30 bg-background/50 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Constants.public.Enums.sales_channel.filter(c => c !== 'ifood').map(c => (
+                          <SelectItem key={c} value={c}>{channelLabels[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
           </ScrollArea>
 
           {cart.length > 0 && (
@@ -923,18 +938,28 @@ const Orders = () => {
                 className="w-full h-12 rounded-xl text-sm font-semibold gap-2 text-primary-foreground"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
                 onClick={handleCreateOrder}
-                disabled={createOrder.isPending}
+                disabled={createOrder.isPending || addOrderItem.isPending}
               >
-                {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Criar Pedido
+                {(createOrder.isPending || addOrderItem.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {editingOrder ? `Adicionar ao Pedido #${editingOrder.order_number || editingOrder.id.slice(0, 4)}` : 'Criar Pedido'}
               </Button>
-              <Button
-                variant="ghost"
-                className="w-full text-xs text-destructive/70 hover:text-destructive rounded-xl"
-                onClick={() => { setCart([]); setCartSheetOpen(false); }}
-              >
-                <Trash2 className="h-3 w-3 mr-1" /> Limpar tudo
-              </Button>
+              {editingOrder ? (
+                <Button
+                  variant="ghost"
+                  className="w-full text-xs text-destructive/70 hover:text-destructive rounded-xl"
+                  onClick={() => { setEditingOrder(null); setCart([]); setOrderNumber(''); setTableNumber(''); setCustomerName(''); setCartSheetOpen(false); }}
+                >
+                  <X className="h-3 w-3 mr-1" /> Cancelar edição
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  className="w-full text-xs text-destructive/70 hover:text-destructive rounded-xl"
+                  onClick={() => { setCart([]); setCartSheetOpen(false); }}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Limpar tudo
+                </Button>
+              )}
             </div>
           )}
         </SheetContent>
