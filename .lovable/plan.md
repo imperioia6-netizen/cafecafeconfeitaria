@@ -1,61 +1,51 @@
 
 
-# Reorganizar a Area de Criar Pedido
+# Corrigir Layout Mobile do Carrinho e Pedidos
 
-## Problema Atual
+## Problemas Identificados
 
-A area de criacao de pedido tem os campos de metadados (comanda, mesa, cliente, canal) soltos acima das abas, a barra flutuante do carrinho esta visualmente carregada com muitos elementos, e o fluxo geral carece de hierarquia clara e organizacao.
+1. O Sheet do carrinho ocupa apenas 75% da largura no mobile (classe padrao `w-3/4`), cortando textos e precos
+2. O preco dos itens fica cortado/truncado por falta de espaco
+3. A barra flutuante do carrinho aparece por tras do Sheet aberto
+4. Os botoes "Editar" e "Remover" dentro do Sheet sao muito pequenos para toque mobile
+5. O Sheet nao usa largura total no mobile como deveria em um app mobile-first
 
 ## Solucao
 
-Reestruturar o fluxo em 3 zonas visuais bem definidas com hierarquia clara.
-
 ### Arquivo: `src/pages/Orders.tsx`
 
-**1. Mover metadados do pedido para dentro do Cart Sheet**
+**1. Sheet do carrinho com largura total no mobile**
 
-Os campos Comanda, Mesa, Cliente e Canal saem do topo da pagina e vao para o Sheet do carrinho, aparecendo como uma secao "Dados do Pedido" entre os itens e o botao de confirmar. Isso limpa o topo e agrupa toda informacao do pedido em um unico lugar logico.
+Alterar a classe do `SheetContent` (linha 825) para ocupar 100% da largura no mobile:
+- De: `className="sm:max-w-md flex flex-col p-0"`
+- Para: `className="w-full sm:max-w-md flex flex-col p-0"`
 
-**2. Simplificar a barra flutuante do carrinho**
+**2. Esconder barra flutuante quando o Sheet esta aberto**
 
-A barra flutuante fica mais compacta e limpa:
-- Lado esquerdo: icone carrinho com badge de quantidade + valor total
-- Lado direito: apenas botao "Ver Carrinho" (quando nao esta editando) ou "Adicionar ao Pedido #X" (quando editando)
-- Remover o botao "Ver" separado (redundante)
-- Botao de cancelar edicao fica dentro do Sheet, nao na barra
+Na condicao do portal da barra flutuante (linha 675), adicionar `&& !cartSheetOpen` para que a barra desapareca quando o Sheet esta visivel, evitando sobreposicao.
 
-**3. Reorganizar o Cart Sheet com secoes claras**
+**3. Melhorar layout dos itens no Sheet para mobile**
 
-O Sheet do carrinho fica dividido em secoes com separadores visuais:
-- Secao 1: Lista de itens (com foto, nome, qty, preco, editar/remover)
-- Secao 2: "Dados do Pedido" - campos Comanda, Mesa, Cliente, Canal em grid 2x2 compacto com icones
-- Secao 3: Rodape fixo com total + botao "Criar Pedido" / "Adicionar ao Pedido"
+- Itens do carrinho (linhas 844-889): reorganizar para que o preco fique abaixo do nome em vez de ao lado quando o espaco e limitado
+- Trocar `justify-between` por layout empilhado no mobile
+- Aumentar alvos de toque dos botoes Editar/Remover para min 44px de altura
+- Usar `flex-wrap` onde necessario para evitar truncamento
 
-**4. Header da pagina mais limpo**
+**4. Ajustar footer do Sheet**
 
-- Titulo simplificado sem badge de pedidos abertos no topo (ja aparece na aba)
-- Subtitulo contextual: "Monte o pedido do cliente" (normal) ou "Editando Pedido #X" (modo edicao) com destaque visual
+- Garantir que o total e o botao "Criar Pedido" / "Adicionar ao Pedido" tenham padding seguro para evitar area do gesto do iOS (safe-area-inset)
+- Adicionar `pb-safe` ou padding extra no footer
+
+**5. Secao "Dados do Pedido" mais compacta no mobile**
+
+- Os inputs do grid 2x2 (linhas 902-926) ficam com labels menores
+- Garantir que o Select de canal nao quebre o layout
 
 ### Detalhes Tecnicos
 
-**Barra flutuante (linhas 678-735):**
-- Remover botao "Ver" separado
-- Ao clicar em qualquer parte da barra, abre o Sheet
-- Botao principal unico: "Ver Carrinho" ou "Adicionar ao Pedido #X"
-- Quando editando, mostrar badge visual "Editando #X" na barra
-
-**Cart Sheet (linhas 844-941):**
-- Adicionar secao de metadados (comanda, mesa, cliente, canal) com grid 2x2 abaixo dos itens
-- Mover campos que estavam nas linhas 377-403 para dentro do Sheet
-- Campos compactos com icones inline e labels menores
-- Secao com titulo "Dados do Pedido" e separador visual
-
-**Topo da pagina (linhas 362-403):**
-- Remover o bloco glass-card com os 4 campos de metadados
-- Manter apenas titulo + badge de pedidos abertos
-- Quando editando, mostrar banner informativo com nome/numero do pedido sendo editado e botao de cancelar edicao
-
-**Botao cancelar edicao:**
-- Mover de dentro da barra flutuante para o Sheet do carrinho (no rodape, como link "Cancelar edicao")
-- Tambem disponivel no banner de edicao no topo
+- `SheetContent`: adicionar `w-full` para override do `w-3/4` padrao no mobile
+- Barra flutuante: condicao muda de `cart.length > 0` para `cart.length > 0 && !cartSheetOpen`
+- Botoes Editar/Remover no Sheet: `h-7` sobe para `h-9` com `min-h-[44px]` para compliance de toque
+- Item card no Sheet: preco move para linha separada em telas pequenas usando `flex-col` no container principal
+- Footer do Sheet: adicionar `pb-[env(safe-area-inset-bottom)]` para iPhones com barra home
 
