@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
         customer_phone: customer_phone?.trim() || null,
         channel: "cardapio_digital",
         status: "aberto",
+        delivery_status: "recebido",
       })
       .select()
       .single();

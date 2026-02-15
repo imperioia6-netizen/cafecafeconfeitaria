@@ -174,6 +174,30 @@ export function useFinalizeOrder() {
   });
 }
 
+export function useUpdateDeliveryStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      delivery_status: string;
+      estimated_delivery_minutes?: number;
+      delivery_started_at?: string | null;
+    }) => {
+      const update: Record<string, any> = { delivery_status: input.delivery_status };
+      if (input.estimated_delivery_minutes !== undefined)
+        update.estimated_delivery_minutes = input.estimated_delivery_minutes;
+      if (input.delivery_started_at !== undefined)
+        update.delivery_started_at = input.delivery_started_at;
+      const { error } = await supabase
+        .from('orders')
+        .update(update)
+        .eq('id', input.orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+  });
+}
+
 export function useCancelOrder() {
   const qc = useQueryClient();
   return useMutation({
