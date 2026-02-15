@@ -1,44 +1,104 @@
 
 
-# Transicao Direta com Conteudo Surgindo (Sem Skeleton)
+# Reorganizacao Mobile + Sidebar Original + Toggle Claro/Escuro
 
-## Problema
+## Problemas Identificados
 
-Ao navegar entre paginas, aparece um skeleton loader generico em vez do conteudo real surgindo de forma animada. O usuario quer ver os proprios cards/elementos da pagina aparecendo com animacao, como um app nativo.
+1. **Tabs cortadas no mobile** -- As abas (Producao, CRM, Estoque, etc.) transbordam a tela e ficam mal enquadradas, com texto e icones cortados nas bordas
+2. **Sidebar "Mais" (grid)** -- Os quadros do menu grid nao preenchem a tela de forma equilibrada
+3. **Painel do carrinho (Cardapio)** -- Elementos desalinhados no mobile
+4. **Falta toggle claro/escuro** no header
 
 ## Solucao
 
-Remover o skeleton loader intermediario e fazer uma transicao direta: o conteudo antigo sai rapidamente e o novo conteudo entra com fade-in + slide-up suave. O efeito final e os quadros/cards da pagina "surgindo" naturalmente.
+### 1. Tabs Responsivas no Mobile (global)
 
-## Como vai funcionar
+Todas as paginas que usam tabs customizadas (Production, CRM, SmartHub, Inventory) serao ajustadas para o mobile:
 
-1. Usuario clica em uma opcao da nav
-2. Conteudo atual desaparece instantaneamente
-3. Novo conteudo entra com fade-in + translateY (de baixo para cima) em ~300ms
-4. Sem skeleton, sem loading bar -- transicao limpa e direta
+- No mobile, as tabs mudam para **scroll horizontal com snap** dentro de um container com padding lateral
+- Tamanho reduzido: `px-3 py-1.5 text-xs` no mobile, mantendo `px-5 py-2 text-sm` no desktop
+- Icones menores no mobile (`h-3 w-3`)
+- Container com `overflow-x-auto no-scrollbar` e `scroll-snap-type: x mandatory`
+
+**Arquivos afetados:**
+- `src/pages/Production.tsx` -- tabs Producao/Promocoes/Relatorios
+- `src/pages/Crm.tsx` -- tabs Clientes/Pipeline/Aniversarios/Reativacao/Config
+- `src/pages/Inventory.tsx` -- tabs Estoque/Vitrine/Alertas
+- `src/pages/SmartHub.tsx` -- tabs Promocoes/Relatorios
+
+### 2. Sidebar Revertida ao Estilo Original
+
+Reverter o `AppSidebar.tsx` para usar a versao **lista vertical** tanto no desktop quanto no mobile (Sheet), removendo o grid de icones que foi adicionado recentemente. O mobile usara o mesmo `DesktopSidebarContent` dentro do Sheet, com ajustes de padding.
+
+**Arquivo:** `src/components/layout/AppSidebar.tsx`
+
+### 3. Toggle Claro/Escuro no Header
+
+Adicionar um botao toggle (icone Sol/Lua) ao lado esquerdo do sino de notificacoes no `AppHeader.tsx`. O toggle alternara a classe `dark` no elemento `<html>`, persistindo a preferencia no `localStorage`.
+
+**Arquivo:** `src/components/layout/AppHeader.tsx`
+
+### 4. Cardapio -- Melhor Enquadramento Mobile
+
+Ajustar o painel do carrinho (Sheet) e o header do cardapio para melhor alinhamento no mobile:
+- Padding interno consistente
+- Botoes e inputs com tamanho adequado ao toque
+
+**Arquivo:** `src/pages/Cardapio.tsx`
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/components/layout/PageTransition.tsx`
+### Tabs Responsivas -- Padrao CSS
 
-Simplificar o componente removendo os estados `exiting` e `loading` com skeleton. Usar apenas dois estados:
+Adicionar ao `src/index.css` uma classe utilitaria para tabs mobile:
 
-- **`entering`**: novo conteudo aparece com animacao CSS (opacity 0 -> 1, translateY 8px -> 0)
-- **`idle`**: conteudo visivel normalmente
-
-Ao detectar mudanca de rota via `useLocation()`, trocar imediatamente o conteudo e aplicar a classe de animacao `animate-fade-in` por ~300ms.
-
-Remover completamente o componente `SkeletonLoader` interno.
-
-```text
-[Click] -> entering (swap + fade-in 300ms) -> idle
+```css
+@media (max-width: 767px) {
+  .mobile-tabs {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-tabs > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
 ```
 
-Resultado: transicao instantanea com os proprios elementos da pagina surgindo suavemente, sem intermediario artificial.
+Cada pagina aplicara classes responsivas nas TabsTrigger: `px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm` e nos icones `h-3 w-3 md:h-3.5 md:w-3.5`.
 
-| Arquivo | Acao |
+### Toggle Claro/Escuro
+
+```tsx
+// No AppHeader.tsx
+const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+const toggleTheme = () => {
+  const next = !dark;
+  setDark(next);
+  document.documentElement.classList.toggle('dark', next);
+  localStorage.setItem('theme', next ? 'dark' : 'light');
+};
+```
+
+Icone: `Sun` quando escuro (clica para clarear), `Moon` quando claro (clica para escurecer). Posicionado imediatamente antes do sino de notificacoes.
+
+### Sidebar Revertida
+
+Remover o componente `MobileSidebarContent` com grid e reutilizar `DesktopSidebarContent` para ambos os casos (desktop e mobile Sheet), simplificando o codigo.
+
+## Resumo de Arquivos
+
+| Arquivo | Mudanca |
 |---|---|
-| `src/components/layout/PageTransition.tsx` | Simplificar para transicao direta sem skeleton |
+| `src/index.css` | Classe utilitaria mobile-tabs |
+| `src/components/layout/AppHeader.tsx` | Toggle claro/escuro + icone Sun/Moon |
+| `src/components/layout/AppSidebar.tsx` | Reverter para lista vertical no mobile |
+| `src/pages/Production.tsx` | Tabs responsivas |
+| `src/pages/Crm.tsx` | Tabs responsivas |
+| `src/pages/Inventory.tsx` | Tabs responsivas |
+| `src/pages/SmartHub.tsx` | Tabs responsivas |
+| `src/pages/Cardapio.tsx` | Ajustes de padding/alinhamento mobile |
 
-1 arquivo, logica mais simples.
+8 arquivos, mudancas focadas em responsividade e UX mobile.
 
