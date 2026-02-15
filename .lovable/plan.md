@@ -1,31 +1,54 @@
 
 
-# Dashboard Mobile -- Cards em Coluna Unica (Estilo Referencia)
+# Transicao Suave entre Paginas
 
-## O que muda
+## Problema
 
-A imagem de referencia mostra os KPI cards empilhados em **1 coluna** no mobile (full-width), com layout interno diferente do atual:
+Ao navegar entre paginas pela bottom nav ou sidebar, o conteudo muda abruptamente causando um "salto" visual desagradavel -- as dimensoes do layout anterior desaparecem e o novo conteudo surge sem transicao.
 
-- Icone + Titulo na mesma linha (topo)
-- "Hoje:" com valor grande abaixo
-- Linha separadora horizontal
-- "7 dias:" e "30 dias:" como linhas com menu "..." a direita
+## Solucao
+
+Criar um componente `PageTransition` que detecta mudancas de rota e aplica uma animacao de fade-out/fade-in rapida (150ms), dando a sensacao de um app nativo e fluido.
+
+## Como vai funcionar
+
+1. Quando o usuario clica em uma opcao de navegacao, o conteudo atual faz um **fade-out rapido** (opacity 1 para 0 + leve translate-y)
+2. Um **skeleton loader** minimo aparece por ~150ms (apenas um shimmer sutil, nao um loading pesado)
+3. O novo conteudo entra com **fade-in suave** (opacity 0 para 1)
+
+O resultado e uma transicao imperceptivelmente rapida, mas que elimina completamente o salto visual.
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/pages/Index.tsx`
+### 1. Novo componente: `src/components/layout/PageTransition.tsx`
 
-**1. Grid dos KPIs (linha 141)**
-- De: `grid-cols-2 lg:grid-cols-4`
-- Para: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
+- Usa `useLocation()` do react-router para detectar mudanca de rota
+- Ao mudar a rota, alterna estado `transitioning` para `true` por ~120ms
+- Durante a transicao: aplica `opacity-0 translate-y-1` no conteudo
+- Depois: `opacity-100 translate-y-0` com `transition-all duration-200`
+- Nao usa nenhuma lib externa, apenas CSS transitions
 
-**2. KpiCard component (linhas 28-80)**
-Reestruturar o layout interno para:
-- Topo: icone + titulo
-- "Hoje:" label + valor grande
-- Divider horizontal (`border-t`)
-- "7 dias:" com valor + icone MoreVertical
-- "30 dias:" com valor + icone MoreVertical
+```text
+Fluxo:
+[Click nav] -> [fade-out 100ms] -> [mount nova pagina] -> [fade-in 150ms]
+```
 
-Isso replica fielmente o estilo da imagem de referencia, onde cada card ocupa a largura toda da tela no mobile e mostra os dados de forma clara e organizada com separadores visuais.
+### 2. Modificar: `src/components/layout/AppLayout.tsx`
+
+- Envolver `{children}` com o componente `PageTransition`
+- Remover o `animate-fade-in` atual do `<main>` (conflita com a nova transicao)
+
+### 3. Modificar: `src/pages/Cardapio.tsx`
+
+- O Cardapio nao usa AppLayout, entao adicionar o mesmo efeito de fade-in no mount
+
+### Arquivos
+
+| Arquivo | Acao |
+|---|---|
+| `src/components/layout/PageTransition.tsx` | Criar (novo componente) |
+| `src/components/layout/AppLayout.tsx` | Envolver children com PageTransition, remover animate-fade-in duplicado |
+| `src/pages/Cardapio.tsx` | Adicionar fade-in no mount |
+
+Total: 1 arquivo novo, 2 arquivos modificados. Solucao leve, sem dependencias extras.
 
