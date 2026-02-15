@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { customer_name, customer_phone, items } = await req.json();
+    const { customer_name, customer_phone, items, order_number: clientOrderNumber } = await req.json();
 
     if (!customer_name || typeof customer_name !== "string" || customer_name.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Nome do cliente é obrigatório" }), {
@@ -67,8 +67,10 @@ Deno.serve(async (req) => {
     // Build price map from server data
     const priceMap = new Map(recipes.map((r) => [r.id, Number(r.sale_price)]));
 
-    // Generate a simple order number
-    const orderNumber = `CD-${Date.now().toString(36).toUpperCase()}`;
+    // Use client-provided order number (comanda) or generate one
+    const orderNumber = (typeof clientOrderNumber === "string" && clientOrderNumber.trim().length > 0)
+      ? clientOrderNumber.trim()
+      : `CD-${Date.now().toString(36).toUpperCase()}`;
 
     // Create the order - use a system UUID for operator_id since there's no logged-in user
     const systemOperatorId = "00000000-0000-0000-0000-000000000000";
