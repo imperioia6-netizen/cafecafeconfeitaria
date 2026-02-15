@@ -153,7 +153,17 @@ const Cardapio = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background hero-gradient text-foreground pb-24 pt-[73px]">
+    <div className={`min-h-screen bg-background hero-gradient text-foreground pb-24 ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
+      {/* Simulation top bar */}
+      {isSimulating && (
+        <div className="fixed top-0 left-0 right-0 h-8 bg-warning z-[60] flex items-center justify-center">
+          <span className="text-warning-foreground text-xs font-semibold">Visão: Cliente</span>
+          <button onClick={exitSimulation} className="absolute right-3 text-warning-foreground hover:opacity-70 transition-opacity">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Banner logo */}
       <div className="bg-black py-6 md:py-8">
         <img
@@ -163,21 +173,9 @@ const Cardapio = () => {
         />
         <div className="mt-4 h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--accent)), transparent)' }} />
       </div>
-      {/* Simulation badge */}
-      {isSimulating && (
-        <div className="fixed top-3 right-3 z-[60]">
-          <button
-            onClick={exitSimulation}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning text-warning-foreground text-xs font-semibold shadow-lg hover:brightness-110 transition-all"
-          >
-            Visão: Cliente
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
 
       {/* Header - dark cinematic */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-sidebar-border shadow-lg" style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
+      <header className={`fixed ${isSimulating ? 'top-8' : 'top-0'} left-0 right-0 z-50 border-b border-sidebar-border shadow-lg`} style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Playfair Display', serif" }}>
             🍰 Cardápio
@@ -223,7 +221,7 @@ const Cardapio = () => {
       </header>
 
       {/* Categories section */}
-      <section className="sticky top-[73px] z-40 bg-background/90 backdrop-blur-xl border-b border-border/50">
+      <section className={`sticky ${isSimulating ? 'top-[105px]' : 'top-[73px]'} z-40 bg-background/90 backdrop-blur-xl border-b border-border/50`}>
         <div className="max-w-7xl mx-auto px-4 py-4">
           <h2 className="text-lg font-semibold mb-3 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
             Nossos Produtos
