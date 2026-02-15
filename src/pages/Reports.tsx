@@ -2,7 +2,7 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, DollarSign, ShoppingCart, Clock } from 'lucide-react';
 import { usePeriodReport, useProductionVsSales } from '@/hooks/useReports';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -33,15 +33,20 @@ const PeriodTab = ({ days }: { days: number }) => {
       {/* KPI cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Faturamento', value: `R$ ${data.currentTotal.toFixed(2)}`, trend: data.growth },
-          { label: 'Vendas', value: String(data.salesCount) },
-          { label: 'Ticket Médio', value: `R$ ${data.avgTicket.toFixed(2)}` },
-          { label: 'Período Anterior', value: `R$ ${data.prevTotal.toFixed(2)}`, muted: true },
+          { label: 'Faturamento', value: `R$ ${data.currentTotal.toFixed(2)}`, trend: data.growth, icon: DollarSign },
+          { label: 'Vendas', value: String(data.salesCount), icon: ShoppingCart },
+          { label: 'Ticket Médio', value: `R$ ${data.avgTicket.toFixed(2)}`, icon: TrendingUp },
+          { label: 'Período Anterior', value: `R$ ${data.prevTotal.toFixed(2)}`, muted: true, icon: Clock },
         ].map((kpi, i) => (
           <div key={kpi.label} className="card-cinematic shine-effect gradient-border rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="p-5 relative z-10">
-              <p className="text-xs text-muted-foreground uppercase tracking-[0.15em]">{kpi.label}</p>
-              <p className={`text-2xl font-bold font-mono-numbers mt-1 ${kpi.muted ? 'text-muted-foreground' : ''}`}>{kpi.value}</p>
+            <div className="p-5 space-y-3 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-xl p-2.5 bg-primary/10">
+                  <kpi.icon className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">{kpi.label}</span>
+              </div>
+              <p className={`text-2xl font-bold font-mono-numbers ${kpi.muted ? 'text-muted-foreground' : ''}`}>{kpi.value}</p>
               {kpi.trend !== undefined && (
                 <div className="flex items-center gap-1 mt-1.5">
                   {kpi.trend >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}

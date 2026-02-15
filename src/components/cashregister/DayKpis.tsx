@@ -1,4 +1,3 @@
-import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, TrendingUp, Lock } from 'lucide-react';
 import { useDaySummary } from '@/hooks/useCashRegister';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,23 +15,23 @@ export default function DayKpis() {
   return (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {kpis.map((kpi, i) => (
-        <Card key={kpi.key} className="card-premium opacity-0 animate-fade-in" style={{ animationDelay: `${i * 60}ms` }}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <kpi.icon className="h-5 w-5 text-primary" />
+        <div key={kpi.key} className="card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in" style={{ animationDelay: `${i * 60}ms` }}>
+          <div className="p-5 space-y-3 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="rounded-xl p-2.5 bg-primary/10">
+                <kpi.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">{kpi.label}</span>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground truncate">{kpi.label}</p>
-              {isLoading ? (
-                <Skeleton className="h-6 w-20 mt-0.5" />
-              ) : (
-                <p className="text-lg font-bold font-mono-numbers truncate">
-                  {kpi.format(data?.[kpi.key] ?? 0)}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 mt-1" />
+            ) : (
+              <p className="text-2xl font-bold font-mono-numbers">
+                {kpi.format(data?.[kpi.key] ?? 0)}
+              </p>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );
