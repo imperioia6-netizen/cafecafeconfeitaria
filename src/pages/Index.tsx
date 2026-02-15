@@ -43,8 +43,11 @@ const KpiCard = ({
     <div
       className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in ${delay} ${isFirst ? 'border-shine' : ''}`}
       style={isFirst ? {
-        background: 'linear-gradient(135deg, hsl(24 60% 20%), hsl(24 50% 14%))',
+        background: 'linear-gradient(135deg, hsl(24 60% 22%), hsl(24 55% 16%) 50%, hsl(24 45% 11%))',
         color: 'hsl(36 40% 95%)',
+        border: '1px solid hsl(36 70% 50% / 0.2)',
+        boxShadow: '0 8px 32px hsl(24 40% 8% / 0.5), 0 2px 8px hsl(24 30% 10% / 0.3), 0 0 20px hsl(36 70% 50% / 0.08)',
+        transform: 'translateY(-2px)',
       } : undefined}
     >
       <div className="p-3 md:p-5 relative z-10">
