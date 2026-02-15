@@ -60,7 +60,7 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
   const alertCount = alerts?.length ?? 0;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-2 md:py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 md:py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
       <div className="flex items-center gap-3 min-w-0">
@@ -74,7 +74,7 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
         </button>
 
         <div className="animate-fade-in min-w-0">
-          <h2 className="text-base md:text-xl font-bold tracking-tight truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-lg md:text-xl font-bold tracking-tight truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {isMobile ? (
               <span className="text-gradient-gold">{firstName}</span>
             ) : (
@@ -93,7 +93,7 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4 shrink-0">
+      <div className="flex items-center gap-3 md:gap-4 shrink-0">
         {/* Simulated view badge */}
         {viewAs && (
           <Badge
@@ -129,11 +129,11 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
         {/* Notifications bell */}
         <button
           onClick={() => navigate('/alerts')}
-          className="relative p-2 rounded-xl transition-all duration-300 hover:bg-muted/50 hover:shadow-md"
+          className="relative p-2.5 rounded-xl transition-all duration-300 hover:bg-muted/50 active:scale-90"
         >
-          <Bell className="h-5 w-5 text-muted-foreground" />
+          <Bell className="h-[22px] w-[22px] text-muted-foreground" />
           {alertCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-glow-pulse">
+            <span className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-glow-pulse">
               {alertCount > 9 ? '9+' : alertCount}
             </span>
           )}
@@ -144,8 +144,8 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 group outline-none">
               <div className="relative">
-                <Avatar className="h-8 w-8 md:h-9 md:w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs md:text-sm font-bold">
+                <Avatar className="h-9 w-9 md:h-9 md:w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
