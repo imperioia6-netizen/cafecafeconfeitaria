@@ -1,84 +1,104 @@
 
-# Dark Mode: Cards Brancos com Texto Preto
 
-## Problema
+# Reorganizacao Mobile + Sidebar Original + Toggle Claro/Escuro
 
-No modo escuro, os cards KPI e o grafico de desempenho usam fundo marrom escuro com texto claro. O usuario quer que no dark mode os cards fiquem com fundo **branco** e texto **preto**, incluindo os graficos -- criando um contraste mais limpo e moderno.
+## Problemas Identificados
 
-## O que muda
+1. **Tabs cortadas no mobile** -- As abas (Producao, CRM, Estoque, etc.) transbordam a tela e ficam mal enquadradas, com texto e icones cortados nas bordas
+2. **Sidebar "Mais" (grid)** -- Os quadros do menu grid nao preenchem a tela de forma equilibrada
+3. **Painel do carrinho (Cardapio)** -- Elementos desalinhados no mobile
+4. **Falta toggle claro/escuro** no header
 
-### 1. Variaveis CSS do Dark Mode (`src/index.css`)
+## Solucao
 
-Alterar as variaveis do `.dark` para que `--card` e `--card-foreground` usem tons claros:
+### 1. Tabs Responsivas no Mobile (global)
 
-- `--card`: mudar de `24 20% 12%` (marrom escuro) para `0 0% 98%` (branco)
-- `--card-foreground`: mudar de `36 30% 92%` (bege claro) para `24 30% 12%` (preto/escuro)
-- `--popover` e `--popover-foreground`: mesmos ajustes para consistencia
+Todas as paginas que usam tabs customizadas (Production, CRM, SmartHub, Inventory) serao ajustadas para o mobile:
 
-O background geral (pagina) continua escuro, criando contraste.
+- No mobile, as tabs mudam para **scroll horizontal com snap** dentro de um container com padding lateral
+- Tamanho reduzido: `px-3 py-1.5 text-xs` no mobile, mantendo `px-5 py-2 text-sm` no desktop
+- Icones menores no mobile (`h-3 w-3`)
+- Container com `overflow-x-auto no-scrollbar` e `scroll-snap-type: x mandatory`
 
-### 2. KPI Card -- Primeiro Card com fundo especial (`src/pages/Index.tsx`)
+**Arquivos afetados:**
+- `src/pages/Production.tsx` -- tabs Producao/Promocoes/Relatorios
+- `src/pages/Crm.tsx` -- tabs Clientes/Pipeline/Aniversarios/Reativacao/Config
+- `src/pages/Inventory.tsx` -- tabs Estoque/Vitrine/Alertas
+- `src/pages/SmartHub.tsx` -- tabs Promocoes/Relatorios
 
-O primeiro KpiCard (Faturamento) tem inline styles com cores fixas marrons. Adicionar logica `dark:` para usar fundo branco:
+### 2. Sidebar Revertida ao Estilo Original
 
-- Remover o inline style de `background` fixo e usar classes condicionais
-- No dark mode: fundo branco, texto preto
-- No light mode: manter o gradiente marrom atual
+Reverter o `AppSidebar.tsx` para usar a versao **lista vertical** tanto no desktop quanto no mobile (Sheet), removendo o grid de icones que foi adicionado recentemente. O mobile usara o mesmo `DesktopSidebarContent` dentro do Sheet, com ajustes de padding.
 
-### 3. Grafico de Desempenho (`src/pages/Index.tsx`)
+**Arquivo:** `src/components/layout/AppSidebar.tsx`
 
-O card do grafico tambem tem inline styles com gradiente marrom. Ajustar:
+### 3. Toggle Claro/Escuro no Header
 
-- No dark mode: fundo branco, texto preto
-- Cores do grafico (eixos, grid, tooltip) adaptadas para fundo branco no dark
-- Summary row (Vendas Hoje, Faturamento, Ticket Medio): fundo com opacidade escura no dark
+Adicionar um botao toggle (icone Sol/Lua) ao lado esquerdo do sino de notificacoes no `AppHeader.tsx`. O toggle alternara a classe `dark` no elemento `<html>`, persistindo a preferencia no `localStorage`.
 
-### 4. Glass Effects no Dark (`src/index.css`)
+**Arquivo:** `src/components/layout/AppHeader.tsx`
 
-Ajustar `.glass-card` e `.card-cinematic` para que no dark mode usem fundo branco em vez do glass escuro:
+### 4. Cardapio -- Melhor Enquadramento Mobile
 
-- Adicionar override `.dark .glass-card` com `background: hsl(0 0% 98%)` e `color: hsl(24 30% 12%)`
+Ajustar o painel do carrinho (Sheet) e o header do cardapio para melhor alinhamento no mobile:
+- Padding interno consistente
+- Botoes e inputs com tamanho adequado ao toque
+
+**Arquivo:** `src/pages/Cardapio.tsx`
 
 ## Detalhes Tecnicos
 
-### CSS (`src/index.css`)
+### Tabs Responsivas -- Padrao CSS
+
+Adicionar ao `src/index.css` uma classe utilitaria para tabs mobile:
 
 ```css
-.dark {
-  --card: 0 0% 98%;
-  --card-foreground: 24 30% 12%;
-  --popover: 0 0% 98%;
-  --popover-foreground: 24 30% 12%;
+@media (max-width: 767px) {
+  .mobile-tabs {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-tabs > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
 }
 ```
 
-Adicionar regra para `.dark .glass-card` e `.dark .card-cinematic`:
-```css
-.dark .glass-card,
-.dark .card-cinematic {
-  background: hsl(0 0% 98% / 0.95);
-  color: hsl(24 30% 12%);
-  border-color: hsl(0 0% 85%);
-}
+Cada pagina aplicara classes responsivas nas TabsTrigger: `px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm` e nos icones `h-3 w-3 md:h-3.5 md:w-3.5`.
+
+### Toggle Claro/Escuro
+
+```tsx
+// No AppHeader.tsx
+const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+const toggleTheme = () => {
+  const next = !dark;
+  setDark(next);
+  document.documentElement.classList.toggle('dark', next);
+  localStorage.setItem('theme', next ? 'dark' : 'light');
+};
 ```
 
-### Index.tsx -- KpiCard
+Icone: `Sun` quando escuro (clica para clarear), `Moon` quando claro (clica para escurecer). Posicionado imediatamente antes do sino de notificacoes.
 
-Detectar dark mode via `document.documentElement.classList.contains('dark')` ou via CSS classes. Para o primeiro card (isFirst), no dark mode usar fundo branco em vez do gradiente marrom. Alternativa mais limpa: usar classes Tailwind `dark:bg-white dark:text-gray-900` condicionalmente no className.
+### Sidebar Revertida
 
-### Index.tsx -- Chart Card
-
-Substituir os inline styles fixos por classes condicionais:
-- Light: manter gradiente marrom atual
-- Dark: `bg-white text-gray-900`
-- Cores dos eixos do grafico: usar variavel CSS para adaptar (escuro no dark, claro no light)
-- Summary boxes: `dark:bg-gray-100` ao inves de `hsl(36 40% 95% / 0.06)`
+Remover o componente `MobileSidebarContent` com grid e reutilizar `DesktopSidebarContent` para ambos os casos (desktop e mobile Sheet), simplificando o codigo.
 
 ## Resumo de Arquivos
 
 | Arquivo | Mudanca |
 |---|---|
-| `src/index.css` | Variaveis dark card/popover brancas + override glass-card |
-| `src/pages/Index.tsx` | KpiCard e chart com classes dark-aware ao inves de inline styles fixos |
+| `src/index.css` | Classe utilitaria mobile-tabs |
+| `src/components/layout/AppHeader.tsx` | Toggle claro/escuro + icone Sun/Moon |
+| `src/components/layout/AppSidebar.tsx` | Reverter para lista vertical no mobile |
+| `src/pages/Production.tsx` | Tabs responsivas |
+| `src/pages/Crm.tsx` | Tabs responsivas |
+| `src/pages/Inventory.tsx` | Tabs responsivas |
+| `src/pages/SmartHub.tsx` | Tabs responsivas |
+| `src/pages/Cardapio.tsx` | Ajustes de padding/alinhamento mobile |
 
-2 arquivos.
+8 arquivos, mudancas focadas em responsividade e UX mobile.
+

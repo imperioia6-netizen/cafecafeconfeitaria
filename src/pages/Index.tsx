@@ -41,37 +41,41 @@ const KpiCard = ({
 
   return (
     <div
-      className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in ${delay} ${isFirst ? 'border-shine light-first-card' : ''}`}
+      className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in ${delay} ${isFirst ? 'border-shine' : ''}`}
+      style={isFirst ? {
+        background: 'linear-gradient(135deg, hsl(24 60% 20%), hsl(24 50% 14%))',
+        color: 'hsl(36 40% 95%)',
+      } : undefined}
     >
       <div className="p-3 md:p-5 relative z-10">
         {/* Header: icon + title */}
         <div className="flex items-center gap-2.5 mb-3">
-          <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20 dark:bg-primary/10' : 'bg-primary/10'}`}>
-            <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)] dark:text-primary dark:drop-shadow-none' : 'text-primary'}`} />
+          <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
+            <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
           </div>
-          <span className={`text-sm font-medium ${isFirst ? 'text-primary-foreground/70 dark:text-muted-foreground' : 'text-muted-foreground'}`}>
+          <span className={`text-sm font-medium ${isFirst ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
             {title}
           </span>
         </div>
 
         {/* Today value */}
         <div className="mb-3">
-          <p className={`text-xs ${isFirst ? 'text-primary-foreground/50 dark:text-muted-foreground/70' : 'text-muted-foreground/70'}`}>Hoje:</p>
-          <p className={`text-xl md:text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold dark:text-foreground dark:[text-shadow:none]' : ''}`}>
+          <p className={`text-xs ${isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground/70'}`}>Hoje:</p>
+          <p className={`text-xl md:text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold' : ''}`}>
             {fmt(today)}
           </p>
         </div>
 
         {/* Divider + period rows */}
-        <div className={`border-t ${isFirst ? 'border-white/10 dark:border-border' : 'border-border'} pt-2.5 space-y-1.5`}>
-          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60 dark:text-muted-foreground' : 'text-muted-foreground'}`}>
+        <div className={`border-t ${isFirst ? 'border-white/10' : 'border-border'} pt-2.5 space-y-1.5`}>
+          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
             <span>7 dias:</span>
             <div className="flex items-center gap-1.5">
               <span className="font-mono-numbers font-medium">{label7d}</span>
               <MoreVertical className="h-3.5 w-3.5 opacity-40" />
             </div>
           </div>
-          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60 dark:text-muted-foreground' : 'text-muted-foreground'}`}>
+          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
             <span>30 dias:</span>
             <div className="flex items-center gap-1.5">
               <span className="font-mono-numbers font-medium">{label30d}</span>
@@ -184,9 +188,11 @@ const Dashboard = () => {
             {/* ── Performance Chart ── */}
             <div className="grid gap-5 lg:grid-cols-3">
               <div
-                className="lg:col-span-2 card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in chart-card-dark"
+                className="lg:col-span-2 card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in"
                 style={{
                   animationDelay: '350ms',
+                  background: 'radial-gradient(ellipse at 20% 20%, hsl(24 50% 18%), hsl(24 45% 12%) 60%, hsl(24 40% 8%))',
+                  color: 'hsl(36 40% 95%)',
                 }}
               >
                 <div className="p-4 md:p-6">
@@ -323,7 +329,8 @@ const Dashboard = () => {
                         ].map((item) => (
                           <div
                             key={item.label}
-                            className="rounded-xl px-4 py-3 text-center backdrop-blur-sm bg-[hsl(36_40%_95%/0.06)] dark:bg-muted"
+                            className="rounded-xl px-4 py-3 text-center backdrop-blur-sm"
+                            style={{ background: 'hsl(36 40% 95% / 0.06)' }}
                           >
                             <p className="text-xs opacity-50">{item.label}</p>
                             <p className="text-sm font-bold font-mono-numbers text-accent mt-0.5 glow-gold">{item.value}</p>
