@@ -1,49 +1,42 @@
 
+# Nova Animacao de Transicao de Pagina
 
-# Redesign da Navbar Mobile -- Mais Refinada e Premium
+## Problema Atual
 
-## Objetivo
+A transicao atual e um simples fade-in com slide-up (`translateY(12px)`). Funcional, mas pouco expressiva -- nao transmite a sensacao de navegacao fluida entre secoes.
 
-Elevar a qualidade visual da barra de navegacao inferior mobile, tornando-a mais sofisticada, com melhor hierarquia visual entre itens ativos/inativos e um visual mais polido e "app-like".
+## Nova Animacao: Slide Horizontal + Fade
 
-## Melhorias Visuais
+Criar uma transicao que simule navegacao lateral, como apps nativos mobile. O conteudo sai suavemente para a esquerda e o novo entra pela direita (ou vice-versa, dependendo da direcao de navegacao na bottom nav).
 
-### 1. Fundo com mais profundidade
-- Adicionar uma borda superior com gradiente dourado sutil ao inves de borda solida
-- Aplicar sombra superior para criar sensacao de elevacao ("flutuando" sobre o conteudo)
+### Comportamento
 
-### 2. Indicador ativo reimaginado
-- Substituir a pill horizontal por um fundo com glow dourado suave ao redor do icone ativo
-- Icone ativo maior com leve brilho (drop-shadow dourado)
-- Label ativo com peso e cor mais destacados
-
-### 3. Icones inativos mais elegantes
-- Opacidade ligeiramente maior para melhor visibilidade
-- Cor neutra mais quente para manter coesao com o tema
-
-### 4. Espacamento e proporcoes
-- Aumentar levemente a altura da barra (de 68px para 72px) para mais "respiro"
-- Gap entre icone e label mais consistente
-- Icone container com bordas mais suaves
-
-### 5. Efeito de toque
-- Manter `active:scale-90` mas adicionar transicao haptica visual (leve pulse no glow ao tocar item ativo)
+1. Ao mudar de rota, o novo conteudo entra com um leve slide horizontal (20px) combinado com fade
+2. A duracao sera 280ms -- rapida o suficiente para parecer responsiva, lenta o suficiente para ser percebida
+3. Um leve scale (0.98 para 1.0) adiciona profundidade cinematica
 
 ## Detalhe Tecnico
 
-### Arquivo: `src/components/layout/MobileBottomNav.tsx`
+### Arquivo 1: `tailwind.config.ts`
 
-| Mudanca | Detalhe |
-|---|---|
-| Sombra superior no nav | `boxShadow: '0 -4px 20px hsl(24 30% 5% / 0.5)'` |
-| Borda top gradiente | Pseudo-elemento com gradiente dourado horizontal |
-| Altura da barra | 68px para 72px |
-| Icone ativo | Glow com `drop-shadow`, tamanho 24px, container com background `hsl(36 70% 50% / 0.12)` e borda sutil |
-| Icone inativo | Cor `hsl(36 25% 45%)` para melhor visibilidade |
-| Label ativo | `font-semibold`, cor `hsl(36 75% 55%)` mais vibrante |
-| Label inativo | `text-[hsl(36,20%,42%)]` ligeiramente mais visivel |
-| Indicador pill | Substituir por barra superior mais fina (2px) com cantos arredondados e glow |
-| Botao "Mais" | Mesma estilizacao dos inativos para consistencia |
+Adicionar novo keyframe `page-enter`:
 
-1 arquivo modificado.
+```
+"page-enter": {
+  "0%": { opacity: "0", transform: "translateX(16px) scale(0.98)" },
+  "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+}
+```
 
+E a animacao correspondente:
+```
+"page-enter": "page-enter 280ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards",
+```
+
+### Arquivo 2: `src/components/layout/PageTransition.tsx`
+
+- Trocar a classe `animate-fade-in` por `animate-page-enter`
+- Remover o override de `animationDuration` inline (a duracao fica no tailwind)
+- Manter a logica de deteccao de mudanca de rota
+
+2 arquivos, mudanca minima.
