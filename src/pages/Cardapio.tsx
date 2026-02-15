@@ -265,9 +265,9 @@ const Cardapio = () => {
               return (
                 <div
                   key={recipe.id}
-                  className="card-cinematic overflow-hidden group"
+                  className="bg-card border border-border/60 rounded-2xl overflow-hidden group shadow-sm hover:shadow-md transition-shadow duration-300"
                 >
-                  <div className="aspect-[4/3] bg-muted overflow-hidden">
+                  <div className="aspect-[4/3] bg-muted overflow-hidden rounded-t-2xl">
                     {recipe.photo_url ? (
                       <img
                         src={recipe.photo_url}
@@ -281,18 +281,18 @@ const Cardapio = () => {
                       </div>
                     )}
                   </div>
-                  <div className="p-3 space-y-2">
-                    <h3 className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">
+                  <div className="p-4 space-y-2">
+                    <h3 className="text-[15px] font-medium text-foreground line-clamp-2 leading-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       {recipe.name}
                     </h3>
                     <div className="flex items-end justify-between">
-                      <p className="text-base font-bold text-foreground font-mono-numbers">
+                      <p className="text-base font-semibold tracking-wide text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                         R$ {Number(recipe.sale_price).toFixed(2).replace('.', ',')}
                       </p>
                       {qty === 0 ? (
                         <button
                           onClick={() => addToCart(recipe)}
-                          className="flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all shadow-sm"
+                          className="flex items-center justify-center w-9 h-9 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all shadow-sm"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -304,7 +304,7 @@ const Cardapio = () => {
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="text-sm font-bold w-5 text-center font-mono-numbers">{qty}</span>
+                          <span className="text-sm font-bold w-5 text-center" style={{ fontFamily: "'DM Sans', sans-serif" }}>{qty}</span>
                           <button
                             onClick={() => addToCart(recipe)}
                             className="flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all"
