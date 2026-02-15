@@ -179,7 +179,7 @@ const LeadsKanban = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-lg font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Pipeline de Leads
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -330,7 +330,7 @@ const LeadsKanban = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="glass-strong rounded-xl max-w-lg">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'Playfair Display', serif" }}>
+            <DialogTitle style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {editingLead ? 'Editar Lead' : 'Novo Lead'}
             </DialogTitle>
           </DialogHeader>

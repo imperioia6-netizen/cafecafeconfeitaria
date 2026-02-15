@@ -60,7 +60,7 @@ const PeriodTab = ({ days }: { days: number }) => {
         {data.daily.length > 0 && (
           <div className="card-cinematic rounded-xl">
             <div className="p-6">
-              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Faturamento Diário</h3>
+              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Faturamento Diário</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={data.daily}>
                   <defs>
@@ -83,7 +83,7 @@ const PeriodTab = ({ days }: { days: number }) => {
         {paymentData.length > 0 && (
           <div className="card-cinematic rounded-xl">
             <div className="p-6">
-              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Por Forma de Pagamento</h3>
+              <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Por Forma de Pagamento</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie data={paymentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={40}
@@ -102,7 +102,7 @@ const PeriodTab = ({ days }: { days: number }) => {
       {/* Production vs Sales */}
       <div className="card-cinematic rounded-xl">
         <div className="p-6">
-          <h3 className="flex items-center gap-2 text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h3 className="flex items-center gap-2 text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <ArrowUpDown className="h-4 w-4 text-accent" /> Produção × Venda
           </h3>
           {pvsLoading ? (

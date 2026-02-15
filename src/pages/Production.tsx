@@ -20,7 +20,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
   <div className="space-y-8">
     <div className="card-cinematic gradient-border border-shine rounded-xl">
       <div className="p-6 space-y-5">
-        <h3 className="flex items-center gap-2 font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h3 className="flex items-center gap-2 font-bold text-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Coffee className="h-5 w-5 text-accent animate-float" />
           Nova Produção
         </h3>
@@ -117,7 +117,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
     {/* Today's history */}
     <div className="card-cinematic rounded-xl">
       <div className="p-6">
-        <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Ficha de Produção — Hoje</h3>
+        <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ficha de Produção — Hoje</h3>
         {prodsLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
         ) : !productions?.length ? (

@@ -48,7 +48,7 @@ const N8nSettingsPanel = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Headset className="h-5 w-5 text-accent" />
-            <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Atendimento</span>
+            <span className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Atendimento</span>
           </CardTitle>
           <CardDescription>Retorno automático após período sem resposta do cliente</CardDescription>
         </CardHeader>
@@ -85,7 +85,7 @@ const N8nSettingsPanel = () => {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-lg">
               <Webhook className="h-5 w-5 text-accent" />
-              <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Webhook n8n</span>
+              <span className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Webhook n8n</span>
             </span>
             {/* Connection status */}
             {connectionTested === 'success' && (
@@ -131,7 +131,7 @@ const N8nSettingsPanel = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="h-5 w-5 text-accent" />
-            <span className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Últimas Mensagens</span>
+            <span className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Últimas Mensagens</span>
           </CardTitle>
         </CardHeader>
         <CardContent>

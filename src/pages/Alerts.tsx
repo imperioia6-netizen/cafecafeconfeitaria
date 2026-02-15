@@ -37,7 +37,7 @@ const Alerts = () => {
 
         <div className="card-cinematic rounded-xl">
           <div className="p-6">
-            <h3 className="flex items-center gap-2 font-bold text-lg mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h3 className="flex items-center gap-2 font-bold text-lg mb-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               <AlertTriangle className="h-5 w-5 text-accent" />
               Timeline de Alertas
             </h3>

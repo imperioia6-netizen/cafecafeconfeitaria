@@ -89,7 +89,7 @@ const Auth = () => {
               <Coffee className="h-20 w-20 text-accent" style={{ filter: 'drop-shadow(0 0 20px hsl(36 70% 50% / 0.4))' }} />
             </div>
           </div>
-          <h1 className="text-5xl font-bold mb-4 tracking-tight opacity-0 animate-fade-in text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif", animationDelay: '200ms' }}>
+          <h1 className="text-5xl font-bold mb-4 tracking-tight opacity-0 animate-fade-in text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", animationDelay: '200ms' }}>
             Café Café
           </h1>
           <p className="text-lg font-light mb-14 opacity-0 animate-fade-in tracking-wide" style={{ animationDelay: '400ms', color: 'hsl(36 30% 70%)' }}>
@@ -124,7 +124,7 @@ const Auth = () => {
           <CardHeader className="text-center space-y-2 pb-6">
             <div className="flex items-center justify-center gap-2 lg:hidden mb-4">
               <Coffee className="h-9 w-9 text-accent" />
-              <span className="text-2xl font-bold text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Café Café</span>
+              <span className="text-2xl font-bold text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Café Café</span>
             </div>
             <CardTitle className="text-2xl" style={{ color: 'hsl(36 40% 95%)' }}>
               {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}

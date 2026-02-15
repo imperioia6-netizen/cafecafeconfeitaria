@@ -70,7 +70,7 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="glass-card border-border/30 w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Editar Cliente</SheetTitle>
+            <SheetTitle className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Editar Cliente</SheetTitle>
           </SheetHeader>
           <div className="mt-4">
             <CustomerForm customer={customer} onSuccess={() => setEditing(false)} mode="edit" />
@@ -85,7 +85,7 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
       <SheetContent className="glass-card border-border/30 w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="pb-0">
           <div className="flex items-start gap-4 mt-2">
-            <div className={`h-14 w-14 rounded-full ${statusColors[customer.status] || 'bg-muted'} flex items-center justify-center text-white font-bold text-lg shrink-0`} style={{ fontFamily: "'Playfair Display', serif" }}>
+            <div className={`h-14 w-14 rounded-full ${statusColors[customer.status] || 'bg-muted'} flex items-center justify-center text-white font-bold text-lg shrink-0`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {getInitials(customer.name)}
             </div>
             <div className="flex-1 min-w-0">

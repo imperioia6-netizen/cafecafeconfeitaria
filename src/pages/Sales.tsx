@@ -92,7 +92,7 @@ const Sales = () => {
           <div className="lg:col-span-3">
             <div className="card-cinematic rounded-xl">
               <div className="p-6">
-                <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Produtos Disponíveis</h3>
+                <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Produtos Disponíveis</h3>
                 {invLoading ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : !availableItems.length ? (
@@ -148,7 +148,7 @@ const Sales = () => {
           <div className="lg:col-span-2">
             <div className="card-cinematic gradient-border rounded-xl sticky top-24">
               <div className="p-6 space-y-4">
-                <h3 className="flex items-center gap-2 text-base font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="flex items-center gap-2 text-base font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   <ShoppingCart className="h-4 w-4 text-accent" />
                   Carrinho ({cart.length})
                 </h3>
@@ -317,7 +317,7 @@ const Sales = () => {
         {/* Today's sales */}
         <div className="card-cinematic rounded-xl">
           <div className="p-6">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Vendas de Hoje</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Vendas de Hoje</h3>
             {salesLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : !todaySales?.length ? (

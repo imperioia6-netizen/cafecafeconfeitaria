@@ -86,7 +86,7 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create' }: CustomerFormProp
       </DialogTrigger>
       <DialogContent className="glass-card border-border/30 max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>Cadastrar Cliente</DialogTitle>
+          <DialogTitle className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Cadastrar Cliente</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormFields form={form} update={update} />
