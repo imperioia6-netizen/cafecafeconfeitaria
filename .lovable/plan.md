@@ -1,99 +1,60 @@
 
 
-# Cadastro com Perfil de Usuario e Funcionario
+# Montar Pedido a Partir dos Produtos (Receitas)
 
-## Objetivo
+## Problema
 
-Aprimorar o fluxo de cadastro (Auth.tsx) para coletar dados completos do perfil e permitir escolher o tipo de conta: **Cliente** ou **Funcionario**. Alem disso, permitir que o Owner cadastre funcionarios diretamente pela pagina de Equipe.
+A tela de Pedidos busca itens apenas do **estoque (inventory)** -- que exige que cada produto tenha sido previamente registrado na Producao. O estoque esta vazio (0 itens), mesmo havendo 15 receitas ativas. Isso impede a montagem de qualquer pedido.
+
+## Solucao
+
+Alterar a pagina de Pedidos para listar **receitas ativas** como catalogo de produtos, em vez de depender exclusivamente do estoque. O vinculo com inventory sera **opcional** -- se houver estoque disponivel para aquele produto, ele sera associado automaticamente; caso contrario, o pedido e criado sem inventory_id.
 
 ## Alteracoes
 
-### 1. Formulario de Cadastro Publico (`src/pages/Auth.tsx`)
+### 1. `src/pages/Orders.tsx`
 
-Adicionar campos extras no modo de cadastro:
-- **Telefone** (opcional)
-- **Aniversario** (opcional)  
-- **Tipo de conta**: seletor entre "Cliente" e "Funcionario"
+- Substituir `useInventory()` por `useActiveRecipes()` (do hook ja existente `useRecipes`)
+- O grid de produtos mostrara todas as receitas ativas com nome, foto, categoria e preco
+- Remover a dependencia de `slices_available` para exibir produtos
+- Manter a logica de categorias e busca, mas baseada nas receitas
+- O carrinho armazenara `recipe_id` e `unit_price` diretamente da receita
+- O campo `inventory_id` sera enviado como `null` quando nao houver estoque vinculado
 
-Apos o `signUp` com sucesso, os dados extras (telefone, birthday) serao salvos no `user_metadata` do Supabase Auth para que o trigger `handle_new_user` possa usa-los.
+### 2. `src/hooks/useOrders.ts`
 
-### 2. Atualizar Trigger `handle_new_user` (Migracao SQL)
-
-Modificar a funcao para:
-- Ler o campo `role` do `raw_user_meta_data` (default: 'client')
-- Ler `phone` e `birthday` do metadata e salvar no perfil
-- Atribuir a role correta (`client` ou `employee`) na tabela `user_roles`
-
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-DECLARE
-  _role text;
-BEGIN
-  _role := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
-  
-  INSERT INTO public.profiles (user_id, name, phone, birthday)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
-    NEW.raw_user_meta_data->>'phone',
-    CASE WHEN NEW.raw_user_meta_data->>'birthday' IS NOT NULL 
-         THEN (NEW.raw_user_meta_data->>'birthday')::date 
-         ELSE NULL END
-  );
-  
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, _role::app_role);
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-```
-
-### 3. Atualizar `signUp` no `useAuth.tsx`
-
-Passar os campos extras (phone, birthday, role) no `user_metadata`:
-
-```typescript
-signUp(email, password, name, { phone, birthday, role })
-```
-
-### 4. Adicionar Cadastro de Funcionario na Equipe (`src/pages/Team.tsx`)
-
-Adicionar um botao "Novo Funcionario" (visivel apenas para Owners) que abre um dialog com:
-- Nome, Email, Senha temporaria
-- Telefone, Aniversario
-- Criar a conta via `supabase.auth.signUp` com role 'employee' no metadata
-
-### 5. Adicionar role `client` ao tipo `app_role` (Migracao SQL)
-
-Verificar se ja existe. Se nao:
-```sql
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'client';
-```
+- Tornar `inventory_id` opcional no tipo de input do `useCreateOrder` (ja aceita no banco, pois a coluna e nullable)
+- No `useFinalizeOrder`, pular o abate de estoque quando `inventory_id` for null
 
 ## Detalhes Tecnicos
 
-### Arquivos alterados:
-- `src/pages/Auth.tsx` -- campos extras no formulario de cadastro
-- `src/hooks/useAuth.tsx` -- atualizar `signUp` para aceitar dados extras
-- `src/pages/Team.tsx` -- botao e dialog para cadastrar funcionario
-- Migracao SQL -- atualizar trigger e enum
+### Orders.tsx - Mudancas no catalogo:
 
-### Fluxo:
 ```text
-Cadastro Publico:
-  [Form: nome, email, senha, telefone, aniversario, tipo]
-    -> signUp com metadata
-    -> Trigger cria profile + role automaticamente
-
-Cadastro pelo Owner (Equipe):
-  [Dialog: nome, email, senha, telefone]
-    -> signUp com metadata { role: 'employee' }
-    -> Trigger cria profile + role 'employee'
+Antes:  useInventory() -> filtra slices_available > 0 -> mostra itens do estoque
+Depois: useActiveRecipes() -> mostra todas receitas ativas -> carrinho com recipe_id + preco
 ```
 
-### Estilo visual:
-- Campos extras seguem o mesmo padrao visual do formulario atual (input-glow, bg-white/5, border-white/10)
-- Seletor de tipo de conta usa pills/tabs estilizadas com dourado
-- Dialog de novo funcionario usa glass-card consistente com o tema
+- O tipo `NewOrderItem` perde `max_available` e `inventory_id` se torna opcional
+- `addToCart` trabalha com Recipe em vez de InventoryItem
+- Categorias e filtro de busca continuam funcionando (recipe.category, recipe.name)
+
+### useOrders.ts - Mudancas:
+
+- `inventory_id` no input de `useCreateOrder` muda para opcional (`inventory_id?: string`)
+- No `useFinalizeOrder`, o loop de abate de estoque verifica `if (i.inventory_id)` antes de tentar atualizar (ja faz isso, sem mudanca necessaria)
+
+### Fluxo resultante:
+
+```text
+Funcionario abre /orders
+  -> Ve todas as 15 receitas ativas como catalogo
+  -> Clica para adicionar ao carrinho
+  -> Preenche comanda/mesa/cliente
+  -> Clica "Abrir Pedido"
+  -> Pedido criado sem vinculo obrigatorio ao estoque
+```
+
+### Arquivos alterados:
+- `src/pages/Orders.tsx` -- trocar fonte de dados de inventory para recipes
+- `src/hooks/useOrders.ts` -- tornar inventory_id opcional no create
