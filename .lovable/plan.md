@@ -1,27 +1,32 @@
 
 
-# Substituir Estoque por CRM na Navbar Mobile
+# Corrigir Redirecionamento ao Recarregar o Dashboard
 
-## Alteracao
+## Problema
 
-No arquivo `src/components/layout/MobileBottomNav.tsx`, trocar o item "Estoque" pelo "CRM" nas rotas do owner (administrador).
+Ao recarregar a pagina do Dashboard (`/`), o array `roles` comeca vazio enquanto carrega do banco. Nesse momento, `isOwner` e `false`, e a linha `if (!isOwner) return <Navigate to="/production" />` redireciona para Producao antes dos roles carregarem.
 
-### Detalhes
+## Solucao
 
-- **Remover**: `{ path: '/inventory', label: 'Estoque', icon: Package }`
-- **Adicionar**: `{ path: '/crm', label: 'CRM', icon: Heart }`
-- Importar o icone `Heart` do lucide-react (ja importado no AppSidebar, consistente com o resto do app)
-- A navbar do employee permanece inalterada (continua com Estoque, pois funcionarios nao acessam CRM)
+### Arquivo: `src/pages/Index.tsx`
 
-### Arquivo: `src/components/layout/MobileBottomNav.tsx`
+Adicionar verificacao de `roles.length === 0` antes do redirect. Se os roles ainda nao carregaram, exibir o loading spinner em vez de redirecionar:
 
-**ownerNav** passa a ser:
+```tsx
+const { isOwner, roles } = useAuth();
+
+// Aguardar roles carregarem antes de decidir o redirect
+if (roles.length === 0) {
+  return (
+    <AppLayout>
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    </AppLayout>
+  );
+}
+
+if (!isOwner) return <Navigate to="/production" replace />;
 ```
-Dashboard | Pedidos | Vendas | CRM
-```
 
-**employeeNav** permanece:
-```
-Producao | Pedidos | Vendas | Estoque
-```
-
+Isso garante que o redirect so acontece DEPOIS que os roles foram carregados, evitando o falso negativo.
