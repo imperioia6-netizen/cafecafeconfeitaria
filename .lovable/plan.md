@@ -1,62 +1,69 @@
 
-# Funcionalidade Mobile Completa -- Arrastar, Clicar, Tocar
 
-## Problemas Identificados
+# Redesign Premium da Bottom Navigation Mobile
 
-### 1. Botoes invisiveis no mobile (dependem de hover)
-- **Sales.tsx (linha 136)**: O botao "+" nos produtos tem `opacity-0 group-hover:opacity-100` -- no mobile nao aparece nunca, pois nao existe hover em telas touch
-- **Orders.tsx (linha 564)**: O botao "X" para remover item do pedido tem `opacity-0 group-hover/item:opacity-100` -- invisivel no mobile
+## Objetivo
 
-### 2. Alvos de toque pequenos demais
-- **EstoqueTab.tsx**: Botoes de +/- do estoque com `size="sm"` podem ser dificeis de tocar
-- **Sales.tsx**: Botoes de +/- no carrinho com `h-7 w-7` sao muito pequenos para dedos
+Elevar a navbar inferior de "funcional" para "premium" -- inspirada em apps de alto nivel como Apple Music, Spotify e apps bancarios de luxo. A imagem mostra o estado atual: a barra esta ok mas falta profundidade, refinamento e presenca visual.
 
-### 3. Scroll horizontal dos filtros/tabs
-- **EstoqueTab.tsx**: Os filtros de estoque nao tem scroll horizontal mobile (`flex-wrap` pode quebrar layout)
-- **Inventory.tsx**: TabsList ja tem `mobile-tabs` e `overflow-x-auto` (ok)
+## Mudancas Visuais
 
-### 4. Elementos sobrepostos pela navbar inferior
-- **Sales.tsx**: O botao "Finalizar Venda" pode ficar parcialmente coberto pela bottom nav no mobile. O `pb-24` no layout ajuda, mas a pagina Sales nao adiciona padding extra
-- **Orders.tsx**: O floating cart bar ja esta posicionado com `bottom-20` (ok)
+### 1. Indicador Ativo: Pill Glow em vez de barra fina
+- Substituir a barra de 2px no topo por um **pill luminoso** atras do icone ativo (estilo iOS 18 / Material You)
+- O pill tera um gradiente dourado sutil com glow radial, criando profundidade
+- Transicao suave com `transition-all duration-500` para o pill "flutuar" entre itens
 
-### 5. Interacoes de swipe ausentes
-- Nenhuma pagina implementa swipe para deletar ou navegar -- oportunidade de melhoria para cards de pedidos
+### 2. Icones com mais presenca
+- Icones ativos: **24px** com stroke 2.2 (mais equilibrado que 2.5)
+- Icones inativos: **20px** com stroke 1.6 (mais leves, mais contraste com ativo)
+- Icone ativo ganha micro-animacao de **bounce** ao ser tocado (scale 0.85 -> 1.1 -> 1.0)
 
-## Solucao
+### 3. Background com mais profundidade
+- Adicionar uma segunda camada de gradiente radial sutil centrada no item ativo
+- A borda superior dourada fica mais pronunciada (0.5 opacity no centro em vez de 0.4)
+- Sombra superior mais dramatica para separacao do conteudo
 
-### Arquivo 1: `src/pages/Sales.tsx`
-- Tornar o icone "+" nos produtos sempre visivel no mobile (remover `opacity-0 group-hover:opacity-100` e usar `md:opacity-0 md:group-hover:opacity-100`)
-- Aumentar area de toque dos botoes +/- do carrinho de `h-7 w-7` para `h-9 w-9` no mobile
-- Adicionar `pb-28` no wrapper para evitar sobreposicao com bottom nav
+### 4. Tipografia refinada
+- Labels: **10px** com letter-spacing `0.02em` para legibilidade
+- Label ativo: peso 700 (bold) em vez de 600 para mais contraste hierarquico
+- Label inativo: cor mais suave para nao competir com o ativo
 
-### Arquivo 2: `src/pages/Orders.tsx`
-- Tornar o botao "X" de remover item sempre visivel no mobile (`md:opacity-0 md:group-hover/item:opacity-100` em vez de `opacity-0 group-hover/item:opacity-100`)
-- Garantir que os botoes de acao dos pedidos (Cancelar/Finalizar) tenham area de toque adequada
+### 5. Botao "Mais" diferenciado
+- Icone "Mais" com 3 pontos em circulo (dots grid) em vez de reticencias horizontais
+- Ou manter o MoreHorizontal mas com um container circular sutil
 
-### Arquivo 3: `src/components/inventory/EstoqueTab.tsx`
-- Adicionar `overflow-x-auto mobile-tabs` nos filtros para permitir scroll horizontal
-- Garantir que botoes +/- tenham `min-h-[44px]` para atender guidelines de acessibilidade touch (44x44px)
-
-### Arquivo 4: `src/pages/Production.tsx`
-- Aumentar os botoes de Editar/Deletar de `h-8 w-8` para `h-10 w-10` no mobile para melhor toque
-- Garantir area de toque minima nos botoes
-
-### Arquivo 5: `src/index.css`
-- Adicionar utilitario CSS `touch-action: manipulation` global para eliminar delay de 300ms no tap em dispositivos moveis
-- Adicionar `-webkit-tap-highlight-color: transparent` para remover highlight azul no iOS
+### 6. Safe area e altura
+- Aumentar altura de 72px para 76px para mais respiro interno
+- Melhorar gap entre icone e label para 6px
 
 ## Detalhe Tecnico
 
-| Problema | Arquivo | Linha | Fix |
-|---|---|---|---|
-| Botao + invisivel | Sales.tsx | 136 | `opacity-100 md:opacity-0 md:group-hover:opacity-100` |
-| Botao X invisivel | Orders.tsx | 564 | `opacity-100 md:opacity-0 md:group-hover/item:opacity-100` |
-| Touch targets pequenos | Sales.tsx | 174,179 | `h-9 w-9 md:h-7 md:w-7` |
-| Touch targets pequenos | Production.tsx | 206-209 | `h-10 w-10 md:h-8 md:w-8` |
-| Filtros sem scroll | EstoqueTab.tsx | 85 | Adicionar `overflow-x-auto no-scrollbar mobile-tabs` |
-| Botoes estoque pequenos | EstoqueTab.tsx | 206-210 | `min-h-[44px]` nos botoes |
-| Tap delay 300ms | index.css | global | `touch-action: manipulation` |
-| Highlight azul iOS | index.css | global | `-webkit-tap-highlight-color: transparent` |
-| Padding faltando | Sales.tsx | 84 | Adicionar `pb-28` para espaco da bottom nav |
+### Arquivo: `src/components/layout/MobileBottomNav.tsx`
 
-5 arquivos modificados. Foco exclusivo em funcionalidade touch/mobile.
+Mudancas:
+- **Indicador ativo**: trocar a `div` com `h-[2px]` no topo por um pill atras do icone com `rounded-[14px]`, background gradiente dourado com glow
+- **Container do icone ativo**: expandir para `w-14 h-9` com `rounded-[14px]` e gradiente `linear-gradient(135deg, hsl(36 70% 50% / 0.15), hsl(36 80% 55% / 0.08))`
+- **Sombra do pill ativo**: `box-shadow: 0 0 12px hsl(36 70% 50% / 0.2), 0 2px 8px hsl(36 70% 50% / 0.15)`
+- **Tamanhos de icone**: ativo `h-6 w-6`, inativo `h-[18px] w-[18px]`
+- **Stroke width**: ativo 2.2, inativo 1.5
+- **Labels**: `text-[10px] tracking-wide`, ativo com `font-bold` e cor `hsl(36 80% 60%)`, inativo `hsl(36 15% 38%)`
+- **Gap interno**: mudar `gap-1.5` para `gap-[6px]`
+- **Altura do container**: de `72px` para `76px`
+- **Background da nav**: gradiente mais rico com 3 stops e opacidade 0.98
+- **Borda superior**: intensificar o pico central do gradiente para 0.5
+- **Animacao de toque**: `active:scale-[0.85]` com `transition-transform duration-150` para feedback tatil mais expressivo
+
+### Arquivo: `src/index.css`
+
+Adicionar keyframe para micro-bounce do icone ativo:
+```
+@keyframes nav-icon-pop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+```
+E classe `.nav-icon-active` que aplica a animacao ao montar.
+
+2 arquivos modificados. Resultado: uma bottom nav com presenca visual de app nativo premium.
+
