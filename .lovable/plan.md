@@ -1,44 +1,66 @@
 
 
-# Visao Cliente: Redirecionar para o Cardapio Digital
+# Redesign do Cardapio Digital com Tema da Plataforma
 
-## Problema
+## Objetivo
 
-Quando o proprietario ativa "Visao: Cliente" no header, o sistema continua mostrando a interface completa de gestao (sidebar, header, pedidos). O cliente nao deveria ver nenhuma dessas opcoes -- apenas o cardapio digital estilo iFood.
+Transformar o cardapio digital de um visual generico branco/vermelho para o tema premium da plataforma -- tons quentes, dourados, tipografia Playfair Display nos titulos, DM Sans no corpo, e a estetica cinematica que ja existe no resto do sistema.
 
-## Solucao
+## Inspiracao da Referencia
 
-Quando `viewAs === 'client'`, o `AppLayout` redirecionara automaticamente para `/cardapio`, e a pagina do Cardapio exibira um botao discreto para o owner voltar a visao normal.
+Da imagem de referencia, extrair o layout estrutural:
+- Header escuro com busca centralizada e icone do carrinho a direita
+- Secao de categorias com titulo decorativo e linha separadora
+- Cards de produto com imagens grandes, cantos arredondados e layout limpo
+- Barra inferior do carrinho mais sofisticada
 
-## Alteracoes
+## Alteracoes Visuais
 
-### 1. `src/components/layout/AppLayout.tsx`
-- Adicionar verificacao: se `viewAs === 'client'`, fazer `<Navigate to="/cardapio" replace />` em vez de renderizar o layout de gestao
+### Header
+- Fundo escuro (`hsl(24 35% 15%)` -- cor do sidebar da plataforma) com gradiente sutil
+- Titulo "Cardapio" com fonte Playfair Display em dourado (text-gradient-gold)
+- Campo de busca com fundo semi-transparente e borda sutil
+- Icone do carrinho a direita do header com badge de quantidade
 
-### 2. `src/pages/Cardapio.tsx`
-- Importar `useAuth` e verificar se o usuario esta logado com `viewAs === 'client'`
-- Se sim, exibir um badge flutuante no topo direito (similar ao que ja existe no header): "Visao: Cliente X" que ao clicar remove o `viewAs` e redireciona de volta para `/`
-- Isso permite ao owner sair da simulacao facilmente
+### Categorias
+- Titulo da secao com estilo "Nossos Produtos" usando Playfair Display
+- Pills de categoria com estilo dourado quando ativas (gradiente gold) em vez de vermelho
+- Fundo da secao com tom creme da plataforma
 
-## Fluxo
+### Cards de Produto
+- Usar a classe `glass-card` ou `card-cinematic` existente na plataforma
+- Fundo com leve glassmorphism em vez de branco puro
+- Preco em JetBrains Mono (font-mono-numbers)
+- Botao de adicionar com cor accent (dourado) em vez de vermelho
+- Hover com efeito de elevacao suave (card-cinematic)
+- Imagens com aspect-ratio 4:3 em vez de quadrado para melhor visualizacao
 
-```text
-Owner clica "Trocar Visao > Cliente"
-        |
-        v
-viewAs = 'client' → AppLayout redireciona para /cardapio
-        |
-        v
-Cardapio exibe experiencia limpa + badge "Visao: Cliente ✕"
-        |
-        v
-Owner clica no badge → viewAs = null → volta para /
-```
+### Barra do Carrinho (flutuante)
+- Fundo escuro com glassmorphism (`bg-sidebar/95 backdrop-blur-xl`)
+- Texto e icones em dourado/creme
+- Botao "Fazer Pedido" com gradiente dourado
+
+### Dialog de Checkout
+- Estilo consistente com o tema: fundo creme, bordas suaves, botao dourado
+- Totais em JetBrains Mono
+
+### Tela de Sucesso
+- Fundo com hero-gradient da plataforma
+- Icone de sucesso em dourado
+- Tipografia Playfair Display no titulo
+
+### Fundo geral da pagina
+- Usar `bg-background` (creme quente) em vez de branco puro
+- Aplicar `hero-gradient` sutil no fundo
+
+## Arquivo Alterado
+
+- `src/pages/Cardapio.tsx` -- unica alteracao, reestilizando todos os elementos visuais
 
 ## Detalhes Tecnicos
 
-- O `useAuth` ja esta disponivel globalmente via `AuthProvider` que envolve todas as rotas
-- A pagina `/cardapio` ja funciona sem autenticacao, entao nao ha conflito
-- O badge de simulacao so aparece se o usuario estiver logado E com `viewAs === 'client'`
-- Nenhuma alteracao no banco de dados necessaria
+- Remover o `style={{ fontFamily: ... }}` inline e usar as fontes definidas no CSS global (DM Sans para corpo, Playfair Display via classes de heading)
+- Reutilizar classes utilitarias ja existentes: `glass-card`, `text-gradient-gold`, `font-mono-numbers`, `hero-gradient`, `depth-shadow`
+- Manter toda a logica de carrinho, checkout e edge function intacta
+- Substituir todas as cores hardcoded (red-600, gray-100) por variaveis do tema (primary, accent, muted, etc.)
 
