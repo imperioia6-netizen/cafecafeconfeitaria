@@ -451,9 +451,9 @@ const Orders = () => {
 
       {/* ===== FLOATING CART BAR ===== */}
       {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 p-4 md:pl-[calc(var(--sidebar-width,280px)+1rem)]">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
           <div
-            className="max-w-3xl mx-auto rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4"
+            className="rounded-2xl border border-border/30 backdrop-blur-xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4"
             style={{ background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.95))' }}
           >
             <button
