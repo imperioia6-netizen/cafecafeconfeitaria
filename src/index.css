@@ -383,4 +383,13 @@
   body::-webkit-scrollbar {
     display: none;
   }
+
+  .mobile-tabs {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-tabs > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
 }

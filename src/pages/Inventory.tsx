@@ -28,32 +28,32 @@ const Inventory = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-muted/30 p-1 rounded-full border border-border/30 overflow-x-auto no-scrollbar w-full flex">
+          <TabsList className="bg-muted/30 p-1 rounded-full border border-border/30 overflow-x-auto no-scrollbar mobile-tabs w-full flex">
             <TabsTrigger
               value="estoque"
-              className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
+              className="rounded-full px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
               style={tabStyle('estoque')}
             >
-              <ShoppingBasket className="h-4 w-4 mr-2" />
+              <ShoppingBasket className="h-3 w-3 md:h-4 md:w-4 mr-1.5 md:mr-2" />
               Estoque ({ingredients?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="vitrine"
-              className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
+              className="rounded-full px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
               style={tabStyle('vitrine')}
             >
-              <Store className="h-4 w-4 mr-2" />
+              <Store className="h-3 w-3 md:h-4 md:w-4 mr-1.5 md:mr-2" />
               Vitrine ({inventory?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="alertas"
-              className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
+              className="rounded-full px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"
               style={tabStyle('alertas')}
             >
-              <AlertTriangle className="h-4 w-4 mr-2" />
+              <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 mr-1.5 md:mr-2" />
               Alertas
               {(alertCount ?? 0) > 0 && (
-                <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-[10px] glow-destructive">
+                <Badge variant="destructive" className="ml-1.5 md:ml-2 h-5 min-w-5 px-1.5 text-[10px] glow-destructive">
                   {alertCount}
                 </Badge>
               )}
