@@ -34,7 +34,7 @@ const MobileBottomNav = ({ onOpenMore }: MobileBottomNavProps) => {
   const items = isOwner ? ownerNav : employeeNav;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom"
+    <nav className="fixed bottom-0 left-0 right-0 z-[60] md:hidden safe-area-bottom"
       style={{
         background: 'linear-gradient(180deg, hsl(24 28% 13% / 0.96), hsl(24 32% 9% / 0.98), hsl(24 38% 5% / 0.99))',
         backdropFilter: 'blur(28px)',
