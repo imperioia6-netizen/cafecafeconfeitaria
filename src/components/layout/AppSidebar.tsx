@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ChefHat, Package, ShoppingCart, LogOut, Coffee,
-  Users, AlertTriangle, CreditCard, BarChart3, Heart,
+  Users, AlertTriangle, CreditCard, BarChart3, Heart, ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -26,6 +26,7 @@ const navGroups = [
     items: [
       { label: 'Produção', icon: Coffee, path: '/production', ownerOnly: false },
       { label: 'Estoque', icon: Package, path: '/inventory', ownerOnly: false },
+      { label: 'Pedidos', icon: ClipboardList, path: '/orders', ownerOnly: false },
       { label: 'Vendas', icon: ShoppingCart, path: '/sales', ownerOnly: false },
       { label: 'Caixas', icon: CreditCard, path: '/cash-register', ownerOnly: false },
     ],
