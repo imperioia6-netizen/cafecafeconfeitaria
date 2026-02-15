@@ -1,28 +1,38 @@
 
 
-# Fixar Barra "Fazer Pedido" Mais Abaixo na Tela
+# Corrigir Legibilidade dos Cards Marrons
 
 ## Problema
 
-A barra flutuante com o carrinho e o botao "Fazer Pedido" no cardapio do cliente esta posicionada muito alta na tela (bottom-16), sobrepondo os cards de produtos.
+Os cards com fundo marrom escuro (gradiente `hsl(24 60% 20%)` a `hsl(24 50% 14%)`) usam cores de texto com opacidade muito baixa:
+- Titulo: `text-primary-foreground/70` (30% invisivel)
+- Subtexto: `text-primary-foreground/50` (metade invisivel)  
+- Linhas 7d/30d: `text-primary-foreground/60` (40% invisivel)
+
+Resultado: texto praticamente ilegivel contra o fundo escuro.
 
 ## Solucao
 
-Ajustar o posicionamento da barra flutuante para ficar colada na parte inferior da tela. Como o cardapio publico do cliente nao tem a barra de navegacao inferior (MobileBottomNav), nao ha necessidade do offset `bottom-16`.
+Aumentar a opacidade e luminosidade do texto nos cards marrons para garantir contraste WCAG AA:
 
-## Detalhe Tecnico
+| Elemento | Antes | Depois |
+|---|---|---|
+| Label (titulo) | `text-primary-foreground/70` | `text-primary-foreground/90` |
+| Subtexto | `text-primary-foreground/50` | `text-primary-foreground/70` |
+| Linhas periodo | `text-primary-foreground/60` | `text-primary-foreground/80` |
+| Divider | `border-white/10` | `border-white/20` |
 
-### Arquivo: `src/pages/Cardapio.tsx`
+## Arquivos Afetados
 
-Na linha 526, alterar a classe da barra flutuante:
+### 1. `src/pages/Index.tsx` -- KpiCard do Dashboard
+- Linha 56: label do titulo `/70` para `/90`
+- Linha 63: "Hoje:" `/50` para `/70`
+- Linhas 71, 78: linhas 7d/30d `/60` para `/80`
+- Linha 70: border divider `white/10` para `white/20`
 
-- **De:** `fixed bottom-16 md:bottom-0`
-- **Para:** `fixed bottom-0`
+### 2. `src/components/crm/CrmDashboardKpis.tsx` -- KPIs do CRM
+- Linha 73: label do titulo `/70` para `/90`
+- Linha 80: subtexto `/50` para `/70`
 
-Tambem ajustar o `pb-24` do container principal para `pb-20`, garantindo que o ultimo card nao fique escondido atras da barra.
+Nenhuma mudanca estrutural, apenas ajuste de opacidades para legibilidade.
 
-| Arquivo | Mudanca |
-|---|---|
-| `src/pages/Cardapio.tsx` | Mover barra flutuante para bottom-0 e ajustar padding inferior |
-
-1 arquivo, mudanca minima.
