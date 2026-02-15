@@ -12,7 +12,7 @@ import {
 import {
   ClipboardList, Plus, Minus, X, Loader2, Sparkles, Trash2, CreditCard, Hash, User, MapPin, Search, ShoppingBag, ChevronRight,
 } from 'lucide-react';
-import { useInventory, type InventoryItem } from '@/hooks/useInventory';
+import { useActiveRecipes, type Recipe } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { useOpenOrders, useCreateOrder, useAddOrderItem, useRemoveOrderItem, useFinalizeOrder, useCancelOrder } from '@/hooks/useOrders';
 import { Constants } from '@/integrations/supabase/types';
@@ -26,16 +26,15 @@ const categoryEmoji: Record<string, string> = { bolo: '🎂', torta: '🥧', sal
 interface NewOrderItem {
   recipe_id: string;
   recipe_name: string;
-  inventory_id: string;
   quantity: number;
   unit_price: number;
-  max_available: number;
   photo_url?: string | null;
+  category: string;
 }
 
 const Orders = () => {
   const { user } = useAuth();
-  const { data: inventory, isLoading: invLoading } = useInventory();
+  const { data: recipes, isLoading: recipesLoading } = useActiveRecipes();
   const { data: openOrders, isLoading: ordersLoading } = useOpenOrders();
   const createOrder = useCreateOrder();
   const removeOrderItem = useRemoveOrderItem();
@@ -53,42 +52,39 @@ const Orders = () => {
   const [finalizeTarget, setFinalizeTarget] = useState<any>(null);
   const [payment, setPayment] = useState('dinheiro');
 
-  const availableItems = inventory?.filter(i => i.slices_available > 0) ?? [];
+  const allRecipes = recipes ?? [];
 
-  // Categories from available items
+  // Categories from recipes
   const categories = useMemo(() => {
-    const cats = new Set(availableItems.map(i => i.recipes?.category ?? 'outro'));
+    const cats = new Set(allRecipes.map(r => r.category ?? 'outro'));
     return ['todos', ...Array.from(cats)];
-  }, [availableItems]);
+  }, [allRecipes]);
 
   // Filter items
   const filteredItems = useMemo(() => {
-    let items = availableItems;
+    let items = allRecipes;
     if (activeCategory !== 'todos') {
-      items = items.filter(i => (i.recipes?.category ?? 'outro') === activeCategory);
+      items = items.filter(r => (r.category ?? 'outro') === activeCategory);
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      items = items.filter(i => i.recipes?.name?.toLowerCase().includes(q));
+      items = items.filter(r => r.name.toLowerCase().includes(q));
     }
     return items;
-  }, [availableItems, activeCategory, searchQuery]);
+  }, [allRecipes, activeCategory, searchQuery]);
 
-  const addToCart = (item: InventoryItem) => {
-    const existing = cart.find(c => c.inventory_id === item.id);
+  const addToCart = (recipe: Recipe) => {
+    const existing = cart.find(c => c.recipe_id === recipe.id);
     if (existing) {
-      if (existing.quantity < item.slices_available) {
-        setCart(cart.map(c => c.inventory_id === item.id ? { ...c, quantity: c.quantity + 1 } : c));
-      }
+      setCart(cart.map(c => c.recipe_id === recipe.id ? { ...c, quantity: c.quantity + 1 } : c));
     } else {
       setCart([...cart, {
-        recipe_id: item.recipe_id,
-        recipe_name: item.recipes?.name ?? '—',
-        inventory_id: item.id,
+        recipe_id: recipe.id,
+        recipe_name: recipe.name,
         quantity: 1,
-        unit_price: item.recipes?.sale_price ?? 0,
-        max_available: item.slices_available,
-        photo_url: item.recipes?.photo_url,
+        unit_price: Number(recipe.sale_price),
+        photo_url: recipe.photo_url,
+        category: recipe.category,
       }]);
     }
   };
@@ -107,7 +103,6 @@ const Orders = () => {
         channel,
         items: cart.map(c => ({
           recipe_id: c.recipe_id,
-          inventory_id: c.inventory_id,
           quantity: c.quantity,
           unit_price: c.unit_price,
         })),
@@ -231,7 +226,7 @@ const Orders = () => {
         </ScrollArea>
 
         {/* Product grid — iFood style */}
-        {invLoading ? (
+        {recipesLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : !filteredItems.length ? (
           <div className="text-center py-16">
@@ -240,33 +235,27 @@ const Orders = () => {
           </div>
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredItems.map(item => {
-              const inCart = cart.find(c => c.inventory_id === item.id);
+            {filteredItems.map(recipe => {
+              const inCart = cart.find(c => c.recipe_id === recipe.id);
               return (
                 <button
-                  key={item.id}
-                  onClick={() => addToCart(item)}
+                  key={recipe.id}
+                  onClick={() => addToCart(recipe)}
                   className="group relative bg-card/90 backdrop-blur-sm rounded-2xl border border-border/20 overflow-hidden text-left transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-accent/30 hover:-translate-y-1 active:scale-[0.98]"
                 >
                   {/* Product image */}
                   <div className="relative aspect-[16/10] w-full bg-muted/20 overflow-hidden">
-                    {item.recipes?.photo_url ? (
+                    {recipe.photo_url ? (
                       <img
-                        src={item.recipes.photo_url}
-                        alt={item.recipes?.name ?? ''}
+                        src={recipe.photo_url}
+                        alt={recipe.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10">
-                        <span className="text-4xl opacity-30">{categoryEmoji[item.recipes?.category ?? 'outro'] ?? '📦'}</span>
+                        <span className="text-4xl opacity-30">{categoryEmoji[recipe.category ?? 'outro'] ?? '📦'}</span>
                       </div>
                     )}
-                    {/* Availability badge */}
-                    <div className="absolute top-3 left-3">
-                      <Badge className="text-[10px] font-semibold rounded-full bg-card/90 backdrop-blur-md text-foreground border-0 shadow-sm">
-                        {item.slices_available} disponíveis
-                      </Badge>
-                    </div>
                     {/* Cart indicator */}
                     {inCart && (
                       <div className="absolute top-3 right-3 h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}>
@@ -285,14 +274,14 @@ const Orders = () => {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-sm text-foreground truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                          {item.recipes?.name}
+                          {recipe.name}
                         </h3>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {categoryLabels[item.recipes?.category ?? 'outro'] ?? item.recipes?.category}
+                          {categoryLabels[recipe.category ?? 'outro'] ?? recipe.category}
                         </p>
                       </div>
                       <span className="text-base font-bold font-mono-numbers text-gradient-gold whitespace-nowrap">
-                        R$ {Number(item.recipes?.sale_price ?? 0).toFixed(2)}
+                        R$ {Number(recipe.sale_price).toFixed(2)}
                       </span>
                     </div>
                   </div>

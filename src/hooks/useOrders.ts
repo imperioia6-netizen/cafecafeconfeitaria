@@ -28,7 +28,7 @@ export function useCreateOrder() {
       customer_name?: string;
       channel?: string;
       notes?: string;
-      items: { recipe_id: string; inventory_id: string; quantity: number; unit_price: number }[];
+      items: { recipe_id: string; inventory_id?: string; quantity: number; unit_price: number }[];
     }) => {
       const { data: order, error: orderErr } = await supabase
         .from('orders')
