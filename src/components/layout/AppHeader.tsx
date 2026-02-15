@@ -2,10 +2,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveAlerts } from '@/hooks/useAlerts';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, CheckCircle, UserCircle, LogOut, Eye, ChevronRight } from 'lucide-react';
+import { Bell, CheckCircle, UserCircle, LogOut, Eye, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -30,11 +31,16 @@ const viewLabels: Record<string, string> = {
   client: 'Cliente',
 };
 
-const AppHeader = () => {
+interface AppHeaderProps {
+  onToggleSidebar: () => void;
+}
+
+const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
   const { user, roles, signOut, isOwner, viewAs, setViewAs } = useAuth();
   const realIsOwner = roles.includes('owner');
   const { data: alerts } = useActiveAlerts();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [profileName, setProfileName] = useState('');
   const [clock, setClock] = useState(new Date());
 
@@ -54,49 +60,70 @@ const AppHeader = () => {
   const alertCount = alerts?.length ?? 0;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 md:py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
-      <div className="animate-fade-in">
-        <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          {getGreeting()}, <span className="text-gradient-gold">{firstName}</span>
-        </h2>
-        <p className="text-sm text-muted-foreground/70 font-mono text-xs tracking-wide">
-          {clock.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          {' · '}
-          {clock.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger */}
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 rounded-xl hover:bg-muted/50 transition-colors shrink-0"
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-5 w-5 text-muted-foreground" />
+        </button>
+
+        <div className="animate-fade-in min-w-0">
+          <h2 className="text-base md:text-xl font-bold tracking-tight truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            {isMobile ? (
+              <span className="text-gradient-gold">{firstName}</span>
+            ) : (
+              <>
+                {getGreeting()}, <span className="text-gradient-gold">{firstName}</span>
+              </>
+            )}
+          </h2>
+          {!isMobile && (
+            <p className="text-sm text-muted-foreground/70 font-mono text-xs tracking-wide">
+              {clock.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {' · '}
+              {clock.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         {/* Simulated view badge */}
         {viewAs && (
           <Badge
             variant="outline"
-            className="cursor-pointer gap-1.5 px-3 py-1.5 border-accent/40 text-accent animate-fade-in"
+            className="cursor-pointer gap-1 px-2 md:px-3 py-1 md:py-1.5 border-accent/40 text-accent animate-fade-in text-[10px] md:text-xs"
             onClick={() => setViewAs(null)}
           >
-            <Eye className="h-3.5 w-3.5" />
-            Visão: {viewLabels[viewAs]}
-            <span className="text-[10px] ml-1 opacity-60">✕</span>
+            <Eye className="h-3 w-3" />
+            <span className="hidden sm:inline">Visão:</span> {viewLabels[viewAs]}
+            <span className="text-[10px] ml-0.5 opacity-60">✕</span>
           </Badge>
         )}
 
-        {/* System status badge */}
-        {alertCount > 0 ? (
-          <Badge
-            variant="destructive"
-            className="cursor-pointer gap-1.5 px-3 py-1.5 animate-glow-pulse glow-destructive"
-            onClick={() => navigate('/alerts')}
-          >
-            <Bell className="h-3.5 w-3.5" />
-            {alertCount} alerta{alertCount > 1 ? 's' : ''}
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 bg-success/10 text-success border-success/20 glow-success">
-            <CheckCircle className="h-3.5 w-3.5" />
-            Tudo certo
-          </Badge>
+        {/* System status badge - hidden on small mobile */}
+        {!isMobile && (
+          alertCount > 0 ? (
+            <Badge
+              variant="destructive"
+              className="cursor-pointer gap-1.5 px-3 py-1.5 animate-glow-pulse glow-destructive"
+              onClick={() => navigate('/alerts')}
+            >
+              <Bell className="h-3.5 w-3.5" />
+              {alertCount} alerta{alertCount > 1 ? 's' : ''}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 bg-success/10 text-success border-success/20 glow-success">
+              <CheckCircle className="h-3.5 w-3.5" />
+              Tudo certo
+            </Badge>
+          )
         )}
 
         {/* Notifications bell */}
@@ -117,8 +144,8 @@ const AppHeader = () => {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 group outline-none">
               <div className="relative">
-                <Avatar className="h-9 w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                <Avatar className="h-8 w-8 md:h-9 md:w-9 ring-2 ring-border transition-all duration-500 group-hover:ring-accent/40 group-hover:shadow-lg">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs md:text-sm font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>

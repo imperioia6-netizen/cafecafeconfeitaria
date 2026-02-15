@@ -1,12 +1,21 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { Coffee } from 'lucide-react';
 import AppSidebar from './AppSidebar';
 import AppHeader from './AppHeader';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, loading, viewAs } = useAuth();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // On mobile, sidebar starts closed
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+    else setSidebarOpen(true);
+  }, [isMobile]);
 
   if (loading) {
     return (
@@ -25,12 +34,22 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   if (!user) return <Navigate to="/auth" replace />;
   if (viewAs === 'client') return <Navigate to="/cardapio" replace />;
 
+  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
   return (
     <div className="min-h-screen bg-background hero-gradient">
-      <AppSidebar />
-      <div className="ml-64 min-h-screen flex flex-col">
-        <AppHeader />
-        <main className="flex-1 p-8 animate-fade-in">
+      <AppSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isMobile={isMobile}
+      />
+      <div
+        className={`min-h-screen flex flex-col transition-all duration-300 ${
+          !isMobile && sidebarOpen ? 'ml-64' : 'ml-0'
+        }`}
+      >
+        <AppHeader onToggleSidebar={toggleSidebar} />
+        <main className="flex-1 p-4 md:p-8 animate-fade-in">
           {children}
         </main>
       </div>
