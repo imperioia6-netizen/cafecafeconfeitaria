@@ -66,7 +66,7 @@ const CrmDashboardKpis = () => {
       {kpis.map((kpi, i) => (
         <div
           key={kpi.label}
-          className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in animate-stagger-${i + 1} ${kpi.isFirst ? 'border-shine' : ''}`}
+          className={`card-cinematic rounded-xl overflow-hidden ${kpi.isFirst ? 'border-shine' : ''}`}
           style={kpi.isFirst ? {
             background: 'linear-gradient(135deg, hsl(24 60% 20%), hsl(24 50% 14%))',
             color: 'hsl(36 40% 95%)',
@@ -74,7 +74,7 @@ const CrmDashboardKpis = () => {
         >
           <div className="p-3 md:p-4 space-y-2 md:space-y-3 relative z-10">
             <div className="flex items-center gap-2">
-              <div className={`rounded-xl p-2.5 animate-float ${kpi.isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
+              <div className={`rounded-xl p-2.5 ${kpi.isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
                 <kpi.icon className={`h-4 w-4 ${kpi.isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
               </div>
               <span className={`text-sm font-medium ${kpi.isFirst ? 'text-white/90' : 'text-muted-foreground'}`}>
