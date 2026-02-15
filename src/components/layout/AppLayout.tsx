@@ -9,7 +9,7 @@ import PageTransition from './PageTransition';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
-  const { user, loading, viewAs } = useAuth();
+  const { user, loading, viewAs, roles } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
@@ -34,6 +34,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
   if (!user) return <Navigate to="/auth" replace />;
   if (viewAs === 'client') return <Navigate to="/cardapio" replace />;
+
+  const isEmployeeOnly = roles.includes('employee') && !roles.includes('owner');
+  if (isEmployeeOnly && location.pathname === '/') return <Navigate to="/orders" replace />;
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
 
