@@ -18,7 +18,7 @@ const navGroups = [
       { label: 'Produtos', icon: ChefHat, path: '/recipes', ownerOnly: false },
       { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
       { label: 'CRM', icon: Heart, path: '/crm', ownerOnly: true },
-      
+      { label: 'Pedidos', icon: ClipboardList, path: '/orders', ownerOnly: false },
     ],
   },
   {
@@ -26,7 +26,6 @@ const navGroups = [
     items: [
       { label: 'Produção', icon: Coffee, path: '/production', ownerOnly: false },
       { label: 'Estoque', icon: Package, path: '/inventory', ownerOnly: false },
-      { label: 'Pedidos', icon: ClipboardList, path: '/orders', ownerOnly: false },
       { label: 'Vendas', icon: ShoppingCart, path: '/sales', ownerOnly: false },
       { label: 'Caixas', icon: CreditCard, path: '/cash-register', ownerOnly: false },
     ],
