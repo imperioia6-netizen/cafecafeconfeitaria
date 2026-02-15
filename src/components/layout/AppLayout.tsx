@@ -12,11 +12,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, loading, viewAs } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
-    else setSidebarOpen(true);
   }, [location.pathname, isMobile]);
 
   if (loading) {
