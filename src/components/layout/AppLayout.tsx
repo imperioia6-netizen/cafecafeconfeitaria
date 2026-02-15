@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { Coffee } from 'lucide-react';
 import AppSidebar from './AppSidebar';
 import AppHeader from './AppHeader';
+import MobileBottomNav from './MobileBottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
@@ -49,10 +50,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         }`}
       >
         <AppHeader onToggleSidebar={toggleSidebar} />
-        <main className="flex-1 p-4 md:p-8 animate-fade-in">
+        <main className="flex-1 p-3 md:p-8 pb-20 md:pb-8 animate-fade-in">
           {children}
         </main>
       </div>
+      {isMobile && (
+        <MobileBottomNav onOpenMore={() => setSidebarOpen(true)} />
+      )}
     </div>
   );
 };

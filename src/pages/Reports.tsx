@@ -31,7 +31,7 @@ const PeriodTab = ({ days }: { days: number }) => {
   return (
     <div className="space-y-6">
       {/* KPI cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         {[
           { label: 'Faturamento', value: `R$ ${data.currentTotal.toFixed(2)}`, trend: data.growth, icon: DollarSign },
           { label: 'Vendas', value: String(data.salesCount), icon: ShoppingCart },
@@ -39,14 +39,14 @@ const PeriodTab = ({ days }: { days: number }) => {
           { label: 'Período Anterior', value: `R$ ${data.prevTotal.toFixed(2)}`, muted: true, icon: Clock },
         ].map((kpi, i) => (
           <div key={kpi.label} className="card-cinematic shine-effect gradient-border rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="p-5 space-y-3 relative z-10">
+            <div className="p-3 md:p-5 space-y-2 md:space-y-3 relative z-10">
               <div className="flex items-center gap-2.5">
                 <div className="rounded-xl p-2.5 bg-primary/10">
                   <kpi.icon className="h-4 w-4 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">{kpi.label}</span>
               </div>
-              <p className={`text-2xl font-bold font-mono-numbers ${kpi.muted ? 'text-muted-foreground' : ''}`}>{kpi.value}</p>
+              <p className={`text-lg md:text-2xl font-bold font-mono-numbers ${kpi.muted ? 'text-muted-foreground' : ''}`}>{kpi.value}</p>
               {kpi.trend !== undefined && (
                 <div className="flex items-center gap-1 mt-1.5">
                   {kpi.trend >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
@@ -66,7 +66,7 @@ const PeriodTab = ({ days }: { days: number }) => {
           <div className="card-cinematic rounded-xl">
             <div className="p-6">
               <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Faturamento Diário</h3>
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 180 : 240}>
                 <AreaChart data={data.daily}>
                   <defs>
                     <linearGradient id="reportGradient" x1="0" y1="0" x2="0" y2="1">

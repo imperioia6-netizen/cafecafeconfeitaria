@@ -334,7 +334,7 @@
 
   /* ── Page Title ── */
   .page-title {
-    @apply text-4xl font-extrabold tracking-tighter;
+    @apply text-2xl md:text-4xl font-extrabold tracking-tighter;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
@@ -361,4 +361,13 @@
   .animate-stagger-4 { animation-delay: 300ms; }
   .animate-stagger-5 { animation-delay: 400ms; }
   .animate-stagger-6 { animation-delay: 500ms; }
+
+  /* No scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Safe area bottom */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }

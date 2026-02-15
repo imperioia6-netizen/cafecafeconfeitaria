@@ -335,7 +335,7 @@ const Orders = () => {
 
         {/* Order metadata bar */}
         <div className="glass-card rounded-2xl p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />Comanda</Label>
               <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº comanda" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} maxLength={20} />

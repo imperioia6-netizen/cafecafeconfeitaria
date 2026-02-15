@@ -47,7 +47,7 @@ const KpiCard = ({
         color: 'hsl(36 40% 95%)',
       } : undefined}
     >
-      <div className="p-5 space-y-4 relative z-10">
+      <div className="p-3 md:p-5 space-y-3 md:space-y-4 relative z-10">
         <div className="flex items-center gap-2.5">
           <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
             <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
@@ -59,7 +59,7 @@ const KpiCard = ({
 
         <div>
           <p className={`text-xs ${isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground/70'}`}>Hoje:</p>
-          <p className={`text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold' : ''}`}>
+          <p className={`text-xl md:text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold' : ''}`}>
             {fmt(today)}
           </p>
         </div>
@@ -138,7 +138,7 @@ const Dashboard = () => {
         ) : (
           <>
             {/* ── KPI Cards ── */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
               <KpiCard
                 title="Faturamento"
                 icon={DollarSign}
@@ -186,7 +186,7 @@ const Dashboard = () => {
                   color: 'hsl(36 40% 95%)',
                 }}
               >
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <div className="flex items-center justify-between mb-1">
                     <div>
                       <h3 className="text-lg font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -277,7 +277,7 @@ const Dashboard = () => {
                   )}
                   {chartData && chartData.length > 0 ? (
                     <>
-                      <ResponsiveContainer width="100%" height={260}>
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 180 : 260}>
                         <AreaChart data={chartData}>
                           <defs>
                             <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
@@ -312,7 +312,7 @@ const Dashboard = () => {
                       </ResponsiveContainer>
 
                       {/* Summary row */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+                      <div className="grid grid-cols-3 gap-2 md:gap-3 mt-4 md:mt-5">
                         {[
                           { label: 'Vendas Hoje', value: String(kpis?.salesCount ?? 0) },
                           { label: 'Faturamento', value: fmtCurrency(kpis?.revenue ?? 0) },
@@ -339,7 +339,7 @@ const Dashboard = () => {
 
               {/* ── Alerts Panel ── */}
               <div className="card-cinematic rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: '450ms' }}>
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <h3 className="text-base font-bold flex items-center gap-2 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     <AlertTriangle className="h-4 w-4 text-accent" />
                     Alertas Ativos
