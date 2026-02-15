@@ -1,32 +1,31 @@
 
 
-# Corrigir Floating Cart Bar sobrepondo a Bottom Nav no Mobile
+# Dashboard Mobile -- Cards em Coluna Unica (Estilo Referencia)
 
-## Problema
+## O que muda
 
-No Cardapio, o botao flutuante do carrinho ("Criar Pedido") usa `fixed bottom-0`, ficando exatamente na mesma posicao da bottom navigation bar. Os dois elementos se sobrepoem, tornando ambos inutilizaveis.
+A imagem de referencia mostra os KPI cards empilhados em **1 coluna** no mobile (full-width), com layout interno diferente do atual:
 
-## Solucao
-
-Mover a floating cart bar para cima no mobile, adicionando `bottom-16` (64px = altura da bottom nav) quando estiver em tela mobile, e manter `bottom-0` no desktop.
+- Icone + Titulo na mesma linha (topo)
+- "Hoje:" com valor grande abaixo
+- Linha separadora horizontal
+- "7 dias:" e "30 dias:" como linhas com menu "..." a direita
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/pages/Cardapio.tsx` (linha 526)
+### Arquivo: `src/pages/Index.tsx`
 
-**De:**
-```
-className="fixed bottom-0 left-0 right-0 z-50 ..."
-```
+**1. Grid dos KPIs (linha 141)**
+- De: `grid-cols-2 lg:grid-cols-4`
+- Para: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
-**Para:**
-```
-className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 ..."
-```
+**2. KpiCard component (linhas 28-80)**
+Reestruturar o layout interno para:
+- Topo: icone + titulo
+- "Hoje:" label + valor grande
+- Divider horizontal (`border-t`)
+- "7 dias:" com valor + icone MoreVertical
+- "30 dias:" com valor + icone MoreVertical
 
-- `bottom-16` no mobile: empurra a barra 64px acima, ficando logo acima da bottom nav
-- `md:bottom-0` no desktop: mantém no fundo da tela (sem bottom nav no desktop)
-- `z-40` em vez de `z-50`: a bottom nav fica por cima (z-50), a cart bar logo abaixo (z-40), sem conflito visual
-
-Apenas 1 arquivo modificado, 1 linha alterada.
+Isso replica fielmente o estilo da imagem de referencia, onde cada card ocupa a largura toda da tela no mobile e mostra os dados de forma clara e organizada com separadores visuais.
 
