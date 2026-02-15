@@ -55,6 +55,7 @@ const Cardapio = () => {
   const [address, setAddress] = useState('');
   const [addressNumber, setAddressNumber] = useState('');
   const [addressComplement, setAddressComplement] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
 
   // Product detail dialog state
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
@@ -154,12 +155,15 @@ const Cardapio = () => {
 
   const handleSubmitOrder = async () => {
     if (!customerName.trim() || cart.length === 0) return;
+    if (deliveryMode === 'pickup' && !orderNumber.trim()) return;
+    if (deliveryMode === 'delivery' && (!customerPhone.trim() || !address.trim() || !addressNumber.trim())) return;
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('public-order', {
         body: {
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
+          order_number: deliveryMode === 'pickup' ? orderNumber.trim() : null,
           items: cart.map(c => ({ recipe_id: c.recipe_id, quantity: c.quantity, notes: c.notes || null })),
           delivery_mode: deliveryMode,
           address: deliveryMode === 'delivery' ? address.trim() : null,
@@ -182,6 +186,7 @@ const Cardapio = () => {
     setCart([]);
     setCustomerName('');
     setCustomerPhone('');
+    setOrderNumber('');
     setDeliveryMode('pickup');
     setAddress('');
     setAddressNumber('');
@@ -651,34 +656,67 @@ const Cardapio = () => {
                 </div>
               )}
 
-              {/* Customer data */}
-              <div>
-                <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Dados do Cliente
-                </span>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name" className="text-xs text-gray-600">Nome *</Label>
-                    <Input
-                      id="name"
-                      placeholder="Seu nome"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone" className="text-xs text-gray-600">Telefone (opcional)</Label>
-                    <Input
-                      id="phone"
-                      placeholder="(11) 99999-9999"
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                      className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
-                    />
+              {/* Pickup: order number */}
+              {deliveryMode === 'pickup' && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Dados do Pedido
+                  </span>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="orderNumber" className="text-xs text-gray-600">Número da Comanda *</Label>
+                      <Input
+                        id="orderNumber"
+                        placeholder="Ex: 42"
+                        value={orderNumber}
+                        onChange={e => setOrderNumber(e.target.value)}
+                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="text-xs text-gray-600">Nome *</Label>
+                      <Input
+                        id="name"
+                        placeholder="Seu nome"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Delivery: customer data with required phone */}
+              {deliveryMode === 'delivery' && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Dados do Cliente
+                  </span>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="text-xs text-gray-600">Nome *</Label>
+                      <Input
+                        id="name"
+                        placeholder="Seu nome"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone" className="text-xs text-gray-600">Telefone *</Label>
+                      <Input
+                        id="phone"
+                        placeholder="(11) 99999-9999"
+                        value={customerPhone}
+                        onChange={e => setCustomerPhone(e.target.value)}
+                        className="bg-gray-50 border-gray-200 rounded-xl h-10 text-gray-900 placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
@@ -692,7 +730,7 @@ const Cardapio = () => {
             </div>
             <Button
               onClick={handleSubmitOrder}
-              disabled={sending || !customerName.trim() || (deliveryMode === 'delivery' && (!address.trim() || !addressNumber.trim()))}
+              disabled={sending || !customerName.trim() || (deliveryMode === 'pickup' && !orderNumber.trim()) || (deliveryMode === 'delivery' && (!customerPhone.trim() || !address.trim() || !addressNumber.trim()))}
               className="w-full rounded-full h-12 text-base font-semibold text-white hover:brightness-110 transition-all"
               style={{ backgroundColor: '#8B6914' }}
             >
