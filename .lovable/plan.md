@@ -1,64 +1,47 @@
 
+# Produtos e Fotos na Visao de Funcionario
 
-# Produtos com Foto/Preco e Anotacoes de Pedido na Venda
+## Objetivo
 
-## Resumo
+Garantir que funcionarios tenham acesso a:
+1. **Pagina de Produtos** (somente leitura -- sem botoes de criar/editar/excluir)
+2. **Fotos e precos** nos cards de selecao de produto na pagina de Producao
 
-Duas melhorias na pagina de Vendas:
+## Alteracoes
 
-1. **Produtos com mais informacoes**: exibir foto do produto (da receita) e preco sugerido (sale_price) nos cards de produtos disponiveis, preenchendo automaticamente o preco no carrinho
-2. **Anotacoes de pedido**: adicionar campos opcionais de comanda, mesa e nome do cliente diretamente na venda
+### 1. Sidebar -- Tornar Produtos visivel para todos (`src/components/layout/AppSidebar.tsx`)
 
-## Alteracoes no Banco de Dados
+- Alterar o item `Produtos` de `ownerOnly: true` para `ownerOnly: false` no array `navGroups`
+- Isso permite que funcionarios vejam e acessem a pagina de Produtos no menu lateral
 
-Adicionar 3 colunas na tabela `sales`:
+### 2. Pagina Produtos -- Modo somente leitura (`src/pages/Recipes.tsx`)
 
-```sql
-ALTER TABLE public.sales
-  ADD COLUMN order_number text DEFAULT NULL,
-  ADD COLUMN table_number text DEFAULT NULL,
-  ADD COLUMN customer_name text DEFAULT NULL;
-```
+- Importar `useAuth` e verificar `isOwner`
+- Esconder o botao `<RecipeForm />` (novo produto) quando `!isOwner`
+- No `RecipeCard`, esconder botoes de editar/excluir quando `!isOwner`
+- Funcionario ve apenas o catalogo de produtos com fotos, precos e informacoes
 
-- `order_number`: numero da comanda (texto livre, ex: "042")
-- `table_number`: numero da mesa (texto livre, ex: "5")
-- `customer_name`: nome do cliente (texto livre, ex: "Maria")
+### 3. RecipeCard -- Esconder acoes de edicao (`src/components/recipes/RecipeCard.tsx`)
 
-Esses campos sao opcionais e complementam o `customer_id` ja existente.
+- Receber prop `readOnly?: boolean`
+- Quando `readOnly`, esconder botoes de editar e excluir no card
+- Manter toda a informacao visual (foto, nome, preco, categoria)
 
-## Alteracoes no Hook `useSales.ts`
+### 4. Producao -- Mostrar foto e preco ao selecionar produto (`src/pages/Production.tsx`)
 
-- Adicionar `order_number`, `table_number` e `customer_name` ao input de `useCreateSale`
-- Passar esses campos no insert da tabela `sales`
-- Incluir esses campos na query de `useTodaySales`
+- Na secao "Nova Producao", apos selecionar o produto no Select, exibir:
+  - Foto do produto (se existir `photo_url` na receita)
+  - Preco de venda sugerido (`sale_price`)
+- Isso aparece no bloco de "Previa da Producao" que ja existe, adicionando a miniatura do produto
 
-## Alteracoes na Pagina `Sales.tsx`
+### 5. RLS -- Nenhuma alteracao necessaria
 
-### Cards de Produtos
-
-- Buscar dados da receita via relacao `inventory -> recipes` (ja existente: `item.recipes`)
-- Exibir `photo_url` da receita como miniatura no card do produto
-- Exibir `sale_price` como preco de referencia no card
-- Ao adicionar ao carrinho, preencher `unit_price` automaticamente com o `sale_price` da receita
-
-### Anotacoes de Pedido (no carrinho)
-
-Adicionar secao "Anotacoes" no carrinho com 3 campos opcionais:
-
-- **Comanda**: input de texto curto para numero da comanda
-- **Mesa**: input de texto curto para numero da mesa
-- **Nome do cliente**: input de texto para nome (substitui ou complementa o seletor de cliente existente)
-
-Esses campos aparecem acima dos seletores de Canal e Pagamento.
-
-### Vendas de Hoje
-
-- Exibir comanda, mesa e nome do cliente quando preenchidos, usando badges ou texto secundario na linha da venda
+- A tabela `recipes` ja possui policy `Authenticated can read active recipes` com `qual: (active = true)`
+- Funcionarios ja conseguem ler receitas ativas pelo banco -- apenas a UI estava bloqueando
 
 ## Detalhes Tecnicos
 
-- O `useInventory` ja faz join com `recipes`, entao `item.recipes?.photo_url` e `item.recipes?.sale_price` ja estao disponiveis
-- Os campos de anotacao sao states locais (`orderNumber`, `tableNumber`, `customerName`) resetados apos cada venda
-- O campo `customer_name` e texto livre e independente do `customer_id` (CRM) -- permite anotar nomes rapidos sem cadastrar cliente
-- Validacao: campos de texto com `maxLength` para seguranca (comanda: 20, mesa: 10, nome: 100)
-
+- O `RecipeCard` recebera `readOnly` como prop, controlado pelo `isOwner` na pagina Recipes
+- Na pagina Production, o objeto `recipe` ja contem `photo_url` e `sale_price` (vem do `useActiveRecipes` que faz `select('*')`)
+- A foto sera exibida como miniatura (48x48) ao lado do nome do produto na previa
+- Nenhuma migracao de banco de dados necessaria
