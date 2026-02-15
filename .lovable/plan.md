@@ -1,58 +1,20 @@
 
 
-# Corrigir Carregamento Infinito no Dashboard
+# Clarear a Barra de Navegacao Inferior (MobileBottomNav)
 
-## Problema Raiz
+## O que muda
 
-A documentacao do Supabase recomenda NAO fazer chamadas a APIs Supabase diretamente dentro do callback `onAuthStateChange`. Ao colocar `await fetchRoles()` dentro desse callback, criamos um conflito que impede o `setLoading(false)` de funcionar corretamente.
+### Arquivo: `src/components/layout/MobileBottomNav.tsx`
 
-## Solucao
+1. **Fundo da barra**: Aumentar a luminosidade do gradiente de fundo de ~4-14% para ~8-18%, tornando a barra visivelmente mais clara sem perder o visual cinematografico.
 
-### Arquivo: `src/hooks/useAuth.tsx`
+2. **Icones inativos**: Mudar a cor dos icones inativos de `hsl(24 12% 32%)` para `hsl(24 15% 45%)`, tornando-os mais visiveis.
 
-Desacoplar a logica de loading:
+3. **Labels inativos**: Mudar a cor dos textos inativos de `hsl(24 10% 30%)` para `hsl(24 12% 44%)`, melhorando a legibilidade.
 
-1. **`onAuthStateChange`**: NAO aguardar `fetchRoles` — apenas disparar sem await (fire-and-forget). Este callback serve para reagir a mudancas de auth (login, logout, token refresh), nao para controlar o loading inicial.
+4. **Sombra superior**: Reduzir levemente a intensidade da sombra escura para combinar com o fundo mais claro.
 
-2. **`getSession`**: Este continua sendo o unico responsavel pelo loading inicial. Ele aguarda `fetchRoles` e so entao chama `setLoading(false)`.
+5. **Linha dourada superior**: Aumentar levemente a opacidade para maior contraste contra o fundo mais claro.
 
-```tsx
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Fire-and-forget — nao bloquear o callback
-        fetchRoles(session.user.id);
-      } else {
-        setRoles([]);
-      }
-    }
-  );
-
-  supabase.auth.getSession().then(async ({ data: { session } }) => {
-    setSession(session);
-    setUser(session?.user ?? null);
-    if (session?.user) {
-      await fetchRoles(session.user.id);
-    }
-    setLoading(false);  // Unico ponto que controla loading inicial
-  });
-
-  return () => subscription.unsubscribe();
-}, []);
-```
-
-### Motivo
-
-- `onAuthStateChange` dispara o evento INITIAL_SESSION sincronamente ao registrar o listener
-- Fazer `await` de chamadas Supabase dentro dele pode causar deadlock ou race condition
-- Separar as responsabilidades: `getSession` controla o loading, `onAuthStateChange` reage a mudancas futuras
-
-## Resultado
-
-- O loading spinner desaparece assim que `getSession` + `fetchRoles` completam
-- O Dashboard carrega normalmente para o admin
-- Sem carregamento infinito
+O item ativo (icone e texto dourados) permanece igual. A mudanca afeta apenas o fundo geral e os elementos inativos para melhorar a visibilidade.
 
