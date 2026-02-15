@@ -24,6 +24,7 @@ const schema = z.object({
   whole_price: z.coerce.number().optional().nullable(),
   slice_price: z.coerce.number().optional().nullable(),
   direct_cost: z.coerce.number().min(0).nullable(),
+  recipe_total_weight_grams: z.coerce.number().optional().nullable(),
 }).superRefine((data, ctx) => {
   if (!data.sells_whole && !data.sells_slice) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Pelo menos um modo de venda deve estar ativo', path: ['sells_slice'] });
@@ -42,6 +43,11 @@ const schema = z.object({
     }
     if (!data.slice_price || data.slice_price < 0.01) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Preço da fatia obrigatório', path: ['slice_price'] });
+    }
+  }
+  if (data.direct_cost && data.direct_cost > 0) {
+    if (!data.recipe_total_weight_grams || data.recipe_total_weight_grams < 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Peso total da receita obrigatório quando custo é informado', path: ['recipe_total_weight_grams'] });
     }
   }
 });
@@ -82,6 +88,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       whole_price: r.whole_price ? Number(r.whole_price) : null,
       slice_price: r.slice_price ? Number(r.slice_price) : Number(recipe.sale_price),
       direct_cost: recipe.direct_cost ? Number(recipe.direct_cost) : null,
+      recipe_total_weight_grams: r.whole_weight_grams ? Number(r.whole_weight_grams) : null,
     } : {
       name: '',
       category: 'bolo',
@@ -92,6 +99,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       whole_price: null,
       slice_price: 0,
       direct_cost: null,
+      recipe_total_weight_grams: null,
     },
   });
 
@@ -104,10 +112,13 @@ export default function RecipeForm({ recipe, onClose }: Props) {
   const wholePrice = watch('whole_price');
   const slicePrice = watch('slice_price');
 
+  const recipeTotalWeight = watch('recipe_total_weight_grams');
+
   const costNum = Number(directCost) || 0;
+  const recipeWeightNum = Number(recipeTotalWeight) || 0;
   const wholeWeightNum = Number(wholeWeightGrams) || 0;
   const sliceWeightNum = Number(sliceWeightGrams) || 0;
-  const costPerGram = wholeWeightNum > 0 ? costNum / wholeWeightNum : (sliceWeightNum > 0 ? costNum / sliceWeightNum : 0);
+  const costPerGram = recipeWeightNum > 0 ? costNum / recipeWeightNum : 0;
 
   const wholePriceNum = Number(wholePrice) || 0;
   const slicePriceNum = Number(slicePrice) || 0;
@@ -150,14 +161,15 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       if (data.sells_slice && data.slice_price) prices.push(data.slice_price);
       const salePrice = prices.length > 0 ? Math.min(...prices) : 0;
 
-      const cpg = wholeWeightNum > 0 ? costNum / wholeWeightNum : (sliceWeightNum > 0 ? costNum / sliceWeightNum : null);
+      const recipeWeight = Number(data.recipe_total_weight_grams) || 0;
+      const cpg = recipeWeight > 0 ? costNum / recipeWeight : null;
 
       const payload: any = {
         name: data.name,
         category: data.category,
         sells_whole: data.sells_whole,
         sells_slice: data.sells_slice,
-        whole_weight_grams: data.sells_whole ? data.whole_weight_grams : null,
+        whole_weight_grams: data.sells_whole ? data.whole_weight_grams : (data.recipe_total_weight_grams || null),
         slice_weight_grams: data.sells_slice ? data.slice_weight_grams : 250,
         whole_price: data.sells_whole ? data.whole_price : null,
         slice_price: data.sells_slice ? data.slice_price : null,
@@ -286,9 +298,19 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       )}
 
       {/* Cost */}
-      <div className="space-y-2">
-        <Label htmlFor="direct_cost">Custo total da receita (R$)</Label>
-        <Input id="direct_cost" type="number" step="0.01" {...register('direct_cost')} placeholder="Custo total" />
+      <div className="rounded-lg border border-border/50 p-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">Custo da Receita</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Custo total (R$)</Label>
+            <Input type="number" step="0.01" {...register('direct_cost')} placeholder="90.00" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Peso total da receita (g)</Label>
+            <Input type="number" {...register('recipe_total_weight_grams')} placeholder="3000" />
+            {errors.recipe_total_weight_grams && <p className="text-xs text-destructive">{errors.recipe_total_weight_grams.message}</p>}
+          </div>
+        </div>
       </div>
 
       {/* Margin panel */}
