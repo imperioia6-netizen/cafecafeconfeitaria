@@ -66,7 +66,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {[
                     { icon: Layers, label: 'Fatias', value: String(slices) },
                     { icon: DollarSign, label: 'Custo total', value: `R$ ${totalCost.toFixed(2)}` },
@@ -155,8 +155,8 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                   </Select>
                 </div>
               )}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {[
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                 {[
                   { label: 'Produções', value: String(totals.count), icon: Coffee },
                   { label: 'Fatias', value: String(totals.slices), icon: Layers },
                   { label: 'Custo total', value: `R$ ${totals.cost.toFixed(2)}`, icon: DollarSign },

@@ -80,7 +80,7 @@ const Recipes = () => {
               </TabsList>
             </Tabs>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { icon: Package, label: 'Produtos', value: String(kpis.count) },
                 { icon: TrendingUp, label: 'Preço Médio', value: `R$ ${kpis.avgPrice.toFixed(2)}` },

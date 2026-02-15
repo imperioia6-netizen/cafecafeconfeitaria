@@ -31,7 +31,7 @@ const PeriodTab = ({ days }: { days: number }) => {
   return (
     <div className="space-y-6">
       {/* KPI cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: 'Faturamento', value: `R$ ${data.currentTotal.toFixed(2)}`, trend: data.growth },
           { label: 'Vendas', value: String(data.salesCount) },

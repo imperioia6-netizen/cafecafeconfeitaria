@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 const navGroups = [
   {
@@ -44,7 +45,13 @@ const roleLabels: Record<string, string> = {
   client: 'Cliente',
 };
 
-const AppSidebar = () => {
+interface AppSidebarProps {
+  open: boolean;
+  onClose: () => void;
+  isMobile: boolean;
+}
+
+const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { signOut, isOwner, user, roles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,11 +65,13 @@ const AppSidebar = () => {
 
   const initials = profileName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col sidebar-gradient text-sidebar-foreground">
-      {/* Glow line on right edge */}
-      <div className="sidebar-glow-line" />
+  const handleNav = (path: string) => {
+    navigate(path);
+    onNavigate?.();
+  };
 
+  return (
+    <div className="flex h-full flex-col sidebar-gradient text-sidebar-foreground">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border/50">
         <div className="relative animate-float">
@@ -92,7 +101,7 @@ const AppSidebar = () => {
                   return (
                     <button
                       key={item.path}
-                      onClick={() => navigate(item.path)}
+                      onClick={() => handleNav(item.path)}
                       className={cn(
                         'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 group',
                         isActive
@@ -149,6 +158,31 @@ const AppSidebar = () => {
           Sair
         </button>
       </div>
+    </div>
+  );
+};
+
+const AppSidebar = ({ open, onClose, isMobile }: AppSidebarProps) => {
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <SheetContent side="left" className="p-0 w-64 border-r-0" style={{ background: 'transparent' }}>
+          <SidebarContent onNavigate={onClose} />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-40 h-screen w-64 transition-transform duration-300',
+        open ? 'translate-x-0' : '-translate-x-full'
+      )}
+    >
+      {/* Glow line on right edge */}
+      <div className="sidebar-glow-line" />
+      <SidebarContent />
     </aside>
   );
 };

@@ -81,7 +81,7 @@ const Crm = () => {
     <AppLayout>
       <div className="space-y-6">
         {/* Header row */}
-        <div className="flex items-end justify-between opacity-0 animate-fade-in animate-stagger-1">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 opacity-0 animate-fade-in animate-stagger-1">
           <div>
             <h1 className="page-title-gradient">CRM</h1>
             <p className="text-sm text-muted-foreground mt-1">Relacionamento e marketing inteligente</p>
@@ -114,7 +114,7 @@ const Crm = () => {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <TabsList className="flex gap-2 bg-transparent p-0 h-auto">
+            <TabsList className="flex gap-2 bg-transparent p-0 h-auto flex-wrap">
               {tabs.map(tab => (
                 <TabsTrigger
                   key={tab.value}

@@ -285,18 +285,18 @@ const Cardapio = () => {
 
       {/* Header - dark cinematic */}
       <header className={`fixed ${isSimulating ? 'top-8' : 'top-0'} left-0 right-0 z-50 border-b border-sidebar-border shadow-lg`} style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-             🍰 Cardápio
+        <div className="max-w-7xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center gap-2 md:gap-4">
+            <h1 className="text-lg md:text-2xl font-bold text-gradient-gold whitespace-nowrap flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+             🍰 <span className="hidden sm:inline">Cardápio</span>
            </h1>
           <div className="flex-1 max-w-lg mx-auto relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sidebar-foreground/50" />
             <input
               type="text"
-              placeholder="Buscar no cardápio..."
+              placeholder="Buscar..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-sidebar-accent/60 backdrop-blur-sm border border-sidebar-border text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
+              className="w-full pl-10 pr-4 py-2 md:py-2.5 rounded-full bg-sidebar-accent/60 backdrop-blur-sm border border-sidebar-border text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
             />
           </div>
           {/* Cart icon in header */}
@@ -367,7 +367,7 @@ const Cardapio = () => {
             <p className="text-lg">Nenhum produto encontrado</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filtered.map(recipe => {
               const qty = getCartQty(recipe.id);
               return (
