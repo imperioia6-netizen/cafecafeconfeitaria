@@ -1,47 +1,103 @@
 
-# Produtos e Fotos na Visao de Funcionario
+# Pagina Separada de Pedidos (Comandas)
 
-## Objetivo
+## Resumo
 
-Garantir que funcionarios tenham acesso a:
-1. **Pagina de Produtos** (somente leitura -- sem botoes de criar/editar/excluir)
-2. **Fotos e precos** nos cards de selecao de produto na pagina de Producao
+Criar uma pagina dedicada para gerenciar pedidos/comandas em andamento, separada das vendas finalizadas. Funcionarios podem criar, visualizar e finalizar pedidos. Ao finalizar um pedido, ele vira uma venda automaticamente.
 
-## Alteracoes
+## Fluxo do Sistema
 
-### 1. Sidebar -- Tornar Produtos visivel para todos (`src/components/layout/AppSidebar.tsx`)
+```text
++------------------+       Finalizar        +------------------+
+|    PEDIDOS       | ---------------------> |     VENDAS       |
+|  (em andamento)  |   converte pedido      |  (finalizadas)   |
+|                  |   em venda + desconta  |                  |
+|  - comanda       |   estoque              |  - historico     |
+|  - mesa          |                        |  - caixa         |
+|  - cliente       |                        |  - relatorios    |
+|  - itens         |                        |                  |
++------------------+                        +------------------+
+```
 
-- Alterar o item `Produtos` de `ownerOnly: true` para `ownerOnly: false` no array `navGroups`
-- Isso permite que funcionarios vejam e acessem a pagina de Produtos no menu lateral
+## Banco de Dados
 
-### 2. Pagina Produtos -- Modo somente leitura (`src/pages/Recipes.tsx`)
+### Nova tabela `orders`
 
-- Importar `useAuth` e verificar `isOwner`
-- Esconder o botao `<RecipeForm />` (novo produto) quando `!isOwner`
-- No `RecipeCard`, esconder botoes de editar/excluir quando `!isOwner`
-- Funcionario ve apenas o catalogo de produtos com fotos, precos e informacoes
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid PK | Identificador |
+| operator_id | uuid NOT NULL | Quem criou o pedido |
+| order_number | text | Numero da comanda |
+| table_number | text | Numero da mesa |
+| customer_name | text | Nome do cliente |
+| status | enum `order_status` | `aberto`, `finalizado`, `cancelado` |
+| channel | sales_channel | Canal (balcao, delivery) |
+| notes | text | Observacoes gerais |
+| created_at | timestamptz | Data de criacao |
+| closed_at | timestamptz | Data de finalizacao |
 
-### 3. RecipeCard -- Esconder acoes de edicao (`src/components/recipes/RecipeCard.tsx`)
+### Nova tabela `order_items`
 
-- Receber prop `readOnly?: boolean`
-- Quando `readOnly`, esconder botoes de editar e excluir no card
-- Manter toda a informacao visual (foto, nome, preco, categoria)
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid PK | Identificador |
+| order_id | uuid FK | Referencia ao pedido |
+| recipe_id | uuid | Produto |
+| inventory_id | uuid | Lote do estoque |
+| quantity | integer | Quantidade |
+| unit_price | numeric | Preco unitario |
+| subtotal | numeric | Subtotal |
 
-### 4. Producao -- Mostrar foto e preco ao selecionar produto (`src/pages/Production.tsx`)
+### RLS Policies
 
-- Na secao "Nova Producao", apos selecionar o produto no Select, exibir:
-  - Foto do produto (se existir `photo_url` na receita)
-  - Preco de venda sugerido (`sale_price`)
-- Isso aparece no bloco de "Previa da Producao" que ja existe, adicionando a miniatura do produto
+- Owner: ALL em ambas tabelas
+- Employee: SELECT + INSERT + UPDATE em `orders` (filtrado por `operator_id = auth.uid()`)
+- Employee: SELECT + INSERT em `order_items`
 
-### 5. RLS -- Nenhuma alteracao necessaria
+## Novos Arquivos
 
-- A tabela `recipes` ja possui policy `Authenticated can read active recipes` com `qual: (active = true)`
-- Funcionarios ja conseguem ler receitas ativas pelo banco -- apenas a UI estava bloqueando
+### `src/hooks/useOrders.ts`
+
+Hook com:
+- `useOpenOrders()` -- lista pedidos com status `aberto`, incluindo itens e receitas
+- `useCreateOrder()` -- cria pedido com itens
+- `useAddOrderItem()` -- adiciona item a pedido existente
+- `useRemoveOrderItem()` -- remove item de pedido
+- `useFinalizeOrder()` -- muda status para `finalizado`, cria venda automaticamente (reutiliza logica do `useCreateSale`) e desconta estoque
+- `useCancelOrder()` -- muda status para `cancelado`
+
+### `src/pages/Orders.tsx`
+
+Pagina com duas secoes:
+
+**1. Novo Pedido (lado esquerdo)**
+- Catalogo de produtos disponiveis (com foto e preco, igual a pagina de Vendas)
+- Clique para adicionar ao pedido
+
+**2. Pedidos Abertos (lado direito / abaixo)**
+- Cards de cada pedido aberto mostrando:
+  - Comanda, mesa, nome do cliente
+  - Lista de itens com quantidades
+  - Total parcial
+  - Botoes: "Adicionar Item", "Finalizar" (abre dialog de pagamento), "Cancelar"
+
+**Dialog de Finalizacao:**
+- Selecionar metodo de pagamento
+- Confirmar total
+- Ao confirmar: cria venda, desconta estoque, fecha pedido
+
+## Alteracoes em Arquivos Existentes
+
+### `src/components/layout/AppSidebar.tsx`
+- Adicionar item "Pedidos" com icone `ClipboardList` no grupo Operacional, antes de Vendas
+- `ownerOnly: false` (acessivel a funcionarios)
+
+### `src/App.tsx`
+- Adicionar rota `/orders` apontando para `Orders`
 
 ## Detalhes Tecnicos
 
-- O `RecipeCard` recebera `readOnly` como prop, controlado pelo `isOwner` na pagina Recipes
-- Na pagina Production, o objeto `recipe` ja contem `photo_url` e `sale_price` (vem do `useActiveRecipes` que faz `select('*')`)
-- A foto sera exibida como miniatura (48x48) ao lado do nome do produto na previa
-- Nenhuma migracao de banco de dados necessaria
+- O enum `order_status` sera criado via migracao: `CREATE TYPE order_status AS ENUM ('aberto', 'finalizado', 'cancelado')`
+- Ao finalizar, a logica reutiliza o mesmo fluxo de criacao de venda (insert em `sales` + `sale_items` + update `inventory`)
+- Pedidos cancelados nao afetam estoque (itens nao sao descontados ate a finalizacao)
+- Campos de comanda e mesa aceitam texto livre com `maxLength` para seguranca
