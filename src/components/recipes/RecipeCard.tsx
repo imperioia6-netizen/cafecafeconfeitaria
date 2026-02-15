@@ -23,7 +23,7 @@ const categoryGradients: Record<string, string> = {
   outro: 'linear-gradient(135deg, hsl(0 0% 50% / 0.12), hsl(0 0% 50% / 0.04))',
 };
 
-export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; index?: number }) {
+export default function RecipeCard({ recipe, index = 0, readOnly = false }: { recipe: Recipe; index?: number; readOnly?: boolean }) {
   const [editOpen, setEditOpen] = useState(false);
   const updateRecipe = useUpdateRecipe();
   const deleteRecipe = useDeleteRecipe();
@@ -59,31 +59,33 @@ export default function RecipeCard({ recipe, index = 0 }: { recipe: Recipe; inde
                 {categoryLabels[recipe.category]}
               </Badge>
             </div>
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setEditOpen(true)} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={toggleActive} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
-                {recipe.active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-success" />}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive/10 transition-all duration-300">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="glass-card border-border/30">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir produto</AlertDialogTitle>
-                    <AlertDialogDescription>Tem certeza que deseja excluir "{recipe.name}"? Essa ação não pode ser desfeita.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            {!readOnly && (
+              <div className="flex gap-1">
+                <Button size="icon" variant="ghost" onClick={() => setEditOpen(true)} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={toggleActive} className="h-8 w-8 hover:bg-accent/10 transition-all duration-300">
+                  {recipe.active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-success" />}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive/10 transition-all duration-300">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="glass-card border-border/30">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir produto</AlertDialogTitle>
+                      <AlertDialogDescription>Tem certeza que deseja excluir "{recipe.name}"? Essa ação não pode ser desfeita.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </div>
 
           {/* Margin visual bar */}
