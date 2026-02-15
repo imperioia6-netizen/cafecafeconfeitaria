@@ -87,7 +87,7 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6">
+      <nav className="flex-1 overflow-y-auto no-scrollbar py-5 px-3 space-y-6">
         {navGroups.map((group, groupIdx) => {
           const filteredItems = group.items.filter(item => !item.ownerOnly || isOwner);
           if (filteredItems.length === 0) return null;
