@@ -1,55 +1,110 @@
 
 
-# Correcao do calculo de margem no RecipeForm
+# Sidebar colapsavel + Layout mobile completo
 
-## Problema
+## Situacao atual
 
-O calculo atual de `costPerGram` esta errado. O `direct_cost` representa o custo **total da receita** (ex: um bolo inteiro de 3kg custa R$90). Mas quando o usuario so vende fatia (sem "Vende Inteiro" ativo), o codigo divide `direct_cost / slice_weight_grams`, o que e incorreto -- divide o custo do bolo inteiro pelo peso de uma unica fatia.
+O layout usa uma sidebar fixa de `w-64` (256px) com `ml-64` no conteudo. Nao ha botao para esconder/mostrar, e no mobile a sidebar fica cortada ou inacessivel. Todas as telas admin usam `AppLayout` que encapsula sidebar + header + conteudo.
 
-Exemplo do bug (visivel na screenshot):
-- Custo total: R$30 (custo da receita inteira, digamos 100g de fatia)
-- `costPerGram = 30 / 100 = 0.30` -- mas 30 e o custo do bolo inteiro, nao da fatia
-- Resultado: fatia custa R$30, margem -100%
+## Mudancas propostas
 
-## Solucao
+### 1. Refatorar `AppLayout.tsx` para usar estado de sidebar colapsavel
 
-O `direct_cost` e **sempre o custo total da receita**. O denominador para calcular custo/grama deve ser **o peso total da receita** (que e `whole_weight_grams` quando disponivel). Quando so vende fatia, o usuario precisa informar o peso total da receita para que o calculo funcione, OU o `direct_cost` deve ser interpretado como custo por unidade/fatia.
+- Adicionar estado `sidebarOpen` com `useState(true)` no desktop e `useState(false)` no mobile
+- Usar o hook `useIsMobile()` existente para detectar tela pequena
+- No mobile: sidebar vira um `Sheet` (drawer) que abre por cima com overlay
+- No desktop: sidebar alterna entre `w-64` (aberta) e `w-0` (fechada) com transicao suave
+- Conteudo principal ajusta `ml-64` / `ml-0` conforme estado
 
-A abordagem mais clara: adicionar um campo explicito "Peso total da receita (g)" que sempre aparece quando `direct_cost` e preenchido, independente do modo de venda. Esse peso e usado exclusivamente para calcular custo/grama.
+### 2. Refatorar `AppSidebar.tsx`
 
-Porem, olhando a modelagem atual, `whole_weight_grams` ja serve como "peso total da receita". O problema e que quando o usuario nao ativa "Vende Inteiro", esse campo fica oculto e nulo.
+- Receber props `open` e `onClose` para controle externo
+- No mobile: renderizar dentro de um `Sheet` com side="left"
+- No desktop: manter posicao fixa mas com classe de transicao `translate-x` ou `w-0` quando fechado
+- Ao clicar em um item de nav no mobile, fechar a sidebar automaticamente
 
-### Mudanca proposta
+### 3. Refatorar `AppHeader.tsx`
 
-**Arquivo: `src/components/recipes/RecipeForm.tsx`**
+- Adicionar botao hamburger (`Menu` icon) no lado esquerdo que chama `toggleSidebar`
+- No mobile: reorganizar o header para caber em telas pequenas
+  - Saudacao em fonte menor ou oculta
+  - Icones de acao compactados
+  - Data/hora oculta no mobile
+- Receber prop `onToggleSidebar`
 
-1. Adicionar um campo "Peso total da receita (g)" que aparece sempre que `direct_cost` for preenchido, separado dos campos de venda. Este campo sera mapeado para `whole_weight_grams` internamente (ou um campo auxiliar no form).
+### 4. Responsividade de todas as telas admin
 
-2. Corrigir a logica de `costPerGram`:
+Cada pagina que usa `AppLayout` ja herda o layout responsivo. Ajustes adicionais:
 
+- `main` padding: `p-8` no desktop, `p-4` no mobile
+- Grids de KPIs (Index): `grid-cols-4` desktop, `grid-cols-2` tablet, `grid-cols-1` mobile
+- Tabelas: scroll horizontal no mobile
+- Cards: full-width no mobile
+- Formularios (RecipeForm, etc): campos empilhados no mobile
+
+### 5. Tela do Cardapio (cliente)
+
+O Cardapio ja e uma pagina standalone sem AppLayout. Verificar e ajustar:
+- Grid de produtos: `grid-cols-1` no mobile
+- Carrinho Sheet: ja responsivo por natureza
+- Header do cardapio: compactar no mobile
+
+## Detalhes tecnicos
+
+### AppLayout.tsx (novo)
+
+```text
++------------------------------------------------------+
+| [hamburger] Header (com greeting, badges, avatar)    |
++------------------------------------------------------+
+| Sidebar (Sheet no mobile | fixed no desktop)         |
+| +--------------------------------------------------+ |
+| | Content area (ml-64 desktop / ml-0 mobile)       | |
+| +--------------------------------------------------+ |
++------------------------------------------------------+
 ```
-// ANTES (errado):
-costPerGram = wholeWeightNum > 0 
-  ? costNum / wholeWeightNum 
-  : (sliceWeightNum > 0 ? costNum / sliceWeightNum : 0);
 
-// DEPOIS (correto):
-// Usar peso total da receita como denominador
-// whole_weight_grams = peso total da receita (sempre preenchido quando tem custo)
-costPerGram = recipeWeightNum > 0 ? costNum / recipeWeightNum : 0;
-```
+- `useIsMobile()` determina o modo
+- Estado `sidebarOpen`: `boolean`
+- Desktop: sidebar fixa com `transition-all duration-300`, conteudo com `ml` dinamico
+- Mobile: sidebar dentro de `<Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}><SheetContent side="left">...</SheetContent></Sheet>`
 
-3. Calculos derivados:
-   - `wholeCost = costPerGram * wholeWeightNum` (custo de vender 1 inteiro)
-   - `sliceCost = costPerGram * sliceWeightNum` (custo de vender 1 fatia)
-   - `wholeMargin = (wholePrice - wholeCost) / wholePrice * 100`
-   - `sliceMargin = (slicePrice - sliceCost) / slicePrice * 100`
+### AppSidebar.tsx
 
-### Detalhes da implementacao
+- Extrair o conteudo da sidebar para um componente `SidebarContent` reutilizavel
+- `AppSidebar` recebe `open`, `onClose`, `isMobile`
+- Se mobile: renderiza `Sheet` com `SidebarContent` dentro
+- Se desktop: renderiza `aside` com classes de visibilidade condicionais
 
-No form, adicionar um campo "Peso total da receita (g)" no bloco de custo (perto de `direct_cost`), com placeholder "Ex: 3000". Esse campo alimenta o calculo de custo/grama. Quando "Vende Inteiro" esta ativo, o `whole_weight_grams` ja e esse valor. Quando nao esta, o campo ainda aparece para permitir o calculo.
+### AppHeader.tsx
 
-No schema Zod, adicionar validacao: se `direct_cost` for preenchido, `recipe_total_weight_grams` tambem deve ser preenchido.
+- Adicionar `Menu` icon (lucide) como primeiro elemento
+- No mobile: esconder saudacao longa, mostrar apenas nome curto
+- Compactar badges e botoes em tamanho menor
 
-No payload de submit, salvar esse valor em `whole_weight_grams` (mesmo que nao venda inteiro) para manter o custo/grama correto no banco.
+### Responsividade das paginas
+
+Ajustes em classes Tailwind existentes:
+- `grid-cols-4` para `grid-cols-2 lg:grid-cols-4`
+- `p-8` para `p-4 md:p-8`
+- Tabelas com `overflow-x-auto`
+- Cards com `w-full` no mobile
+
+### Arquivos impactados
+
+1. `src/components/layout/AppLayout.tsx` - refatoracao completa
+2. `src/components/layout/AppSidebar.tsx` - refatoracao para aceitar props e modo mobile
+3. `src/components/layout/AppHeader.tsx` - botao hamburger + responsividade
+4. `src/pages/Index.tsx` - grids responsivos
+5. `src/pages/Recipes.tsx` - grid responsivo
+6. `src/pages/Sales.tsx` - layout responsivo
+7. `src/pages/Orders.tsx` - layout responsivo
+8. `src/pages/Production.tsx` - layout responsivo
+9. `src/pages/Inventory.tsx` - layout responsivo
+10. `src/pages/CashRegister.tsx` - layout responsivo
+11. `src/pages/Reports.tsx` - layout responsivo
+12. `src/pages/Team.tsx` - layout responsivo
+13. `src/pages/Crm.tsx` - layout responsivo
+14. `src/pages/Profile.tsx` - layout responsivo
+15. `src/pages/Cardapio.tsx` - ajustes mobile no grid de produtos
 
