@@ -153,7 +153,7 @@ const Cardapio = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background hero-gradient text-foreground pb-24">
+    <div className="min-h-screen bg-background hero-gradient text-foreground pb-24 pt-[73px]">
       {/* Banner logo */}
       <div className="bg-black py-6 md:py-8">
         <img
@@ -177,7 +177,7 @@ const Cardapio = () => {
       )}
 
       {/* Header - dark cinematic */}
-      <header className="sticky top-0 z-50 border-b border-sidebar-border shadow-lg" style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-sidebar-border shadow-lg" style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Playfair Display', serif" }}>
             🍰 Cardápio
