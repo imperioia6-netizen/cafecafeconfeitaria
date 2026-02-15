@@ -114,7 +114,7 @@ const Crm = () => {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <TabsList className="flex gap-2 bg-transparent p-0 h-auto flex-wrap">
+            <TabsList className="flex gap-2 bg-transparent p-0 h-auto overflow-x-auto no-scrollbar">
               {tabs.map(tab => (
                 <TabsTrigger
                   key={tab.value}

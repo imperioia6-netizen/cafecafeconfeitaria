@@ -91,14 +91,14 @@ const Sales = () => {
           {/* Products — 3 cols */}
           <div className="lg:col-span-3">
             <div className="card-cinematic rounded-xl">
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <h3 className="text-base font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Produtos Disponíveis</h3>
                 {invLoading ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : !availableItems.length ? (
                   <p className="text-sm text-muted-foreground text-center py-6">Sem produtos em estoque.</p>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 grid-cols-2">
                     {availableItems.map(item => (
                       <button
                         key={item.id}
@@ -147,7 +147,7 @@ const Sales = () => {
           {/* Cart — 2 cols */}
           <div className="lg:col-span-2">
             <div className="card-cinematic gradient-border rounded-xl sticky top-24">
-              <div className="p-6 space-y-4">
+              <div className="p-4 md:p-6 space-y-4">
                 <h3 className="flex items-center gap-2 text-base font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   <ShoppingCart className="h-4 w-4 text-accent" />
                   Carrinho ({cart.length})

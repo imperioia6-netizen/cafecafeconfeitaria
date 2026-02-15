@@ -48,7 +48,7 @@ const Profile = () => {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl space-y-0">
+      <div className="max-w-2xl mx-auto space-y-0">
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (

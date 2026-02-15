@@ -62,7 +62,7 @@ const CrmDashboardKpis = () => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4">
       {kpis.map((kpi, i) => (
         <div
           key={kpi.label}
@@ -72,7 +72,7 @@ const CrmDashboardKpis = () => {
             color: 'hsl(36 40% 95%)',
           } : undefined}
         >
-          <div className="p-4 space-y-3 relative z-10">
+          <div className="p-3 md:p-4 space-y-2 md:space-y-3 relative z-10">
             <div className="flex items-center gap-2">
               <div className={`rounded-xl p-2.5 animate-float ${kpi.isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
                 <kpi.icon className={`h-4 w-4 ${kpi.isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
@@ -81,7 +81,7 @@ const CrmDashboardKpis = () => {
                 {kpi.label}
               </span>
             </div>
-            <p className={`font-mono-numbers text-2xl font-bold leading-none ${kpi.isFirst ? 'glow-gold' : 'text-foreground'}`}>
+            <p className={`font-mono-numbers text-lg md:text-2xl font-bold leading-none ${kpi.isFirst ? 'glow-gold' : 'text-foreground'}`}>
               {kpi.value}
             </p>
             <p className={`text-[10px] ${kpi.isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>

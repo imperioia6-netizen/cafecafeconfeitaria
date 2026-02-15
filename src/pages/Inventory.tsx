@@ -28,7 +28,7 @@ const Inventory = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-muted/30 p-1 rounded-full border border-border/30">
+          <TabsList className="bg-muted/30 p-1 rounded-full border border-border/30 overflow-x-auto no-scrollbar w-full flex">
             <TabsTrigger
               value="estoque"
               className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg"

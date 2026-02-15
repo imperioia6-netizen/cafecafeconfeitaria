@@ -66,7 +66,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-3">
                   {[
                     { icon: Layers, label: 'Fatias', value: String(slices) },
                     { icon: DollarSign, label: 'Custo total', value: `R$ ${totalCost.toFixed(2)}` },
@@ -74,7 +74,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                     { icon: TrendingUp, label: 'Margem/fatia', value: `R$ ${marginPerSlice.toFixed(2)}`, color: marginPerSlice > 0 },
                     { icon: DollarSign, label: 'Receita total', value: `R$ ${(slices * salePrice).toFixed(2)}`, color: true },
                   ].map(stat => (
-                    <div key={stat.label} className="text-center glass rounded-lg p-3">
+                    <div key={stat.label} className="text-center glass rounded-lg p-2 md:p-3">
                       <div className="flex justify-center mb-1">
                         <stat.icon className="h-4 w-4 text-muted-foreground" />
                       </div>
@@ -116,7 +116,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
 
     {/* Today's history */}
     <div className="card-cinematic rounded-xl">
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ficha de Produção — Hoje</h3>
         {prodsLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
@@ -155,7 +155,7 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                   </Select>
                 </div>
               )}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
                  {[
                   { label: 'Produções', value: String(totals.count), icon: Coffee },
                   { label: 'Fatias', value: String(totals.slices), icon: Layers },
@@ -310,7 +310,7 @@ const Production = () => {
 
         {isOwner ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="flex gap-2 bg-transparent p-0 h-auto">
+            <TabsList className="flex gap-2 bg-transparent p-0 h-auto overflow-x-auto no-scrollbar">
               {[
                 { value: 'production', label: 'Produção', icon: Coffee },
                 { value: 'promotions', label: 'Promoções 12h+', icon: Zap },
