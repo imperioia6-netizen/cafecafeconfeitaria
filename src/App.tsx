@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Crm from "./pages/Crm";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
+import Cardapio from "./pages/Cardapio";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/team" element={<Team />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/crm" element={<Crm />} />
+            <Route path="/cardapio" element={<Cardapio />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
