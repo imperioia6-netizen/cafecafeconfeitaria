@@ -1,48 +1,55 @@
 
+# Redirecionamento por Perfil apos Login
 
-# Correcao Definitiva: Flash da Sidebar ao Navegar no Mobile
+## Objetivo
 
-## Causa Raiz
+Ao fazer login, cada perfil sera redirecionado automaticamente para sua pagina principal:
+- **Owner (Administrador)**: Dashboard (`/`)
+- **Employee (Atendente)**: Pedidos (`/orders`)
+- **Client (Usuario)**: Cardapio (`/cardapio`)
 
-O `AppLayout` e montado DENTRO de cada pagina (ex: `<AppLayout>conteudo</AppLayout>`). Quando o usuario navega entre rotas, o React desmonta e remonta o `AppLayout`. No momento da montagem:
+## Alteracoes
 
-1. `useIsMobile()` retorna `false` no primeiro render (o estado interno comeca como `undefined`, e `!!undefined = false`)
-2. `useState(!isMobile)` resolve para `useState(!false)` = `useState(true)`
-3. O `sidebarOpen` comeca como `true` -- o Sheet renderiza aberto
-4. Somente depois, o `useEffect` roda e seta `setSidebarOpen(false)`
-5. Esse ciclo abrir-fechar e o flash visivel
+### 1. `src/pages/Auth.tsx`
 
-## Solucao
-
-### Mudanca 1: `src/components/layout/AppLayout.tsx`
-
-Substituir o estado inicial `useState(!isMobile)` por uma verificacao direta do tamanho da janela, sem depender do hook (que precisa de um ciclo de efeito):
+Atualmente, a linha `if (user) return <Navigate to="/" replace />` redireciona todos os usuarios para `/` (dashboard). Substituir por uma logica que consulta os roles do contexto de autenticacao:
 
 ```tsx
-// ANTES:
-const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+const { user, loading, signIn, signUp, roles } = useAuth();
 
-// DEPOIS:
-const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+// Determinar rota baseada no perfil
+const getRedirectPath = () => {
+  if (roles.includes('owner')) return '/';
+  if (roles.includes('employee')) return '/orders';
+  return '/cardapio';
+};
+
+if (user && roles.length > 0) return <Navigate to={getRedirectPath()} replace />;
 ```
 
-Isso garante que no mobile o estado JA comeca como `false`, sem precisar esperar o efeito. O Sheet nunca abre involuntariamente.
+A condicao `roles.length > 0` garante que o redirect so acontece DEPOIS que os roles foram carregados do banco, evitando redirecionar para a rota errada.
 
-### Mudanca 2 (mesmo arquivo): Simplificar o useEffect
+### 2. `src/components/layout/AppLayout.tsx`
 
-O `useEffect` atual tambem pode causar problemas ao setar `true` no desktop durante mudancas de rota. Simplificar para apenas fechar no mobile:
+Adicionar redirecionamento para funcionarios que tentam acessar o dashboard (rota `/`), enviando-os para `/orders`:
 
 ```tsx
-useEffect(() => {
-  if (isMobile) setSidebarOpen(false);
-}, [location.pathname, isMobile]);
+if (viewAs === 'client') return <Navigate to="/cardapio" replace />;
+
+// Novo: funcionarios que acessam "/" vao para /orders
+const isEmployee = roles.includes('employee') && !roles.includes('owner');
+if (isEmployee && location.pathname === '/') return <Navigate to="/orders" replace />;
 ```
 
-Remover o `else setSidebarOpen(true)` que forçava abertura no desktop a cada mudanca de rota.
+Importar `roles` do `useAuth()`.
+
+### 3. `src/hooks/useAuth.tsx`
+
+Nenhuma alteracao necessaria -- o hook ja expoe `roles` no contexto.
 
 ## Resultado
 
-- Zero flash ao navegar no mobile -- sidebar nunca abre involuntariamente
-- Navegacao limpa e fluida entre todas as paginas
-- Desktop continua funcionando normalmente (sidebar inicia aberta e mantem estado)
-
+- Admin loga e ve o Dashboard
+- Atendente loga e ve a tela de Pedidos
+- Cliente loga e ve o Cardapio
+- Se um atendente tentar acessar `/` manualmente, sera redirecionado para `/orders`
