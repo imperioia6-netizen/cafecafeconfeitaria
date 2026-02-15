@@ -53,14 +53,14 @@ const KpiCard = ({
           <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
             <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
           </div>
-          <span className={`text-sm font-medium ${isFirst ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
+          <span className={`text-sm font-medium ${isFirst ? 'text-white/90' : 'text-muted-foreground'}`}>
             {title}
           </span>
         </div>
 
         {/* Today value */}
         <div className="mb-3">
-          <p className={`text-xs ${isFirst ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>Hoje:</p>
+          <p className={`text-xs ${isFirst ? 'text-white/70' : 'text-muted-foreground/70'}`}>Hoje:</p>
           <p className={`text-xl md:text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold' : ''}`}>
             {fmt(today)}
           </p>
@@ -68,14 +68,14 @@ const KpiCard = ({
 
         {/* Divider + period rows */}
         <div className={`border-t ${isFirst ? 'border-white/20' : 'border-border'} pt-2.5 space-y-1.5`}>
-          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-white/80' : 'text-muted-foreground'}`}>
             <span>7 dias:</span>
             <div className="flex items-center gap-1.5">
               <span className="font-mono-numbers font-medium">{label7d}</span>
               <MoreVertical className="h-3.5 w-3.5 opacity-40" />
             </div>
           </div>
-          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+          <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-white/80' : 'text-muted-foreground'}`}>
             <span>30 dias:</span>
             <div className="flex items-center gap-1.5">
               <span className="font-mono-numbers font-medium">{label30d}</span>
