@@ -186,12 +186,12 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                           <span className="font-semibold text-sm">{p.recipes?.name ?? '—'}</span>
                           <Badge variant="secondary" className="text-xs">{p.slices_generated} fatias</Badge>
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(p.produced_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>{Number(p.weight_produced_g).toLocaleString()}g</span>
                           <span className="font-mono-numbers">Custo: R$ {Number(p.total_cost).toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs">
                           <span className="text-success font-mono-numbers">Receita: R$ {pRevenue.toFixed(2)}</span>
                           <span className={`font-mono-numbers ${pMargin >= 0 ? 'text-success' : 'text-destructive'}`}>Margem: R$ {pMargin.toFixed(2)}</span>
                           {isOwner && operatorNames?.[p.operator_id] && (
@@ -203,10 +203,10 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                         </div>
                       </div>
                       <div className="flex gap-1 mt-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditProd(p); setEditWeightKg(String(Number(p.weight_produced_g) / 1000)); }}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 md:h-7 md:w-7" onClick={() => { setEditProd(p); setEditWeightKg(String(Number(p.weight_produced_g) / 1000)); }}>
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(p.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 md:h-7 md:w-7" onClick={() => setDeleteId(p.id)}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
@@ -302,7 +302,7 @@ const Production = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+        <div className="space-y-5 md:space-y-8">
         <div>
           <h1 className="page-title">Produção</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Registrar produção do dia</p>

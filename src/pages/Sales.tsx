@@ -81,7 +81,7 @@ const Sales = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         <div>
           <h1 className="page-title">Vendas</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Ponto de venda</p>
@@ -316,7 +316,7 @@ const Sales = () => {
 
         {/* Today's sales */}
         <div className="card-cinematic rounded-xl">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Vendas de Hoje</h3>
             {salesLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>

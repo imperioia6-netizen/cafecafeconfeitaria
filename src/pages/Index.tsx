@@ -127,7 +127,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <div className="relative">

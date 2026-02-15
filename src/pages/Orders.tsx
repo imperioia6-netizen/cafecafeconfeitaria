@@ -337,19 +337,19 @@ const Orders = () => {
         <div className="glass-card rounded-2xl p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />Comanda</Label>
+              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />Comanda</Label>
               <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº comanda" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} maxLength={20} />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Mesa</Label>
+              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Mesa</Label>
               <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nº mesa" value={tableNumber} onChange={e => setTableNumber(e.target.value)} maxLength={10} />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />Cliente</Label>
+              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />Cliente</Label>
               <Input className="h-9 text-sm rounded-xl border-border/30 bg-background/50" placeholder="Nome do cliente" value={customerName} onChange={e => setCustomerName(e.target.value)} maxLength={100} />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Canal</Label>
+              <Label className="text-[10px] md:uppercase md:tracking-wider text-muted-foreground">Canal</Label>
               <Select value={channel} onValueChange={setChannel}>
                 <SelectTrigger className="h-9 rounded-xl border-border/30 bg-background/50"><SelectValue /></SelectTrigger>
                 <SelectContent>

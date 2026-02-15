@@ -50,11 +50,11 @@ const CashRegisterPage = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Caixas</h1>
+            <h1 className="page-title">Caixas</h1>
             <p className="text-muted-foreground mt-1">Gerenciamento financeiro em tempo real</p>
           </div>
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -117,9 +117,9 @@ const CashRegisterPage = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-lg">Histórico de Fechamentos</CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <Select value={dateFilter} onValueChange={v => setDateFilter(v as DateFilter)}>
-                  <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -131,7 +131,7 @@ const CashRegisterPage = () => {
                   </SelectContent>
                 </Select>
                 <Select value={registerFilter} onValueChange={setRegisterFilter}>
-                  <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
