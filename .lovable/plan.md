@@ -1,99 +1,74 @@
 
 
-# Sistema de Pedidos Completo e Intuitivo
+# Dialog de Detalhes do Produto no Cardapio Digital
 
-## Problemas atuais identificados
+## O que muda
 
-1. Clicar no produto apenas adiciona +1 sem feedback claro -- nao da para ajustar quantidade facilmente
-2. Nao existe campo de observacao por item (ex: "sem acucar", "metade chocolate metade morango")
-3. A barra flutuante do carrinho nao existe -- o atendente nao ve o resumo do pedido
-4. Nao ha como editar/remover itens do carrinho antes de criar o pedido
-5. A tabela `order_items` no banco nao tem coluna para observacoes
+Atualmente, clicar no botao "+" de um produto no cardapio apenas adiciona +1 silenciosamente. A proposta e adicionar um **Dialog de preview** identico ao que ja existe na tela de Pedidos do atendente, permitindo que o cliente:
 
-## Solucao proposta
+- Veja a foto ampliada do produto
+- Veja nome, categoria e preco
+- Ajuste a quantidade com botoes [-] e [+]
+- Escreva observacoes (ex: "sem acucar", "metade morango")
+- Veja o subtotal dinamico antes de adicionar
 
-### 1. Nova coluna no banco de dados
+## Como funciona
 
-Criar migracao SQL para adicionar `notes TEXT` na tabela `order_items`, permitindo observacoes por item.
+- Clicar no **card do produto** (foto ou nome) abre o Dialog de detalhes
+- O botao "+" no canto inferior direito do card continua funcionando como atalho rapido (+1 sem dialog)
+- Se o item ja esta no carrinho, o dialog abre pre-preenchido com quantidade e observacao atuais
+- O botao principal do dialog mostra "+ Adicionar -- R$ XX,XX" com o subtotal calculado
 
-### 2. Dialog de adicao de produto (o coracao da melhoria)
+## Detalhes tecnicos
 
-Quando o atendente clicar em um produto no grid, ao inves de simplesmente adicionar +1, abre um **Dialog** elegante com:
+### Arquivo unico alterado: `src/pages/Cardapio.tsx`
 
-- Foto e nome do produto no topo
-- Preco unitario visivel
-- **Controle de quantidade** com botoes [-] e [+] e campo numerico central (permite digitar)
-- **Campo de observacoes** (textarea) com placeholder "Ex: sem acucar, metade morango..."
-- Se o item ja esta no carrinho, o dialog abre pre-preenchido com a quantidade e observacao atuais
-- Botoes "Cancelar" e "Adicionar ao pedido" (ou "Atualizar" se ja existe)
+1. **Atualizar tipo `CartItem`**: adicionar campo `notes?: string` para armazenar observacoes por item
 
-### 3. Barra flutuante do carrinho (bottom bar)
+2. **Novos estados**:
+   - `selectedProduct`: o produto clicado (ou null)
+   - `dialogQty`: quantidade no dialog
+   - `dialogNotes`: observacao no dialog
 
-Uma barra fixa no rodape com:
+3. **Dialog de produto**: componente inline com:
+   - Foto do produto ocupando o topo (aspect-ratio 16/9, rounded)
+   - Nome do produto em bold + categoria em texto menor
+   - Preco unitario em destaque (estilo dourado, consistente com o design)
+   - Controles de quantidade: botoes [-] / [+] com campo central
+   - Textarea para observacoes com placeholder
+   - Botao "Adicionar -- R$ subtotal" com gradiente dourado, full-width
 
-- Icone do carrinho + contagem de itens
-- Total formatado em R$
-- Botao "Ver Pedido" que expande para um painel/sheet lateral
-- Botao "Criar Pedido" que envia direto (atalho rapido)
+4. **Logica de adicao com notas**: ao confirmar no dialog, o `addToCart` passa a aceitar quantidade e notas, substituindo o item existente no carrinho (merge inteligente)
 
-### 4. Painel lateral do carrinho (Sheet)
+5. **Evento de clique no card**: separar o clique na area do card (abre dialog) do clique no botao "+" (atalho rapido sem dialog)
 
-Ao clicar "Ver Pedido" na barra flutuante, abre um Sheet lateral com:
+6. **Passar `notes` no checkout**: atualizar `handleSubmitOrder` para enviar as observacoes de cada item na chamada da Edge Function `public-order`
 
-- Lista de todos os itens com: nome, quantidade, preco, observacao (se houver)
-- Botao de editar (reabre o dialog do item) e botao de remover
-- Total geral
-- Botao "Limpar tudo"
-- Botao principal "Criar Pedido"
+7. **Exibir observacoes no Sheet do carrinho**: mostrar a nota de cada item abaixo do nome, em texto pequeno e cinza
 
-### 5. Atualizacao do hook useOrders
-
-- Passar `notes` por item no `useCreateOrder`
-- Incluir `notes` no insert de `order_items`
-
-### 6. Exibicao de observacoes nos pedidos abertos
-
-Na aba "Pedidos Abertos", cada item mostra sua observacao (se existir) em texto menor abaixo do nome.
-
-## Layout do Dialog de Produto
+### Layout do Dialog
 
 ```text
 +----------------------------------+
 |  [X]                             |
-|         [Foto do produto]        |
+|      [  Foto do produto  ]       |
 |                                  |
-|    Abacaxi com Creme             |
-|    R$ 115,00                     |
+|  Nome do Produto                 |
+|  Categoria                       |
 |                                  |
-|    Quantidade                    |
-|    [-]    3    [+]               |
+|  R$ 115,00 /unidade              |
 |                                  |
-|    Observacoes                   |
-|    [sem acucar, fatia grande   ] |
-|    [                           ] |
+|  QUANTIDADE                      |
+|  [-]     1     [+]               |
 |                                  |
-|    [Adicionar - R$ 345,00]       |
+|  OBSERVACOES                     |
+|  [Ex: sem acucar, fatia grande ] |
+|                                  |
+|  [+ Adicionar -- R$ 115,00]     |
 +----------------------------------+
 ```
 
-## Layout da barra flutuante
+### Edge Function `public-order`
 
-```text
-+--------------------------------------------------+
-| [carrinho] 4 itens    R$ 478,00   [Criar Pedido] |
-+--------------------------------------------------+
-```
-
-## Arquivos alterados
-
-1. **Nova migracao SQL**: adicionar coluna `notes` em `order_items`
-2. **`src/integrations/supabase/types.ts`**: adicionar `notes` ao tipo `order_items`
-3. **`src/hooks/useOrders.ts`**: incluir `notes` no insert de items
-4. **`src/pages/Orders.tsx`**: refatoracao principal com:
-   - Novo estado para o dialog de produto (`selectedProduct`, `editQuantity`, `editNotes`)
-   - Tipo `NewOrderItem` atualizado com campo `notes`
-   - Componente do dialog de adicao
-   - Barra flutuante do carrinho
-   - Sheet lateral para revisao do pedido
-   - Exibicao de observacoes nos pedidos abertos
+Verificar se a funcao ja aceita `notes` por item. Se nao, atualizar para receber e salvar no campo `notes` da tabela `order_items` (coluna adicionada na migracao anterior).
 
