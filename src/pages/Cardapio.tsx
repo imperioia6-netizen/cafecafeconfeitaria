@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import bannerImg from '@/assets/banner-cardapio.png';
 
 const categoryFilters = [
@@ -35,6 +37,10 @@ const Cardapio = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState<{ order_number: string; total: number } | null>(null);
+  const [deliveryMode, setDeliveryMode] = useState<'pickup' | 'delivery'>('pickup');
+  const [address, setAddress] = useState('');
+  const [addressNumber, setAddressNumber] = useState('');
+  const [addressComplement, setAddressComplement] = useState('');
 
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -103,6 +109,10 @@ const Cardapio = () => {
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
           items: cart.map(c => ({ recipe_id: c.recipe_id, quantity: c.quantity })),
+          delivery_mode: deliveryMode,
+          address: deliveryMode === 'delivery' ? address.trim() : null,
+          address_number: deliveryMode === 'delivery' ? addressNumber.trim() : null,
+          address_complement: deliveryMode === 'delivery' ? addressComplement.trim() || null : null,
         },
       });
       if (error) throw error;
@@ -120,6 +130,10 @@ const Cardapio = () => {
     setCart([]);
     setCustomerName('');
     setCustomerPhone('');
+    setDeliveryMode('pickup');
+    setAddress('');
+    setAddressNumber('');
+    setAddressComplement('');
     setSuccess(null);
   };
 
@@ -346,65 +360,172 @@ const Cardapio = () => {
         </div>
       )}
 
-      {/* Checkout dialog */}
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="max-w-md mx-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Confirmar Pedido
-            </DialogTitle>
-          </DialogHeader>
+      {/* Checkout Sheet sidebar */}
+      <Sheet open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+        <SheetContent
+          side="right"
+          className="w-full max-w-md p-0 border-l border-border/40 flex flex-col"
+          style={{ background: 'linear-gradient(180deg, hsl(24 30% 14%), hsl(24 25% 8%))' }}
+        >
+          <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/30">
+            <SheetTitle className="text-xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Seu Pedido
+            </SheetTitle>
+          </SheetHeader>
 
-          <div className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                placeholder="Seu nome"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone (opcional)</Label>
-              <Input
-                id="phone"
-                placeholder="(11) 99999-9999"
-                value={customerPhone}
-                onChange={e => setCustomerPhone(e.target.value)}
-              />
-            </div>
-
-            <div className="border-t border-border pt-3 space-y-2 max-h-48 overflow-y-auto">
-              {cart.map(item => (
-                <div key={item.recipe_id} className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">
-                    {item.quantity}x {item.name}
-                  </span>
-                  <span className="font-semibold text-foreground font-mono-numbers">
-                    R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
-                  </span>
+          <ScrollArea className="flex-1 px-6">
+            <div className="py-5 space-y-6">
+              {/* Cart items */}
+              <div>
+                <p className="uppercase text-[11px] tracking-widest text-muted-foreground mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Itens do carrinho</p>
+                <div className="space-y-3">
+                  {cart.map(item => (
+                    <div key={item.recipe_id} className="flex items-center gap-3 bg-secondary/30 rounded-xl p-2.5 border border-border/20">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        {item.photo_url ? (
+                          <img src={item.photo_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-lg">🍰</div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono-numbers">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button onClick={() => removeFromCart(item.recipe_id)} className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors">
+                          <Minus className="h-3 w-3 text-secondary-foreground" />
+                        </button>
+                        <span className="text-sm font-bold w-5 text-center text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.quantity}</span>
+                        <button onClick={() => addToCart({ id: item.recipe_id, name: item.name, sale_price: item.price, photo_url: item.photo_url })} className="w-6 h-6 rounded-full bg-accent flex items-center justify-center hover:brightness-110 transition-all">
+                          <Plus className="h-3 w-3 text-accent-foreground" />
+                        </button>
+                      </div>
+                      <span className="text-sm font-semibold text-foreground font-mono-numbers w-16 text-right flex-shrink-0">
+                        R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="border-t border-border pt-3 flex justify-between items-center">
-              <span className="font-bold text-foreground">Total</span>
-              <span className="text-xl font-bold text-accent font-mono-numbers">
+              <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--border) / 0.4), transparent)' }} />
+
+              {/* Customer data */}
+              <div>
+                <p className="uppercase text-[11px] tracking-widest text-muted-foreground mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Dados do cliente</p>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-xs text-muted-foreground">Nome *</Label>
+                    <Input
+                      id="name"
+                      placeholder="Seu nome"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                      className="bg-secondary/50 border-border/60 rounded-xl h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone" className="text-xs text-muted-foreground">Telefone (opcional)</Label>
+                    <Input
+                      id="phone"
+                      placeholder="(11) 99999-9999"
+                      value={customerPhone}
+                      onChange={e => setCustomerPhone(e.target.value)}
+                      className="bg-secondary/50 border-border/60 rounded-xl h-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--border) / 0.4), transparent)' }} />
+
+              {/* Delivery mode */}
+              <div>
+                <p className="uppercase text-[11px] tracking-widest text-muted-foreground mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Como receber</p>
+                <RadioGroup value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as 'pickup' | 'delivery')} className="grid grid-cols-2 gap-3">
+                  <label
+                    className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === 'pickup'
+                        ? 'border-accent bg-accent/10 shadow-sm'
+                        : 'border-border/40 bg-secondary/20 hover:bg-secondary/30'
+                    }`}
+                  >
+                    <RadioGroupItem value="pickup" className="sr-only" />
+                    <Store className={`h-4 w-4 ${deliveryMode === 'pickup' ? 'text-accent' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium ${deliveryMode === 'pickup' ? 'text-accent' : 'text-muted-foreground'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Retirada</span>
+                  </label>
+                  <label
+                    className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === 'delivery'
+                        ? 'border-accent bg-accent/10 shadow-sm'
+                        : 'border-border/40 bg-secondary/20 hover:bg-secondary/30'
+                    }`}
+                  >
+                    <RadioGroupItem value="delivery" className="sr-only" />
+                    <MapPin className={`h-4 w-4 ${deliveryMode === 'delivery' ? 'text-accent' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium ${deliveryMode === 'delivery' ? 'text-accent' : 'text-muted-foreground'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Entrega</span>
+                  </label>
+                </RadioGroup>
+
+                {deliveryMode === 'delivery' && (
+                  <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="address" className="text-xs text-muted-foreground">Endereço *</Label>
+                      <Input
+                        id="address"
+                        placeholder="Rua, Avenida..."
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        className="bg-secondary/50 border-border/60 rounded-xl h-10"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="addressNumber" className="text-xs text-muted-foreground">Número *</Label>
+                        <Input
+                          id="addressNumber"
+                          placeholder="123"
+                          value={addressNumber}
+                          onChange={e => setAddressNumber(e.target.value)}
+                          className="bg-secondary/50 border-border/60 rounded-xl h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="addressComplement" className="text-xs text-muted-foreground">Complemento</Label>
+                        <Input
+                          id="addressComplement"
+                          placeholder="Apto, Bloco..."
+                          value={addressComplement}
+                          onChange={e => setAddressComplement(e.target.value)}
+                          className="bg-secondary/50 border-border/60 rounded-xl h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+
+          {/* Footer - Total & CTA */}
+          <div className="px-6 py-5 border-t border-border/30 space-y-4" style={{ background: 'hsl(24 30% 10% / 0.8)', backdropFilter: 'blur(12px)' }}>
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>Total</span>
+              <span className="text-2xl font-bold text-accent font-mono-numbers">
                 R$ {cartTotal.toFixed(2).replace('.', ',')}
               </span>
             </div>
-
             <Button
               onClick={handleSubmitOrder}
-              disabled={sending || !customerName.trim()}
-              className="w-full bg-accent hover:brightness-110 text-accent-foreground rounded-full h-12 text-base font-semibold"
+              disabled={sending || !customerName.trim() || (deliveryMode === 'delivery' && (!address.trim() || !addressNumber.trim()))}
+              className="w-full bg-accent hover:brightness-110 text-accent-foreground rounded-full h-12 text-base font-semibold glow-accent"
             >
               {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirmar Pedido'}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Hide scrollbar */}
       <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}.cardapio-page::-webkit-scrollbar{display:none}.cardapio-page{-ms-overflow-style:none;scrollbar-width:none}`}</style>
