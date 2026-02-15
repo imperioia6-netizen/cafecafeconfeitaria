@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -206,7 +206,11 @@ const Cardapio = () => {
           <p className="text-xl font-bold text-foreground font-mono-numbers">
             Total: R$ {success.total.toFixed(2).replace('.', ',')}
           </p>
-          <p className="text-sm text-muted-foreground">Aguarde o preparo. Você será chamado quando estiver pronto.</p>
+           <p className="text-sm text-muted-foreground">
+             {deliveryMode === 'delivery'
+               ? 'Seu pedido será entregue no endereço informado.'
+               : 'Aguarde o preparo. Você será chamado quando estiver pronto.'}
+           </p>
           <button
             onClick={handleNewOrder}
             className="w-full py-3 rounded-full bg-accent text-accent-foreground font-semibold hover:brightness-110 transition-all shadow-md"
@@ -242,12 +246,47 @@ const Cardapio = () => {
         <div className="mt-4 h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--accent)), transparent)' }} />
       </div>
 
+      {/* Delivery mode toggle */}
+      <div className="bg-card/60 backdrop-blur-sm border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="grid grid-cols-2 gap-2 max-w-sm mx-auto">
+            <button
+              onClick={() => setDeliveryMode('pickup')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                deliveryMode === 'pickup'
+                  ? 'bg-accent text-accent-foreground shadow-md'
+                  : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              <Store className="h-4 w-4" />
+              No Local
+            </button>
+            <button
+              onClick={() => setDeliveryMode('delivery')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                deliveryMode === 'delivery'
+                  ? 'bg-accent text-accent-foreground shadow-md'
+                  : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              <MapPin className="h-4 w-4" />
+              Delivery
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header - dark cinematic */}
       <header className={`fixed ${isSimulating ? 'top-8' : 'top-0'} left-0 right-0 z-50 border-b border-sidebar-border shadow-lg`} style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            🍰 Cardápio
-          </h1>
+            <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+             🍰 Cardápio
+             {deliveryMode === 'delivery' && (
+               <span className="text-xs font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">Delivery</span>
+             )}
+           </h1>
           <div className="flex-1 max-w-lg mx-auto relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sidebar-foreground/50" />
             <input
@@ -496,7 +535,7 @@ const Cardapio = () => {
               onClick={() => setCheckoutOpen(true)}
               className="px-6 py-2.5 rounded-full bg-accent text-accent-foreground font-semibold hover:brightness-110 transition-all shadow-md glow-accent"
             >
-              Fazer Pedido
+              {deliveryMode === 'delivery' ? 'Pedir Delivery' : 'Fazer Pedido'}
             </button>
           </div>
         </div>
@@ -569,42 +608,13 @@ const Cardapio = () => {
                 </div>
               </div>
 
-              {/* Delivery mode */}
-              <div>
-                <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Como Receber
-                </span>
-                <RadioGroup value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as 'pickup' | 'delivery')} className="grid grid-cols-2 gap-3">
-                  <label
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      deliveryMode === 'pickup'
-                        ? 'border-[#8B6914] bg-[#8B6914]/5 shadow-sm'
-                        : 'border-gray-200 bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <RadioGroupItem value="pickup" className="sr-only" />
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${deliveryMode === 'pickup' ? 'bg-[#8B6914]' : 'bg-gray-100'}`}>
-                      <Store className={`h-5 w-5 ${deliveryMode === 'pickup' ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <span className={`text-sm font-semibold ${deliveryMode === 'pickup' ? 'text-[#8B6914]' : 'text-gray-400'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Retirada</span>
-                  </label>
-                  <label
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      deliveryMode === 'delivery'
-                        ? 'border-[#8B6914] bg-[#8B6914]/5 shadow-sm'
-                        : 'border-gray-200 bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <RadioGroupItem value="delivery" className="sr-only" />
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${deliveryMode === 'delivery' ? 'bg-[#8B6914]' : 'bg-gray-100'}`}>
-                      <MapPin className={`h-5 w-5 ${deliveryMode === 'delivery' ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <span className={`text-sm font-semibold ${deliveryMode === 'delivery' ? 'text-[#8B6914]' : 'text-gray-400'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Entrega</span>
-                  </label>
-                </RadioGroup>
-
-                {deliveryMode === 'delivery' && (
-                  <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              {/* Delivery address fields (only when delivery mode) */}
+              {deliveryMode === 'delivery' && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <span className="inline-block bg-[#6B4513] text-white text-[11px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-lg mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Endereço de Entrega
+                  </span>
+                  <div className="space-y-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="address" className="text-xs text-gray-600">Endereço *</Label>
                       <Input
@@ -638,8 +648,8 @@ const Cardapio = () => {
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Customer data */}
               <div>
