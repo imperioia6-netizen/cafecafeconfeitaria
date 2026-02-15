@@ -30,7 +30,7 @@ export function useTodayProductions() {
       today.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from('productions')
-        .select('*, recipes(name, category, sale_price, direct_cost)')
+        .select('*, recipes(name, category, sale_price, direct_cost, slice_weight_grams, whole_weight_grams, sells_whole, sells_slice, whole_price, slice_price)')
         .gte('produced_at', today.toISOString())
         .order('produced_at', { ascending: false });
       if (error) throw error;
@@ -60,7 +60,8 @@ export function useCreateProduction() {
         production_id: prod.id,
         recipe_id: input.recipe_id,
         slices_available: input.slices_generated,
-      });
+        stock_grams: input.weight_produced_g,
+      } as any);
       if (invErr) throw invErr;
 
       return prod;
@@ -76,7 +77,6 @@ export function useDeleteProduction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (productionId: string) => {
-      // Delete inventory first (FK dependency)
       const { error: invErr } = await supabase
         .from('inventory')
         .delete()
@@ -117,7 +117,7 @@ export function useUpdateProduction() {
 
       const { error: invErr } = await supabase
         .from('inventory')
-        .update({ slices_available: input.slices_generated })
+        .update({ slices_available: input.slices_generated, stock_grams: input.weight_produced_g } as any)
         .eq('production_id', input.id);
       if (invErr) throw invErr;
     },

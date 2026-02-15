@@ -15,6 +15,8 @@ export interface CartItem {
   quantity: number;
   unit_price: number;
   max_available: number;
+  unit_type?: 'whole' | 'slice';
+  unit_weight_grams?: number;
 }
 
 export function useTodaySales() {
@@ -70,21 +72,41 @@ export function useCreateSale() {
           quantity: item.quantity,
           unit_price: item.unit_price,
           subtotal: item.quantity * item.unit_price,
-        }))
+          unit_type: item.unit_type || 'slice',
+        } as any))
       );
       if (itemsErr) throw itemsErr;
 
+      // Deduct stock_grams from inventory
       for (const item of input.items) {
-        const { data: inv } = await supabase
-          .from('inventory')
-          .select('slices_available')
-          .eq('id', item.inventory_id)
-          .single();
-        if (inv) {
-          await supabase
+        const weightToDeduct = (item.unit_weight_grams || 0) * item.quantity;
+        if (weightToDeduct > 0) {
+          const { data: inv } = await supabase
             .from('inventory')
-            .update({ slices_available: inv.slices_available - item.quantity })
-            .eq('id', item.inventory_id);
+            .select('stock_grams, slices_available')
+            .eq('id', item.inventory_id)
+            .single();
+          if (inv) {
+            const newGrams = Math.max(0, (Number((inv as any).stock_grams) || 0) - weightToDeduct);
+            const newSlices = Math.max(0, inv.slices_available - item.quantity);
+            await supabase
+              .from('inventory')
+              .update({ stock_grams: newGrams, slices_available: newSlices } as any)
+              .eq('id', item.inventory_id);
+          }
+        } else {
+          // Fallback: old behavior
+          const { data: inv } = await supabase
+            .from('inventory')
+            .select('slices_available')
+            .eq('id', item.inventory_id)
+            .single();
+          if (inv) {
+            await supabase
+              .from('inventory')
+              .update({ slices_available: inv.slices_available - item.quantity })
+              .eq('id', item.inventory_id);
+          }
         }
       }
 
@@ -96,4 +118,3 @@ export function useCreateSale() {
     },
   });
 }
-

@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { CartItem } from '@/hooks/useSales';
 
 export function useOpenOrders() {
   return useQuery({
@@ -8,7 +7,7 @@ export function useOpenOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('*, order_items(*, recipes(name, photo_url, sale_price))')
+        .select('*, order_items(*, recipes(name, photo_url, sale_price, sells_whole, sells_slice, whole_price, slice_price, whole_weight_grams, slice_weight_grams))')
         .eq('status', 'aberto')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -28,7 +27,7 @@ export function useCreateOrder() {
       customer_name?: string;
       channel?: string;
       notes?: string;
-      items: { recipe_id: string; inventory_id?: string; quantity: number; unit_price: number; notes?: string }[];
+      items: { recipe_id: string; inventory_id?: string; quantity: number; unit_price: number; notes?: string; unit_type?: string }[];
     }) => {
       const { data: order, error: orderErr } = await supabase
         .from('orders')
@@ -54,6 +53,7 @@ export function useCreateOrder() {
             unit_price: i.unit_price,
             subtotal: i.quantity * i.unit_price,
             notes: i.notes || null,
+            unit_type: i.unit_type || 'slice',
           } as any))
         );
         if (itemsErr) throw itemsErr;
@@ -73,6 +73,7 @@ export function useAddOrderItem() {
       inventory_id: string;
       quantity: number;
       unit_price: number;
+      unit_type?: string;
     }) => {
       const { error } = await supabase.from('order_items').insert({
         order_id: input.order_id,
@@ -81,7 +82,8 @@ export function useAddOrderItem() {
         quantity: input.quantity,
         unit_price: input.unit_price,
         subtotal: input.quantity * input.unit_price,
-      });
+        unit_type: input.unit_type || 'slice',
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
@@ -111,7 +113,6 @@ export function useFinalizeOrder() {
       const items = order.order_items || [];
       const total = items.reduce((s: number, i: any) => s + Number(i.subtotal), 0);
 
-      // Create sale
       const { data: sale, error: saleErr } = await supabase
         .from('sales')
         .insert({
@@ -127,7 +128,6 @@ export function useFinalizeOrder() {
         .single();
       if (saleErr) throw saleErr;
 
-      // Create sale items
       const { error: siErr } = await supabase.from('sale_items').insert(
         items.map((i: any) => ({
           sale_id: sale.id,
@@ -136,28 +136,37 @@ export function useFinalizeOrder() {
           quantity: i.quantity,
           unit_price: i.unit_price,
           subtotal: i.subtotal,
+          unit_type: (i as any).unit_type || 'slice',
         }))
       );
       if (siErr) throw siErr;
 
-      // Deduct inventory
+      // Deduct stock_grams from inventory
       for (const i of items) {
         if (i.inventory_id) {
+          const r = i.recipes as any;
+          const unitType = (i as any).unit_type || 'slice';
+          const unitWeight = unitType === 'whole'
+            ? Number(r?.whole_weight_grams) || 0
+            : Number(r?.slice_weight_grams) || 0;
+          const weightToDeduct = unitWeight * i.quantity;
+
           const { data: inv } = await supabase
             .from('inventory')
-            .select('slices_available')
+            .select('stock_grams, slices_available')
             .eq('id', i.inventory_id)
             .single();
           if (inv) {
+            const newGrams = Math.max(0, (Number((inv as any).stock_grams) || 0) - weightToDeduct);
+            const newSlices = Math.max(0, inv.slices_available - i.quantity);
             await supabase
               .from('inventory')
-              .update({ slices_available: inv.slices_available - i.quantity })
+              .update({ stock_grams: newGrams, slices_available: newSlices } as any)
               .eq('id', i.inventory_id);
           }
         }
       }
 
-      // Close order
       const { error: closeErr } = await supabase
         .from('orders')
         .update({ status: 'finalizado' as any, closed_at: new Date().toISOString() })

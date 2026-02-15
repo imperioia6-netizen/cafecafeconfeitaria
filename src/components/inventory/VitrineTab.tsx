@@ -97,6 +97,15 @@ export default function VitrineTab() {
           {filtered.map((item, i) => {
             const hours = getStockAge(item.produced_at);
             const isCritical = hours > 12;
+            const stockGrams = Number((item as any).stock_grams) || 0;
+            const r = item.recipes as any;
+            const sliceWeight = Number(r?.slice_weight_grams) || 250;
+            const wholeWeight = Number(r?.whole_weight_grams) || 0;
+            const sellsSlice = r?.sells_slice ?? true;
+            const sellsWhole = r?.sells_whole ?? false;
+            const availableSlices = sellsSlice && sliceWeight > 0 ? Math.floor(stockGrams / sliceWeight) : 0;
+            const availableWhole = sellsWhole && wholeWeight > 0 ? Math.floor(stockGrams / wholeWeight) : 0;
+
             return (
               <div
                 key={item.id}
@@ -123,13 +132,27 @@ export default function VitrineTab() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground/70">Fatias</p>
-                      <p className="text-3xl font-extrabold font-mono-numbers">{item.slices_available}</p>
+                      <p className="text-xs text-muted-foreground/70">Estoque</p>
+                      <p className="text-2xl font-extrabold font-mono-numbers">{stockGrams.toLocaleString('pt-BR')}g</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground/70">Tempo</p>
                       <p className="text-lg font-semibold font-mono-numbers">{hours.toFixed(1)}h</p>
                     </div>
+                  </div>
+
+                  {/* Available units */}
+                  <div className="flex gap-3 text-xs">
+                    {sellsSlice && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {availableSlices} fatia{availableSlices !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {sellsWhole && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {availableWhole} inteiro{availableWhole !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
                   </div>
 
                   <LifeBar hours={hours} />
