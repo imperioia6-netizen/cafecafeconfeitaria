@@ -1,33 +1,28 @@
 
 
-# Corrigir Animacao de Transicao entre Paginas
+# Fixar Barra "Fazer Pedido" Mais Abaixo na Tela
 
 ## Problema
 
-O componente `PageTransition` tem um bug: a prop `key={location.pathname}` forca o React a destruir e recriar o componente a cada mudanca de rota. Quando o componente e recriado, o `useRef(location.pathname)` inicializa com o pathname atual, entao a condicao `location.pathname !== prevPath.current` nunca e verdadeira. Resultado: a animacao nunca acontece.
+A barra flutuante com o carrinho e o botao "Fazer Pedido" no cardapio do cliente esta posicionada muito alta na tela (bottom-16), sobrepondo os cards de produtos.
 
 ## Solucao
 
-Simplificar o componente removendo o `key` e o `useRef`, e usando o estado `entering` que inicia como `true` em cada montagem via efeito reativo ao pathname.
+Ajustar o posicionamento da barra flutuante para ficar colada na parte inferior da tela. Como o cardapio publico do cliente nao tem a barra de navegacao inferior (MobileBottomNav), nao ha necessidade do offset `bottom-16`.
 
 ## Detalhe Tecnico
 
-### Arquivo: `src/components/layout/PageTransition.tsx`
+### Arquivo: `src/pages/Cardapio.tsx`
 
-Duas opcoes para corrigir (usarei a mais simples):
+Na linha 526, alterar a classe da barra flutuante:
 
-Remover o `key` prop e manter a logica de deteccao de mudanca de rota com `useRef`. Quando a rota muda, setar `entering = true` por 400ms, aplicando a classe `animate-fade-in` que ja existe no Tailwind config (fade-in: opacity 0 -> 1 + translateY 12px -> 0, duracao 0.5s).
+- **De:** `fixed bottom-16 md:bottom-0`
+- **Para:** `fixed bottom-0`
 
-```text
-Mudanca principal:
-- Remover key={location.pathname} do div
-- Manter useRef + useEffect para detectar mudanca
-- Isso garante que o componente NAO remonta, e o ref preserva o path anterior
-```
+Tambem ajustar o `pb-24` do container principal para `pb-20`, garantindo que o ultimo card nao fique escondido atras da barra.
 
-| Arquivo | Acao |
+| Arquivo | Mudanca |
 |---|---|
-| `src/components/layout/PageTransition.tsx` | Remover key prop para corrigir bug da animacao |
+| `src/pages/Cardapio.tsx` | Mover barra flutuante para bottom-0 e ajustar padding inferior |
 
-1 arquivo, correcao minima.
-
+1 arquivo, mudanca minima.
