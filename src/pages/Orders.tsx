@@ -672,7 +672,7 @@ const Orders = () => {
       </div>
 
       {/* ===== FLOATING CART BAR (portal to escape transform context) ===== */}
-      {cart.length > 0 && createPortal(
+      {cart.length > 0 && !cartSheetOpen && createPortal(
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl md:ml-[calc(var(--sidebar-width,280px)/2)]">
           <button
             onClick={() => setCartSheetOpen(true)}
@@ -822,7 +822,7 @@ const Orders = () => {
 
       {/* ===== CART REVIEW SHEET ===== */}
       <Sheet open={cartSheetOpen} onOpenChange={setCartSheetOpen}>
-        <SheetContent className="sm:max-w-md flex flex-col p-0">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
           <SheetHeader className="p-5 pb-3 border-b border-border/20">
             <SheetTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-primary" />
@@ -843,25 +843,25 @@ const Orders = () => {
               <div className="space-y-3">
                 {cart.map(item => (
                   <div key={item.recipe_id} className="bg-muted/20 rounded-xl p-3.5 space-y-2 border border-border/10">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {item.photo_url ? (
-                          <img src={item.photo_url} alt={item.recipe_name} className="h-12 w-12 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="h-12 w-12 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-                            <span className="text-lg">{categoryEmoji[item.category ?? 'outro'] ?? '📦'}</span>
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-foreground truncate">{item.recipe_name}</h4>
+                    <div className="flex items-center gap-3">
+                      {item.photo_url ? (
+                        <img src={item.photo_url} alt={item.recipe_name} className="h-12 w-12 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
+                          <span className="text-lg">{categoryEmoji[item.category ?? 'outro'] ?? '📦'}</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-foreground leading-tight">{item.recipe_name}</h4>
+                        <div className="flex items-center justify-between mt-0.5">
                           <p className="text-xs text-muted-foreground font-mono-numbers">
                             {item.quantity}× R$ {item.unit_price.toFixed(2)}
                           </p>
+                          <span className="font-bold font-mono-numbers text-sm text-foreground">
+                            R$ {(item.quantity * item.unit_price).toFixed(2)}
+                          </span>
                         </div>
                       </div>
-                      <span className="font-bold font-mono-numbers text-sm text-foreground whitespace-nowrap">
-                        R$ {(item.quantity * item.unit_price).toFixed(2)}
-                      </span>
                     </div>
                     {item.notes && (
                       <p className="text-[11px] text-muted-foreground/80 flex items-center gap-1 italic pl-1">
@@ -872,18 +872,18 @@ const Orders = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[11px] h-7 rounded-lg gap-1 flex-1"
+                        className="text-xs h-9 min-h-[44px] rounded-lg gap-1.5 flex-1"
                         onClick={() => editCartItem(item)}
                       >
-                        <Pencil className="h-3 w-3" /> Editar
+                        <Pencil className="h-3.5 w-3.5" /> Editar
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[11px] h-7 rounded-lg gap-1 flex-1 text-destructive/70 hover:text-destructive"
+                        className="text-xs h-9 min-h-[44px] rounded-lg gap-1.5 flex-1 text-destructive/70 hover:text-destructive"
                         onClick={() => removeFromCart(item.recipe_id)}
                       >
-                        <Trash2 className="h-3 w-3" /> Remover
+                        <Trash2 className="h-3.5 w-3.5" /> Remover
                       </Button>
                     </div>
                   </div>
@@ -929,7 +929,7 @@ const Orders = () => {
           </ScrollArea>
 
           {cart.length > 0 && (
-            <div className="p-5 pt-3 border-t border-border/20 space-y-3">
+            <div className="p-5 pt-3 border-t border-border/20 space-y-3 safe-area-bottom">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total</span>
                 <span className="text-xl font-bold font-mono-numbers text-gradient-gold">R$ {cartTotal.toFixed(2)}</span>
