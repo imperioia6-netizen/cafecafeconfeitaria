@@ -1,68 +1,58 @@
 
-# Corrigir Race Condition no Carregamento de Roles
+
+# Corrigir Carregamento Infinito no Dashboard
 
 ## Problema Raiz
 
-O `useAuth` marca `loading = false` **antes** de `fetchRoles` terminar. Isso causa:
-1. Ao acessar `/`, o Dashboard ve `roles = []`, mostra spinner, mas em seguida o redirect podia disparar antes dos roles carregarem
-2. O navegador ficou em `/production` de um redirect anterior -- recarregar nessa URL carrega Producao diretamente, sem passar pelo Dashboard
+A documentacao do Supabase recomenda NAO fazer chamadas a APIs Supabase diretamente dentro do callback `onAuthStateChange`. Ao colocar `await fetchRoles()` dentro desse callback, criamos um conflito que impede o `setLoading(false)` de funcionar corretamente.
 
 ## Solucao
 
-### 1. Corrigir `src/hooks/useAuth.tsx` -- Aguardar roles antes de `setLoading(false)`
+### Arquivo: `src/hooks/useAuth.tsx`
 
-Alterar o fluxo para que `setLoading(false)` so execute **depois** de `fetchRoles` completar:
+Desacoplar a logica de loading:
 
-```tsx
-// getSession
-supabase.auth.getSession().then(async ({ data: { session } }) => {
-  setSession(session);
-  setUser(session?.user ?? null);
-  if (session?.user) {
-    await fetchRoles(session.user.id);
-  }
-  setLoading(false);
-});
+1. **`onAuthStateChange`**: NAO aguardar `fetchRoles` — apenas disparar sem await (fire-and-forget). Este callback serve para reagir a mudancas de auth (login, logout, token refresh), nao para controlar o loading inicial.
 
-// onAuthStateChange
-async (_event, session) => {
-  setSession(session);
-  setUser(session?.user ?? null);
-  if (session?.user) {
-    await fetchRoles(session.user.id);
-  } else {
-    setRoles([]);
-  }
-  setLoading(false);
-}
-```
-
-Remover o `setTimeout` no `onAuthStateChange` que atrasava o fetch desnecessariamente.
-
-### 2. Usar `loading` no `src/pages/Index.tsx` em vez de `roles.length`
-
-Substituir a verificacao de `roles.length === 0` por `loading`:
+2. **`getSession`**: Este continua sendo o unico responsavel pelo loading inicial. Ele aguarda `fetchRoles` e so entao chama `setLoading(false)`.
 
 ```tsx
-const { isOwner, roles, loading } = useAuth();
-
-if (loading) {
-  return (
-    <AppLayout>
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    </AppLayout>
+useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        // Fire-and-forget — nao bloquear o callback
+        fetchRoles(session.user.id);
+      } else {
+        setRoles([]);
+      }
+    }
   );
-}
 
-if (!isOwner) return <Navigate to="/production" replace />;
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    setSession(session);
+    setUser(session?.user ?? null);
+    if (session?.user) {
+      await fetchRoles(session.user.id);
+    }
+    setLoading(false);  // Unico ponto que controla loading inicial
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 ```
 
-Isso e mais robusto porque `loading` so sera `false` quando os roles ja estiverem carregados.
+### Motivo
+
+- `onAuthStateChange` dispara o evento INITIAL_SESSION sincronamente ao registrar o listener
+- Fazer `await` de chamadas Supabase dentro dele pode causar deadlock ou race condition
+- Separar as responsabilidades: `getSession` controla o loading, `onAuthStateChange` reage a mudancas futuras
 
 ## Resultado
 
-- Recarregar em `/` sempre mostra o Dashboard para o admin
-- O redirect para `/production` so acontece quando confirmado que o usuario NAO e owner
-- Sem race conditions entre loading e roles
+- O loading spinner desaparece assim que `getSession` + `fetchRoles` completam
+- O Dashboard carrega normalmente para o admin
+- Sem carregamento infinito
+
