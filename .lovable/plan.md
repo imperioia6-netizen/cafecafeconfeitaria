@@ -1,53 +1,34 @@
 
 
-# Animacao de Carregamento nas Transicoes de Pagina
+# Ocultar Barra de Scroll Lateral no Mobile
 
 ## Problema
 
-Ao clicar nas opcoes da bottom nav (Dashboard, Pedidos, Vendas, Estoque, Mais), a transicao atual e apenas um fade rapido de 120ms que quase nao se percebe, resultando em redirecionamentos "secos" e visualmente feios.
+No mobile, a barra de scroll lateral aparece visivelmente na tela, ocupando espaco e prejudicando a estetica da interface.
 
 ## Solucao
 
-Melhorar o `PageTransition` para mostrar um skeleton/shimmer animado durante a transicao, dando a sensacao de um app nativo carregando o conteudo de forma elegante.
-
-## Como vai funcionar
-
-1. Usuario clica em uma opcao da nav
-2. Conteudo atual faz fade-out rapido (150ms)
-3. Aparece um skeleton loader com shimmer animado (3 blocos pulsando) por ~300ms
-4. Novo conteudo entra com fade-in suave
-
-O resultado e uma transicao visivelmente profissional sem ser lenta.
+Adicionar uma regra CSS responsiva que oculta a scrollbar apenas no mobile, mantendo a funcionalidade de scroll por toque.
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/components/layout/PageTransition.tsx`
+### Arquivo: `src/index.css`
 
-Reescrever o componente com 3 estados em vez de 2:
+Adicionar na secao `@layer utilities` uma classe global que esconde a scrollbar no mobile usando media query:
 
-1. **`idle`** - conteudo visivel normalmente
-2. **`exiting`** - fade-out do conteudo atual (~150ms)
-3. **`loading`** - skeleton shimmer visivel (~250ms)
-4. Volta para `idle` com novo conteudo (fade-in via CSS)
-
-O skeleton loader sera composto por:
-- 1 bloco largo no topo (simula titulo da pagina)
-- 2 blocos menores abaixo (simulam cards/conteudo)
-- Todos com `animate-pulse` do Tailwind e cantos arredondados
-
-Fluxo de estados:
-
-```text
-[Click] -> exiting (150ms) -> loading (250ms) -> idle (fade-in 200ms)
+```css
+@media (max-width: 767px) {
+  body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  body::-webkit-scrollbar {
+    display: none;
+  }
+}
 ```
 
-Tempo total: ~600ms -- rapido o suficiente para parecer fluido, lento o suficiente para ser percebido como "carregamento real".
+Isso usa as mesmas tecnicas da classe `.no-scrollbar` que ja existe no projeto, mas aplicada diretamente ao `body` apenas em telas menores que `md` (768px).
 
-### Arquivos
-
-| Arquivo | Acao |
-|---|---|
-| `src/components/layout/PageTransition.tsx` | Reescrever com skeleton loader intermediario |
-
-Total: 1 arquivo modificado. Sem dependencias novas.
+1 arquivo, ~8 linhas adicionadas.
 
