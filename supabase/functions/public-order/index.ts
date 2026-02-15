@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const recipeIds = items.map((i: any) => i.recipe_id);
     const { data: recipes, error: recipesErr } = await supabase
       .from("recipes")
-      .select("id, name, sale_price, active")
+      .select("id, name, sale_price, active, sells_whole, sells_slice, whole_price, slice_price")
       .in("id", recipeIds);
 
     if (recipesErr) throw recipesErr;
@@ -64,15 +64,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build price map from server data
-    const priceMap = new Map(recipes.map((r) => [r.id, Number(r.sale_price)]));
+    // Build recipe map
+    const recipeMap = new Map(recipes.map((r) => [r.id, r]));
 
-    // Use client-provided order number (comanda) or generate one
     const orderNumber = (typeof clientOrderNumber === "string" && clientOrderNumber.trim().length > 0)
       ? clientOrderNumber.trim()
       : `CD-${Date.now().toString(36).toUpperCase()}`;
 
-    // Create the order - use a system UUID for operator_id since there's no logged-in user
     const systemOperatorId = "00000000-0000-0000-0000-000000000000";
 
     const { data: order, error: orderErr } = await supabase
@@ -91,9 +89,29 @@ Deno.serve(async (req) => {
 
     if (orderErr) throw orderErr;
 
-    // Create order items with server-side prices
+    // Create order items with correct prices per unit_type
     const orderItems = items.map((item: any) => {
-      const price = priceMap.get(item.recipe_id)!;
+      const recipe = recipeMap.get(item.recipe_id)!;
+      const unitType = item.unit_type || "slice";
+
+      // Validate mode is enabled
+      if (unitType === "whole" && !recipe.sells_whole) {
+        throw new Error(`Produto "${recipe.name}" não vende inteiro`);
+      }
+      if (unitType === "slice" && !recipe.sells_slice) {
+        throw new Error(`Produto "${recipe.name}" não vende fatia`);
+      }
+
+      // Get correct price
+      let price: number;
+      if (unitType === "whole" && recipe.whole_price) {
+        price = Number(recipe.whole_price);
+      } else if (unitType === "slice" && recipe.slice_price) {
+        price = Number(recipe.slice_price);
+      } else {
+        price = Number(recipe.sale_price);
+      }
+
       const qty = Math.max(1, Math.floor(Number(item.quantity)));
       return {
         order_id: order.id,
@@ -101,6 +119,7 @@ Deno.serve(async (req) => {
         quantity: qty,
         unit_price: price,
         subtotal: qty * price,
+        unit_type: unitType,
         notes: typeof item.notes === "string" && item.notes.trim().length > 0 ? item.notes.trim() : null,
       };
     });
@@ -121,7 +140,7 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("public-order error:", err);
-    return new Response(JSON.stringify({ error: "Erro ao processar pedido" }), {
+    return new Response(JSON.stringify({ error: err.message || "Erro ao processar pedido" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

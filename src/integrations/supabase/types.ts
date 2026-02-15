@@ -492,6 +492,7 @@ export type Database = {
           recipe_id: string
           slices_available: number
           status: Database["public"]["Enums"]["inventory_status"]
+          stock_grams: number
           updated_at: string
         }
         Insert: {
@@ -501,6 +502,7 @@ export type Database = {
           recipe_id: string
           slices_available?: number
           status?: Database["public"]["Enums"]["inventory_status"]
+          stock_grams?: number
           updated_at?: string
         }
         Update: {
@@ -510,6 +512,7 @@ export type Database = {
           recipe_id?: string
           slices_available?: number
           status?: Database["public"]["Enums"]["inventory_status"]
+          stock_grams?: number
           updated_at?: string
         }
         Relationships: [
@@ -539,6 +542,7 @@ export type Database = {
           recipe_id: string
           subtotal: number
           unit_price: number
+          unit_type: string | null
         }
         Insert: {
           id?: string
@@ -549,6 +553,7 @@ export type Database = {
           recipe_id: string
           subtotal?: number
           unit_price?: number
+          unit_type?: string | null
         }
         Update: {
           id?: string
@@ -559,6 +564,7 @@ export type Database = {
           recipe_id?: string
           subtotal?: number
           unit_price?: number
+          unit_type?: string | null
         }
         Relationships: [
           {
@@ -761,6 +767,7 @@ export type Database = {
         Row: {
           active: boolean
           category: Database["public"]["Enums"]["product_category"]
+          cost_per_gram: number | null
           created_at: string
           direct_cost: number | null
           id: string
@@ -769,13 +776,20 @@ export type Database = {
           photo_url: string | null
           sale_price: number
           sell_mode: string
+          sells_slice: boolean
+          sells_whole: boolean
+          slice_price: number | null
           slice_weight_g: number
+          slice_weight_grams: number | null
           updated_at: string
           weight_kg: number | null
+          whole_price: number | null
+          whole_weight_grams: number | null
         }
         Insert: {
           active?: boolean
           category?: Database["public"]["Enums"]["product_category"]
+          cost_per_gram?: number | null
           created_at?: string
           direct_cost?: number | null
           id?: string
@@ -784,13 +798,20 @@ export type Database = {
           photo_url?: string | null
           sale_price?: number
           sell_mode?: string
+          sells_slice?: boolean
+          sells_whole?: boolean
+          slice_price?: number | null
           slice_weight_g?: number
+          slice_weight_grams?: number | null
           updated_at?: string
           weight_kg?: number | null
+          whole_price?: number | null
+          whole_weight_grams?: number | null
         }
         Update: {
           active?: boolean
           category?: Database["public"]["Enums"]["product_category"]
+          cost_per_gram?: number | null
           created_at?: string
           direct_cost?: number | null
           id?: string
@@ -799,9 +820,15 @@ export type Database = {
           photo_url?: string | null
           sale_price?: number
           sell_mode?: string
+          sells_slice?: boolean
+          sells_whole?: boolean
+          slice_price?: number | null
           slice_weight_g?: number
+          slice_weight_grams?: number | null
           updated_at?: string
           weight_kg?: number | null
+          whole_price?: number | null
+          whole_weight_grams?: number | null
         }
         Relationships: []
       }
@@ -814,6 +841,7 @@ export type Database = {
           sale_id: string
           subtotal: number
           unit_price: number
+          unit_type: string | null
         }
         Insert: {
           id?: string
@@ -823,6 +851,7 @@ export type Database = {
           sale_id: string
           subtotal?: number
           unit_price?: number
+          unit_type?: string | null
         }
         Update: {
           id?: string
@@ -832,6 +861,7 @@ export type Database = {
           sale_id?: string
           subtotal?: number
           unit_price?: number
+          unit_type?: string | null
         }
         Relationships: [
           {
