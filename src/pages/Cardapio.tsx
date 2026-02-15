@@ -397,6 +397,9 @@ const Cardapio = () => {
                     <h3 className="text-[15px] font-medium text-foreground line-clamp-2 leading-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       {recipe.name}
                     </h3>
+                    {(recipe as any).sell_mode === 'inteiro' && (recipe as any).weight_kg && (
+                      <p className="text-[11px] text-muted-foreground font-medium">{Number((recipe as any).weight_kg)} Kg</p>
+                    )}
                     <div className="flex items-end justify-between">
                       <p className="text-base font-semibold tracking-wide text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                         R$ {Number(recipe.sale_price).toFixed(2).replace('.', ',')}
