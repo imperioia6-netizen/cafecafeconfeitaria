@@ -288,9 +288,6 @@ const Cardapio = () => {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
             <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
              🍰 Cardápio
-             {deliveryMode === 'delivery' && (
-               <span className="text-xs font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">Delivery</span>
-             )}
            </h1>
           <div className="flex-1 max-w-lg mx-auto relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sidebar-foreground/50" />
