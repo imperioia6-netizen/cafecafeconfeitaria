@@ -75,10 +75,10 @@ const MobileBottomNav = ({ onOpenMore, onCloseSidebar }: MobileBottomNavProps) =
               onClick={() => { onCloseSidebar(); navigate(item.path); }}
               className="flex flex-col items-center justify-center gap-[5px] flex-1 relative transition-transform duration-150 active:scale-[0.82]"
             >
-              {/* Spotlight glow behind active item */}
+              {/* Static glow behind active item */}
               {isActive && (
                 <div
-                  className="absolute nav-spotlight"
+                  className="absolute"
                   style={{
                     width: '52px',
                     height: '52px',
@@ -124,7 +124,7 @@ const MobileBottomNav = ({ onOpenMore, onCloseSidebar }: MobileBottomNavProps) =
                   }`}
                   style={isActive ? {
                     color: 'hsl(36 82% 62%)',
-                    filter: 'drop-shadow(0 0 6px hsl(36 75% 52% / 0.5)) drop-shadow(0 0 14px hsl(36 70% 50% / 0.25))',
+                    filter: 'drop-shadow(0 0 4px hsl(36 75% 52% / 0.4))',
                   } : {
                     color: 'hsl(24 15% 45%)',
                   }}

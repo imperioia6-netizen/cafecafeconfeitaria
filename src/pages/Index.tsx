@@ -41,7 +41,7 @@ const KpiCard = ({
 
   return (
     <div
-      className={`card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in ${delay} ${isFirst ? 'border-shine' : ''}`}
+      className={`card-cinematic rounded-xl overflow-hidden ${isFirst ? 'border-shine' : ''}`}
       style={isFirst ? {
         background: 'linear-gradient(135deg, hsl(24 60% 22%), hsl(24 55% 16%) 50%, hsl(24 45% 11%))',
         color: 'hsl(36 40% 95%)',
@@ -200,7 +200,7 @@ const Dashboard = () => {
             {/* ── Performance Chart ── */}
             <div className="grid gap-5 lg:grid-cols-3">
               <div
-                className="lg:col-span-2 card-cinematic rounded-xl overflow-hidden opacity-0 animate-fade-in"
+                className="lg:col-span-2 card-cinematic rounded-xl overflow-hidden"
                 style={{
                   animationDelay: '350ms',
                   background: 'radial-gradient(ellipse at 20% 20%, hsl(24 50% 18%), hsl(24 45% 12%) 60%, hsl(24 40% 8%))',
@@ -359,7 +359,7 @@ const Dashboard = () => {
               </div>
 
               {/* ── Alerts Panel ── */}
-              <div className="card-cinematic rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: '450ms' }}>
+              <div className="card-cinematic rounded-xl">
                 <div className="p-4 md:p-6">
                   <h3 className="text-base font-bold flex items-center gap-2 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     <AlertTriangle className="h-4 w-4 text-accent" />
