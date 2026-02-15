@@ -8,6 +8,7 @@ import { useTeamMembers, useUpdateRole } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import EmployeeSheet from '@/components/team/EmployeeSheet';
+import NewEmployeeDialog from '@/components/team/NewEmployeeDialog';
 
 const roleLabels: Record<string, string> = { owner: 'Proprietário', employee: 'Funcionário', client: 'Cliente' };
 const avatarColors = [
@@ -34,9 +35,12 @@ const Team = () => {
   return (
     <AppLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="page-title">Equipe</h1>
-          <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Gerenciar funcionários — {members?.length ?? 0} membros</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="page-title">Equipe</h1>
+            <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Gerenciar funcionários — {members?.length ?? 0} membros</p>
+          </div>
+          {isOwner && <NewEmployeeDialog />}
         </div>
 
         {isLoading ? (
