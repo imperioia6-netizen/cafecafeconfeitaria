@@ -587,6 +587,7 @@ export type Database = {
           closed_at: string | null
           created_at: string
           customer_name: string | null
+          customer_phone: string | null
           id: string
           notes: string | null
           operator_id: string
@@ -599,6 +600,7 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           notes?: string | null
           operator_id: string
@@ -611,6 +613,7 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           notes?: string | null
           operator_id?: string
@@ -1025,7 +1028,7 @@ export type Database = {
         | "bebida"
         | "doce"
         | "outro"
-      sales_channel: "balcao" | "delivery" | "ifood"
+      sales_channel: "balcao" | "delivery" | "ifood" | "cardapio_digital"
       social_lead_status:
         | "novo_seguidor"
         | "mensagem_enviada"
@@ -1177,7 +1180,7 @@ export const Constants = {
       order_status: ["aberto", "finalizado", "cancelado"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
       product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
-      sales_channel: ["balcao", "delivery", "ifood"],
+      sales_channel: ["balcao", "delivery", "ifood", "cardapio_digital"],
       social_lead_status: [
         "novo_seguidor",
         "mensagem_enviada",
