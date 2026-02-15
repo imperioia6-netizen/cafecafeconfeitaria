@@ -1,74 +1,87 @@
 
-# Adaptar checkout do Cardapio por modo (Local vs Delivery)
+# Redesign da Sidebar de Checkout do Cardapio
 
-## O que muda
+## Problemas atuais (vistos no screenshot)
 
-Atualmente o checkout pede sempre os mesmos campos (nome e telefone) independente do modo. A proposta e adaptar os campos exibidos conforme o modo selecionado:
+- Espacamentos inconsistentes entre secoes
+- Badges de secao ("ITENS DO CARRINHO", "DADOS DO PEDIDO") com estilo pesado e desalinhado
+- Inputs sem padding interno consistente
+- Total e botao ficam "soltos" no rodape sem separacao visual clara
+- Falta de hierarquia visual entre secoes
+- Itens do carrinho com layout apertado
 
-**Modo "No Local":**
-- Pedir **numero da comanda** (obrigatorio)
-- Pedir **nome do cliente** (obrigatorio)
-- Telefone fica oculto (desnecessario para consumo no local)
+## Melhorias propostas
 
-**Modo "Delivery":**
-- Pedir **nome do cliente** (obrigatorio)
-- Pedir **telefone** (obrigatorio -- necessario para contato de entrega)
-- Pedir **endereco** (obrigatorio)
-- Pedir **numero** (obrigatorio)
-- Pedir **complemento** (opcional)
+### 1. Header refinado
+- Icone do carrinho com fundo mais suave (gradiente sutil)
+- Subtitulo com contagem de itens mais discreto
+- Separador inferior com gradiente dourado (consistente com o resto do app)
+
+### 2. Secao de itens do carrinho
+- Substituir badge escuro por label leve com icone (texto dourado em vez de badge solido)
+- Cards dos itens com padding uniforme (p-3.5), border mais sutil
+- Foto do produto com cantos mais arredondados (rounded-xl)
+- Controles de quantidade alinhados verticalmente ao centro
+- Botao de remover item posicionado no canto superior direito do card
+
+### 3. Secao de dados (Local / Delivery)
+- Labels de secao com estilo leve: texto dourado com linha decorativa, sem badge solido
+- Inputs com altura uniforme (h-11), border radius consistente (rounded-xl)
+- Espacamento vertical entre campos padronizado (space-y-4)
+- Labels com peso e tamanho consistente
+
+### 4. Rodape (Total e CTA)
+- Separador superior com gradiente dourado
+- Linha do total com tipografia mais forte e alinhamento perfeito
+- Subtotal por item visivel
+- Botao "Finalizar Pedido" com gradiente dourado (consistente com o dialog de produto)
+- "Limpar carrinho" com espacamento adequado
+
+### 5. Espacamento global
+- Padding lateral uniforme px-5 em todo o conteudo
+- Gaps entre secoes padronizados em space-y-6
+- Padding vertical do footer aumentado para py-5
 
 ## Detalhes tecnicos
 
 ### Arquivo alterado: `src/pages/Cardapio.tsx`
 
-1. **Novo estado**: adicionar `orderNumber` (string) para armazenar o numero da comanda no modo local
+Reescrever o bloco do Sheet (linhas 549-748) com:
 
-2. **Secao "Dados do Cliente" condicional**:
-   - No modo **pickup**: mostrar campos "Numero da Comanda" e "Nome" (telefone oculto)
-   - No modo **delivery**: mostrar campos "Nome", "Telefone" (obrigatorio, nao opcional), e os campos de endereco que ja existem
+1. **Header**: manter estrutura, refinar cores e adicionar separador gradiente
+2. **Section labels**: trocar de `<span className="inline-block bg-[#6B4513]...">` para um componente leve com borda inferior dourada e icone contextual
+3. **Cart items**: uniformizar padding, alinhar controles, melhorar truncamento de texto
+4. **Inputs**: classe unificada com `h-11 rounded-xl bg-gray-50/80 border-gray-200 focus:border-[#8B6914]/40 focus:ring-[#8B6914]/10`
+5. **Footer**: gradiente no separador, tipografia reforçada no total, botao com gradiente
+6. **ScrollArea**: ajustar padding interno para consistencia
 
-3. **Validacao do botao "Finalizar Pedido"**: atualizar a condicao de `disabled` para:
-   - Pickup: exigir `customerName` e `orderNumber`
-   - Delivery: exigir `customerName`, `customerPhone`, `address` e `addressNumber`
-
-4. **Enviar `order_number` no pedido**: passar o campo `order_number` no body da chamada a Edge Function `public-order` quando for modo local
-
-5. **Reset do formulario**: incluir `orderNumber` no `handleNewOrder`
-
-6. **Labels e placeholders adaptados**: "Numero da Comanda" com placeholder "Ex: 42" no modo local; telefone muda de "(opcional)" para obrigatorio no modo delivery
-
-### Reorganizacao visual do checkout
+### Layout visual proposto
 
 ```text
-MODO LOCAL:
 +----------------------------------+
-|  ITENS DO CARRINHO               |
-|  [lista de itens]                |
+|  [icon] Meu Carrinho             |
+|         2 itens                  |
+|  ─── gradiente dourado ───────── |
 |                                  |
-|  DADOS DO PEDIDO                 |
-|  Numero da Comanda *  [___]      |
-|  Nome *               [___]      |
+|  🛒 Itens do Carrinho            |
+|  ┌──────────────────────────┐    |
+|  │ [img] Nome Produto       │    |
+|  │       R$ 115,00    - 1 + │    |
+|  └──────────────────────────┘    |
 |                                  |
-|  [Finalizar Pedido]              |
-+----------------------------------+
-
-MODO DELIVERY:
-+----------------------------------+
-|  ITENS DO CARRINHO               |
-|  [lista de itens]                |
+|  📋 Dados do Pedido              |
+|  ┌──────────────────────────┐    |
+|  │ Numero da Comanda *      │    |
+|  │ [____________]           │    |
+|  │ Nome *                   │    |
+|  │ [____________]           │    |
+|  └──────────────────────────┘    |
 |                                  |
-|  ENDERECO DE ENTREGA             |
-|  Endereco *           [___]      |
-|  Numero *  | Complemento [___]   |
-|                                  |
-|  DADOS DO CLIENTE                |
-|  Nome *               [___]      |
-|  Telefone *           [___]      |
-|                                  |
-|  [Finalizar Pedido]              |
+|  ─── gradiente dourado ───────── |
+|  Total          R$ 115,00        |
+|  [===== Finalizar Pedido =====]  |
+|       Limpar carrinho            |
 +----------------------------------+
 ```
 
-### Edge Function `public-order`
-
-Verificar se ja aceita `order_number` no body (provavelmente sim, pois ja insere na tabela `orders`). Caso contrario, adicionar suporte.
+Mesma logica se aplica ao modo Delivery, com secao de endereco antes dos dados do cliente, ambas com o mesmo estilo de label leve.
