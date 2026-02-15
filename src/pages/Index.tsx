@@ -47,8 +47,9 @@ const KpiCard = ({
         color: 'hsl(36 40% 95%)',
       } : undefined}
     >
-      <div className="p-3 md:p-5 space-y-3 md:space-y-4 relative z-10">
-        <div className="flex items-center gap-2.5">
+      <div className="p-3 md:p-5 relative z-10">
+        {/* Header: icon + title */}
+        <div className="flex items-center gap-2.5 mb-3">
           <div className={`rounded-xl p-2.5 animate-float ${isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
             <Icon className={`h-4 w-4 ${isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
           </div>
@@ -57,21 +58,29 @@ const KpiCard = ({
           </span>
         </div>
 
-        <div>
+        {/* Today value */}
+        <div className="mb-3">
           <p className={`text-xs ${isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground/70'}`}>Hoje:</p>
           <p className={`text-xl md:text-3xl font-bold font-mono-numbers tracking-tight ${isFirst ? 'glow-gold' : ''}`}>
             {fmt(today)}
           </p>
         </div>
 
-        <div className="space-y-1.5">
+        {/* Divider + period rows */}
+        <div className={`border-t ${isFirst ? 'border-white/10' : 'border-border'} pt-2.5 space-y-1.5`}>
           <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
             <span>7 dias:</span>
-            <span className="font-mono-numbers font-medium">{label7d}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono-numbers font-medium">{label7d}</span>
+              <MoreVertical className="h-3.5 w-3.5 opacity-40" />
+            </div>
           </div>
           <div className={`flex items-center justify-between text-sm ${isFirst ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
             <span>30 dias:</span>
-            <span className="font-mono-numbers font-medium">{label30d}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono-numbers font-medium">{label30d}</span>
+              <MoreVertical className="h-3.5 w-3.5 opacity-40" />
+            </div>
           </div>
         </div>
       </div>
@@ -138,7 +147,7 @@ const Dashboard = () => {
         ) : (
           <>
             {/* ── KPI Cards ── */}
-            <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
               <KpiCard
                 title="Faturamento"
                 icon={DollarSign}
