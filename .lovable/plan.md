@@ -1,64 +1,22 @@
 
 
-# Seletor Local / Delivery no Cardapio Digital
+# Corrigir barra flutuante "Criar Pedido" para ficar fixa na tela
 
-## O que muda
+## Problema
 
-Atualmente o seletor "Retirada / Entrega" fica escondido dentro do Sheet de checkout. A proposta e trazer essa escolha para o topo da pagina, logo abaixo do banner, de forma bem visivel e intuitiva. Toda a experiencia se adapta conforme a escolha.
+A barra flutuante do carrinho usa `position: fixed`, mas ela **nao fica fixa na tela** ao rolar a pagina. Isso acontece porque o elemento `<main>` no `AppLayout` tem a classe `animate-fade-in`, que aplica um `transform: translateY(...)`. No CSS, qualquer elemento pai com `transform` cria um novo contexto de posicionamento, fazendo com que `fixed` se comporte como `absolute` -- ou seja, rola junto com o conteudo.
 
-## Como funciona
+## Solucao
 
-### 1. Toggle no topo da pagina (abaixo do banner)
-
-Um seletor estilizado com dois botoes lado a lado, fixo abaixo do banner:
-- **No Local** (icone Store) -- selecionado por padrao
-- **Delivery** (icone MapPin)
-
-O seletor fica em uma faixa propria com fundo sutil, sempre visivel antes de comecar a navegar os produtos.
-
-### 2. Adaptacoes visuais por modo
-
-**Modo "No Local":**
-- Header mostra "Cardapio" normalmente
-- Barra flutuante do carrinho mostra "Fazer Pedido"
-- No checkout: campos de endereco ficam ocultos
-- Mensagem de sucesso: "Aguarde o preparo. Voce sera chamado quando estiver pronto."
-
-**Modo "Delivery":**
-- Header mostra um badge "Delivery" ao lado do titulo
-- Barra flutuante mostra "Pedir Delivery"
-- No checkout: campos de endereco aparecem automaticamente (ja existem)
-- Validacao exige endereco e numero preenchidos
-- Mensagem de sucesso: "Seu pedido sera entregue no endereco informado."
-
-### 3. Remover seletor duplicado do checkout
-
-Como o toggle agora fica na pagina principal, o seletor de "Como Receber" dentro do Sheet de checkout e removido. O modo ja esta definido antes de abrir o carrinho.
+Mover o componente da barra flutuante para **fora** do fluxo do `<main>` com `transform`, usando um **React Portal** (`createPortal`) para renderizar a barra diretamente no `document.body`. Isso garante que ela fique realmente fixa no viewport, independente de qualquer `transform` nos elementos pais.
 
 ## Detalhes tecnicos
 
-### Arquivo alterado: `src/pages/Cardapio.tsx`
+### Arquivo alterado: `src/pages/Orders.tsx`
 
-1. **Mover o seletor de delivery para o topo**: criar uma secao entre o banner e as categorias com dois botoes estilizados (No Local / Delivery) usando o estado `deliveryMode` ja existente
+1. Importar `createPortal` de `react-dom`
+2. Envolver o bloco `{/* ===== FLOATING CART BAR ===== */}` com `createPortal(..., document.body)`
+3. Nenhuma mudanca visual -- o CSS `fixed bottom-6` ja esta correto, so precisa escapar do contexto de `transform`
 
-2. **Estilo do seletor**: dois botoes com icones, fundo com gradiente sutil, o botao ativo ganha borda dourada e fundo destacado -- consistente com o design atual
-
-3. **Adaptar textos dinamicamente**:
-   - Barra flutuante: texto do botao muda conforme o modo
-   - Tela de sucesso: mensagem muda conforme o modo
-   - Header: badge opcional no modo delivery
-
-4. **Checkout Sheet**: remover o bloco do RadioGroup de "Como Receber" e manter os campos de endereco condicionais ao `deliveryMode === 'delivery'` diretamente
-
-5. **Nenhuma mudanca no backend**: o `delivery_mode` ja e enviado na chamada da Edge Function
-
-### Layout do seletor
-
-```text
-+--------------------------------------------------+
-|   [Store] No Local    |    [MapPin] Delivery      |
-+--------------------------------------------------+
-```
-
-Posicionado logo abaixo do banner, antes da secao "Nossos Produtos".
+Essa mesma tecnica resolve o problema para qualquer outro componente `fixed` dentro de paginas que usam `AppLayout`.
 
