@@ -109,7 +109,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 /* ─── Dashboard ──────────────────────────────────────── */
 const Dashboard = () => {
-  const { isOwner } = useAuth();
+  const { isOwner, roles } = useAuth();
   const navigate = useNavigate();
   const { data: kpis, isLoading } = useDashboardKPIs();
   const [chartDays, setChartDays] = useState(7);
@@ -119,6 +119,17 @@ const Dashboard = () => {
   const customRange = chartMode === 'custom' && customFrom && customTo ? { from: customFrom, to: customTo } : undefined;
   const { data: chartData } = useSalesChart(chartDays, customRange);
   const { data: alerts } = useActiveAlerts();
+
+  // Aguardar roles carregarem antes de decidir o redirect
+  if (roles.length === 0) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!isOwner) return <Navigate to="/production" replace />;
 
