@@ -352,6 +352,11 @@
     background: linear-gradient(180deg, hsl(36 70% 50% / 0.4), hsl(36 70% 50% / 0.1), transparent);
     box-shadow: 0 0 8px hsl(36 70% 50% / 0.2);
   }
+
+  /* ── Loading Bar Glow ── */
+  .loading-bar-glow {
+    box-shadow: 0 0 8px hsl(36 70% 50% / 0.5), 0 0 16px hsl(36 70% 50% / 0.2);
+  }
 }
 
 @layer utilities {
