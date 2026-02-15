@@ -1,42 +1,50 @@
 
-# Nova Animacao de Transicao de Pagina
+# Animacao de Carregamento na Transicao de Pagina
 
-## Problema Atual
+## Conceito
 
-A transicao atual e um simples fade-in com slide-up (`translateY(12px)`). Funcional, mas pouco expressiva -- nao transmite a sensacao de navegacao fluida entre secoes.
+Ao trocar de pagina, em vez de um simples fade/slide, mostrar uma barra de progresso fina no topo da tela (estilo NProgress/YouTube) com um brilho dourado. Ela aparece rapido, avanca ate ~80%, e completa ao carregar a nova pagina. Isso da a sensacao de "carregamento real" e polimento profissional.
 
-## Nova Animacao: Slide Horizontal + Fade
+## Comportamento
 
-Criar uma transicao que simule navegacao lateral, como apps nativos mobile. O conteudo sai suavemente para a esquerda e o novo entra pela direita (ou vice-versa, dependendo da direcao de navegacao na bottom nav).
-
-### Comportamento
-
-1. Ao mudar de rota, o novo conteudo entra com um leve slide horizontal (20px) combinado com fade
-2. A duracao sera 280ms -- rapida o suficiente para parecer responsiva, lenta o suficiente para ser percebida
-3. Um leve scale (0.98 para 1.0) adiciona profundidade cinematica
+1. Usuario clica em um item da navbar
+2. Uma barra fina dourada aparece no topo da tela e avanca progressivamente
+3. Apos ~400ms (tempo da transicao), a barra completa ate 100% e desaparece com fade
+4. O conteudo da nova pagina aparece normalmente
 
 ## Detalhe Tecnico
 
-### Arquivo 1: `tailwind.config.ts`
+### Arquivo: `src/components/layout/PageTransition.tsx`
 
-Adicionar novo keyframe `page-enter`:
+Reescrever o componente para incluir:
+
+- Uma barra de progresso fixa no topo (`position: fixed`, `top: 0`, `z-50`)
+- Altura de 2-3px com cor dourada (`hsl(36 70% 50%)`) e glow sutil
+- Logica de progresso simulado: ao detectar mudanca de rota, a barra anima de 0% ate 80% rapidamente (~200ms), depois completa ate 100% e desaparece (~150ms)
+- O conteudo continua renderizando normalmente abaixo (sem bloqueio)
+- Usar CSS transitions para a largura da barra e opacity para o fade-out
+
+### Arquivo: `tailwind.config.ts`
+
+Adicionar keyframe `progress-bar` para a animacao da barra:
 
 ```
-"page-enter": {
-  "0%": { opacity: "0", transform: "translateX(16px) scale(0.98)" },
-  "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+"progress-bar": {
+  "0%": { width: "0%", opacity: "1" },
+  "80%": { width: "80%", opacity: "1" },
+  "100%": { width: "100%", opacity: "0" },
 }
 ```
 
-E a animacao correspondente:
-```
-"page-enter": "page-enter 280ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards",
-```
+### Arquivo: `src/index.css`
 
-### Arquivo 2: `src/components/layout/PageTransition.tsx`
+Adicionar um efeito shimmer/glow no pseudo-elemento da barra para dar profundidade visual -- um brilho que percorre a barra durante o carregamento.
 
-- Trocar a classe `animate-fade-in` por `animate-page-enter`
-- Remover o override de `animationDuration` inline (a duracao fica no tailwind)
-- Manter a logica de deteccao de mudanca de rota
+### Resultado Visual
 
-2 arquivos, mudanca minima.
+- Barra fina dourada no topo, com brilho, que avanca e desaparece
+- Sem skeleton, sem bloqueio de conteudo
+- Estilo similar ao YouTube/GitHub -- premium e sutil
+- Combina com a estetica dourada/marrom do app
+
+3 arquivos modificados.
