@@ -153,7 +153,7 @@ const Cardapio = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background hero-gradient text-foreground pb-24 ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
+    <div className={`min-h-screen bg-background hero-gradient text-foreground pb-24 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
       {/* Simulation top bar */}
       {isSimulating && (
         <div className="fixed top-0 left-0 right-0 h-8 bg-warning z-[60] flex items-center justify-center">
@@ -407,7 +407,7 @@ const Cardapio = () => {
       </Dialog>
 
       {/* Hide scrollbar */}
-      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}.cardapio-page::-webkit-scrollbar{display:none}.cardapio-page{-ms-overflow-style:none;scrollbar-width:none}`}</style>
     </div>
   );
 };
