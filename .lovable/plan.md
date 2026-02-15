@@ -1,35 +1,44 @@
 
-# Corrigir Ocultacao da Scrollbar no Mobile
+
+# Transicao Direta com Conteudo Surgindo (Sem Skeleton)
 
 ## Problema
 
-A regra CSS foi adicionada dentro de `@layer utilities`, que tem prioridade baixa no Tailwind e pode ser sobrescrita. Alem disso, a scrollbar pode estar no elemento `html` e nao apenas no `body`.
+Ao navegar entre paginas, aparece um skeleton loader generico em vez do conteudo real surgindo de forma animada. O usuario quer ver os proprios cards/elementos da pagina aparecendo com animacao, como um app nativo.
 
 ## Solucao
 
-Mover a regra para **fora** de qualquer `@layer` (no final do arquivo) e aplicar tanto em `html` quanto em `body`, garantindo especificidade maxima.
+Remover o skeleton loader intermediario e fazer uma transicao direta: o conteudo antigo sai rapidamente e o novo conteudo entra com fade-in + slide-up suave. O efeito final e os quadros/cards da pagina "surgindo" naturalmente.
+
+## Como vai funcionar
+
+1. Usuario clica em uma opcao da nav
+2. Conteudo atual desaparece instantaneamente
+3. Novo conteudo entra com fade-in + translateY (de baixo para cima) em ~300ms
+4. Sem skeleton, sem loading bar -- transicao limpa e direta
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/index.css`
+### Arquivo: `src/components/layout/PageTransition.tsx`
 
-1. **Remover** a media query atual que esta dentro de `@layer utilities` (linhas 374-382)
-2. **Adicionar** no final do arquivo, fora de qualquer layer:
+Simplificar o componente removendo os estados `exiting` e `loading` com skeleton. Usar apenas dois estados:
 
-```css
-@media (max-width: 767px) {
-  html,
-  body {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar {
-    display: none;
-  }
-}
+- **`entering`**: novo conteudo aparece com animacao CSS (opacity 0 -> 1, translateY 8px -> 0)
+- **`idle`**: conteudo visivel normalmente
+
+Ao detectar mudanca de rota via `useLocation()`, trocar imediatamente o conteudo e aplicar a classe de animacao `animate-fade-in` por ~300ms.
+
+Remover completamente o componente `SkeletonLoader` interno.
+
+```text
+[Click] -> entering (swap + fade-in 300ms) -> idle
 ```
 
-Ao ficar fora do `@layer`, a regra tem especificidade normal do CSS e nao sera sobrescrita pelo Tailwind. Aplicar em `html` e `body` garante que funcione independente de qual elemento gera a scrollbar.
+Resultado: transicao instantanea com os proprios elementos da pagina surgindo suavemente, sem intermediario artificial.
 
-1 arquivo, mover ~8 linhas.
+| Arquivo | Acao |
+|---|---|
+| `src/components/layout/PageTransition.tsx` | Simplificar para transicao direta sem skeleton |
+
+1 arquivo, logica mais simples.
+
