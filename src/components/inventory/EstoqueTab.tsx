@@ -82,7 +82,7 @@ export default function EstoqueTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mobile-tabs">
           {filters.map(f => (
             <button
               key={f.key}
@@ -202,12 +202,12 @@ export default function EstoqueTab() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleQtyChange(item.id, item.stock_quantity, -1)} disabled={item.stock_quantity <= 0 || updateMutation.isPending}>
-                      <Minus className="h-3 w-3" />
+                    <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1 min-h-[44px]" onClick={() => handleQtyChange(item.id, item.stock_quantity, -1)} disabled={item.stock_quantity <= 0 || updateMutation.isPending}>
+                      <Minus className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleQtyChange(item.id, item.stock_quantity, 1)} disabled={updateMutation.isPending}>
-                      <Plus className="h-3 w-3" />
+                    <Button size="sm" variant="outline" className="flex-1 min-h-[44px]" onClick={() => handleQtyChange(item.id, item.stock_quantity, 1)} disabled={updateMutation.isPending}>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
