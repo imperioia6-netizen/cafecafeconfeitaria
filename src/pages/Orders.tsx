@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -17,17 +17,148 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   ClipboardList, Plus, Minus, X, Loader2, Sparkles, Trash2, CreditCard, Hash, User, MapPin, Search, ShoppingBag, ShoppingCart, Eye, Pencil, MessageSquare,
+  Truck, Phone, Clock, ChefHat, PackageCheck,
 } from 'lucide-react';
 import { useActiveRecipes, type Recipe } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
-import { useOpenOrders, useCreateOrder, useRemoveOrderItem, useFinalizeOrder, useCancelOrder } from '@/hooks/useOrders';
+import { useOpenOrders, useCreateOrder, useRemoveOrderItem, useFinalizeOrder, useCancelOrder, useUpdateDeliveryStatus } from '@/hooks/useOrders';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
-const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery' };
+const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery', cardapio_digital: 'Cardápio Digital', ifood: 'iFood' };
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
 const categoryLabels: Record<string, string> = { bolo: 'Bolos', torta: 'Tortas', salgado: 'Salgados', bebida: 'Bebidas', doce: 'Doces', outro: 'Outros' };
 const categoryEmoji: Record<string, string> = { bolo: '🎂', torta: '🥧', salgado: '🥟', bebida: '🥤', doce: '🍫', outro: '📦' };
+
+const deliverySteps = [
+  { key: 'recebido', label: 'Recebido', icon: ClipboardList },
+  { key: 'preparando', label: 'Preparando', icon: ChefHat },
+  { key: 'saiu_entrega', label: 'Saiu p/ Entrega', icon: Truck },
+  { key: 'entregue', label: 'Entregue', icon: PackageCheck },
+];
+
+function DeliveryCountdown({ startedAt, estimatedMinutes }: { startedAt: string; estimatedMinutes: number }) {
+  const [remaining, setRemaining] = useState('');
+  useEffect(() => {
+    const calc = () => {
+      const start = new Date(startedAt).getTime();
+      const end = start + estimatedMinutes * 60 * 1000;
+      const diff = end - Date.now();
+      if (diff <= 0) { setRemaining('Chegando!'); return; }
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setRemaining(`${mins}:${secs.toString().padStart(2, '0')}`);
+    };
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, estimatedMinutes]);
+  return <span className="font-mono-numbers font-bold text-orange-600">{remaining}</span>;
+}
+
+function DeliveryTracker({ order, dStatus, onUpdateStatus }: {
+  order: any;
+  dStatus: string | null;
+  onUpdateStatus: (status: string, extras?: Record<string, any>) => void;
+}) {
+  const [estMinutes, setEstMinutes] = useState<number>(order.estimated_delivery_minutes || 30);
+  const currentIdx = deliverySteps.findIndex(s => s.key === dStatus);
+
+  return (
+    <div className="rounded-xl border border-border/20 bg-muted/10 p-3 space-y-3">
+      {/* Progress steps */}
+      <div className="flex items-center justify-between gap-1">
+        {deliverySteps.map((step, idx) => {
+          const done = idx <= currentIdx;
+          const Icon = step.icon;
+          return (
+            <div key={step.key} className="flex flex-col items-center gap-1 flex-1">
+              <div className={`h-7 w-7 rounded-full flex items-center justify-center transition-all ${
+                done
+                  ? 'bg-orange-500 text-primary-foreground shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground'
+              }`}>
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <span className={`text-[9px] text-center leading-tight ${done ? 'text-orange-600 font-semibold' : 'text-muted-foreground'}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Connector line */}
+      <div className="flex items-center gap-0 px-3">
+        {deliverySteps.map((_, idx) => {
+          if (idx === deliverySteps.length - 1) return null;
+          const done = idx < currentIdx;
+          return (
+            <div key={idx} className={`flex-1 h-0.5 rounded-full ${done ? 'bg-orange-500' : 'bg-border/40'}`} />
+          );
+        })}
+      </div>
+
+      {/* Estimated time + countdown */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>Tempo:</span>
+          <Input
+            type="number"
+            min={5}
+            max={180}
+            value={estMinutes}
+            onChange={e => setEstMinutes(Math.max(5, parseInt(e.target.value) || 30))}
+            className="h-6 w-14 text-center text-xs rounded-lg border-border/30 px-1"
+          />
+          <span>min</span>
+        </div>
+        {dStatus === 'saiu_entrega' && order.delivery_started_at && order.estimated_delivery_minutes && (
+          <div className="flex items-center gap-1 text-xs ml-auto">
+            <Clock className="h-3 w-3 text-orange-500" />
+            <span className="text-muted-foreground">Restam:</span>
+            <DeliveryCountdown startedAt={order.delivery_started_at} estimatedMinutes={order.estimated_delivery_minutes} />
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-1.5">
+        {dStatus === 'recebido' && (
+          <Button
+            size="sm"
+            className="flex-1 text-[11px] h-8 rounded-lg gap-1 bg-orange-500 hover:bg-orange-600 text-primary-foreground"
+            onClick={() => onUpdateStatus('preparando', { estimated_delivery_minutes: estMinutes })}
+          >
+            <ChefHat className="h-3 w-3" /> Preparando
+          </Button>
+        )}
+        {dStatus === 'preparando' && (
+          <Button
+            size="sm"
+            className="flex-1 text-[11px] h-8 rounded-lg gap-1 bg-orange-500 hover:bg-orange-600 text-primary-foreground"
+            onClick={() => onUpdateStatus('saiu_entrega', {
+              estimated_delivery_minutes: estMinutes,
+              delivery_started_at: new Date().toISOString(),
+            })}
+          >
+            <Truck className="h-3 w-3" /> Saiu p/ Entrega
+          </Button>
+        )}
+        {dStatus === 'saiu_entrega' && (
+          <Button
+            size="sm"
+            className="flex-1 text-[11px] h-8 rounded-lg gap-1 bg-green-600 hover:bg-green-700 text-primary-foreground"
+            onClick={() => onUpdateStatus('entregue')}
+          >
+            <PackageCheck className="h-3 w-3" /> Entregue
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface NewOrderItem {
   recipe_id: string;
@@ -47,6 +178,7 @@ const Orders = () => {
   const removeOrderItem = useRemoveOrderItem();
   const finalizeOrder = useFinalizeOrder();
   const cancelOrder = useCancelOrder();
+  const updateDelivery = useUpdateDeliveryStatus();
 
   const [cart, setCart] = useState<NewOrderItem[]>([]);
   const [orderNumber, setOrderNumber] = useState('');
@@ -364,8 +496,12 @@ const Orders = () => {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {openOrders.map((order: any) => {
                   const orderTotal = (order.order_items || []).reduce((s: number, i: any) => s + Number(i.subtotal), 0);
+                  const isDelivery = order.channel === 'delivery' || order.channel === 'cardapio_digital';
+                  const dStatus = order.delivery_status as string | null;
+
                   return (
                     <div key={order.id} className="glass-card rounded-2xl overflow-hidden">
+                      {/* Header with channel badge */}
                       <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(var(--accent) / 0.05))' }}>
                         <div className="flex items-center gap-2 flex-wrap">
                           {order.order_number && (
@@ -376,17 +512,41 @@ const Orders = () => {
                           {order.table_number && (
                             <Badge className="text-[10px] bg-muted/50 text-muted-foreground rounded-full border-0">Mesa {order.table_number}</Badge>
                           )}
+                          {/* Channel badge */}
+                          {isDelivery ? (
+                            <Badge className="text-[10px] rounded-full border-0 bg-orange-500/15 text-orange-600 gap-1">
+                              <Truck className="h-3 w-3" />
+                              {channelLabels[order.channel] || order.channel}
+                            </Badge>
+                          ) : order.channel === 'ifood' ? (
+                            <Badge className="text-[10px] rounded-full border-0 bg-red-500/15 text-red-600">
+                              {channelLabels[order.channel]}
+                            </Badge>
+                          ) : (
+                            <Badge className="text-[10px] rounded-full border-0 bg-muted/50 text-muted-foreground">
+                              {channelLabels[order.channel] || 'Balcão'}
+                            </Badge>
+                          )}
                         </div>
                         <span className="text-[10px] text-muted-foreground font-mono-numbers">
                           {new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
+
                       <div className="p-4 space-y-3">
-                        {order.customer_name && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <User className="h-3 w-3" /> {order.customer_name}
-                          </p>
+                        {/* Customer info */}
+                        {(order.customer_name || order.customer_phone) && (
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            {order.customer_name && (
+                              <span className="flex items-center gap-1"><User className="h-3 w-3" /> {order.customer_name}</span>
+                            )}
+                            {order.customer_phone && (
+                              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {order.customer_phone}</span>
+                            )}
+                          </div>
                         )}
+
+                        {/* Items */}
                         <div className="space-y-2">
                           {(order.order_items || []).map((item: any) => (
                             <div key={item.id} className="group/item">
@@ -416,6 +576,23 @@ const Orders = () => {
                             </div>
                           ))}
                         </div>
+
+                        {/* Delivery Tracker */}
+                        {isDelivery && (
+                          <DeliveryTracker
+                            order={order}
+                            dStatus={dStatus}
+                            onUpdateStatus={(status, extras) => {
+                              updateDelivery.mutate({
+                                orderId: order.id,
+                                delivery_status: status,
+                                ...extras,
+                              });
+                            }}
+                          />
+                        )}
+
+                        {/* Total + actions */}
                         <div className="pt-3 border-t border-border/20 space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-muted-foreground">Total</span>
