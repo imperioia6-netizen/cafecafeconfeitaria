@@ -1,155 +1,179 @@
 
-# Redesign Mobile Completo -- App-Like Experience
 
-## Visao Geral
+# Mobile UI/UX -- Perfeito em Todas as Telas
 
-Transformar toda a experiencia mobile em algo que parece um app nativo, com bottom navigation, cards compactos, espacamentos otimizados e hierarquia visual clara para todos os perfis (Admin, Atendente, Cliente).
+## Diagnostico Atual
 
-## Problemas Identificados
+Apos analisar todas as paginas e componentes, identifiquei os seguintes problemas restantes no mobile:
 
-1. **Sem bottom navigation** -- usuario depende do hamburger para navegar, nao e intuitivo
-2. **Titulos muito grandes** no mobile (`text-4xl` para `.page-title`)
-3. **KPI cards** ocupam muito espaco vertical empilhando 1 por linha
-4. **Tabs e pills** nao cabem bem, quebram linha de forma desorganizada
-5. **Padding excessivo** (`p-6`) em cards no mobile
-6. **Graficos** nao se adaptam bem a tela pequena
-7. **Formularios** (Production, Sales, Orders) tem inputs muito espacados
-8. **CRM tabs** quebram em multiplas linhas sem scroll horizontal
-9. **Profile page** nao e centralizado (`max-w-2xl` sem `mx-auto`)
-10. **Cardapio (cliente)** -- header fixo funciona mas categories bar tem padding demais
+### Problemas Gerais
+1. **Header**: O botao hamburger aparece no mobile mesmo com a bottom nav -- redundante. No mobile o header poderia ser mais compacto
+2. **Espacamento entre secoes**: `space-y-8` e muito no mobile, deveria ser `space-y-5 md:space-y-8`
+3. **Bottom nav**: Falta feedback haptico visual (scale animation no tap)
+4. **Sidebar mobile (Sheet)**: Abre sem titulo acessivel (SheetTitle ausente), pode causar warning
+
+### Pagina: Sales (Vendas)
+- Carrinho fica abaixo dos produtos no mobile -- o usuario tem que rolar muito para ver
+- Total e botao "Finalizar Venda" ficam escondidos
+- **Solucao**: No mobile, o carrinho vira um bottom sheet (drawer) com um floating bar mostrando total + botao. Os produtos ficam full-width
+- Vendas de Hoje: padding `p-6` excessivo no mobile
+- Metadata de venda (badges) quebram em multiplas linhas de forma desorganizada
+
+### Pagina: Orders (Pedidos)
+- Metadata bar (Comanda/Mesa/Cliente/Canal) com `grid-cols-2 md:grid-cols-4` OK, mas labels `uppercase tracking-wider` ocupam espaco demais
+- Cards de pedidos abertos: texto de detalhes (hora, peso, custo, receita, margem) quebram mal no mobile
+- Floating bar de carrinho na parte inferior OK mas pode conflitar com bottom nav
+
+### Pagina: Production (Producao)
+- Preview de producao com grid `grid-cols-3` de stats OK mas textos truncam
+- Historico de producao: metadados (hora, peso, custo, receita, margem, operador) todos inline, quebram feio no mobile
+- Botoes de editar/deletar: muito pequenos e dificeis de tocar
+
+### Pagina: CashRegister (Caixas)
+- Titulo usa `text-3xl` manual em vez de `.page-title` -- inconsistente
+- Historico de fechamentos: filtros `Select` lado a lado muito apertados no mobile
+- Cards de caixa aberto: padding e tamanho OK
+
+### Pagina: CRM
+- Toolbar de filtros + busca + sort: sort `Select w-44` nao cabe bem no mobile, empurra conteudo
+- Status pills no toolbar: quebram em multiplas linhas
+- **Solucao**: Sort vai para debaixo da busca no mobile
+
+### Pagina: Team (Equipe)
+- Cards OK com `sm:grid-cols-2 lg:grid-cols-3`
+- Botao "Novo Funcionario" pode nao caber ao lado do titulo no mobile
+
+### Pagina: Profile
+- Bem estruturado, `max-w-2xl mx-auto` OK
+- Botao salvar poderia ser `w-full` no mobile
+
+### Pagina: Recipes (Produtos)
+- KPIs em `grid-cols-3` com textos muito pequenos
+- Cards de produto OK
+
+### Pagina: Cardapio (Cliente)
+- Categories bar com padding `py-4` excessivo e titulo "Nossos Produtos" desnecessario no mobile -- ocupa espaco
+- Header fixo OK mas busca e icones ficam apertados
+
+### Pagina: Reports
+- KPIs e graficos ja ajustados
+
+### Pagina: Inventory
+- Tabs ja com scroll horizontal, OK
 
 ## Mudancas Propostas
 
-### 1. Bottom Navigation Bar (Mobile)
+### 1. Layout Global -- Espacamento Responsivo
+- Todas as paginas: `space-y-8` para `space-y-5 md:space-y-8`
+- `AppLayout` main: `p-3 md:p-8` (ja esta) -- manter `pb-20 md:pb-8`
 
-Criar componente `MobileBottomNav` que aparece apenas no mobile (`md:hidden`), fixo na parte inferior da tela. Mostra 4-5 icones principais baseados no role do usuario:
+### 2. Bottom Nav -- Melhorias Visuais
+- Adicionar `active:scale-95` no tap de cada botao
+- Label ativo em bold com cor accent
+- Indicador superior (bolinha ou linha) no item ativo
 
-**Admin/Owner:**
-- Dashboard (LayoutDashboard)
-- Pedidos (ClipboardList)
-- Vendas (ShoppingCart)
-- Estoque (Package)
-- Mais... (MoreHorizontal) -- abre sidebar
+### 3. Header Mobile -- Mais Compacto
+- No mobile, esconder o botao hamburger do header (a sidebar se abre pelo "Mais" da bottom nav)
+- Manter apenas: nome + alertas bell + avatar
+- Reduzir padding vertical no mobile
 
-**Atendente (Employee):**
-- Producao (Coffee)
-- Pedidos (ClipboardList)
-- Vendas (ShoppingCart)
-- Estoque (Package)
-- Mais... (MoreHorizontal)
+### 4. Sales -- Floating Cart Bar no Mobile
+- No mobile, o carrinho vira um **floating bottom bar** fixo acima da bottom nav
+- Mostra: quantidade de itens + total + botao "Ver Carrinho"
+- Ao clicar, abre um **Sheet (drawer)** de baixo com todos os itens, pagamento e botao finalizar
+- Produtos ficam na tela principal com scroll completo
+- Vendas de Hoje: `p-4 md:p-6`
 
-A bottom nav tera:
-- Background blur com borda superior sutil
-- Icone ativo com cor accent e label
-- Icone inativo com cor muted
-- Safe area padding para dispositivos com notch
-- Altura: 64px + safe area
+### 5. Orders -- Ajustes de Metadata
+- Labels de metadata: remover `uppercase tracking-wider` no mobile, usar apenas `text-[10px]`
+- Floating bar: ajustar `bottom` para ficar acima da bottom nav (`bottom-20`)
 
-### 2. Reducao do Page Title no Mobile
+### 6. Production -- Historico Compacto
+- Metadados de cada producao: empilhar em 2 linhas no mobile em vez de inline
+- Botoes editar/deletar: `h-8 w-8` no mobile (tamanho de toque minimo)
 
-Alterar `.page-title` no CSS:
-```css
-.page-title {
-  @apply text-2xl md:text-4xl font-extrabold tracking-tighter;
-}
-```
+### 7. CashRegister -- Consistencia
+- Trocar `text-3xl font-bold` para `.page-title`
+- Filtros do historico: empilhar verticalmente no mobile
 
-### 3. KPI Cards Mobile -- Grid 2x2
+### 8. CRM -- Toolbar Responsiva
+- Sort `Select`: `w-full` no mobile, abaixo da busca
+- Status pills: scroll horizontal com `no-scrollbar`
 
-Forcar `grid-cols-2` no mobile em todos os lugares onde KPIs aparecem. Reduzir padding interno dos cards de `p-5` para `p-3` no mobile. Reduzir tamanho dos valores de `text-3xl` para `text-xl` no mobile.
+### 9. Cardapio (Cliente) -- Categories Compactas
+- Remover titulo "Nossos Produtos" no mobile (manter no desktop)
+- Reduzir padding da section de categorias: `py-2 md:py-4`
 
-### 4. Tabs Horizontais com Scroll
-
-Todas as TabsList que usam `flex-wrap` serao trocadas para scroll horizontal com `overflow-x-auto no-scrollbar` no mobile:
-- CRM tabs
-- Production tabs  
-- Inventory tabs
-- Recipes margin tabs
-
-### 5. Cards e Formularios Compactos
-
-- Reduzir `p-6` para `p-4` em todos os card-cinematic no mobile
-- Inputs manter `h-11` (ja esta bom)
-- Grids de stats (Production preview) de `grid-cols-5` para `grid-cols-3` e `grid-cols-2` no mobile
-
-### 6. Grafico do Dashboard
-
-- Reduzir altura de `260px` para `180px` no mobile
-- Summary row abaixo: `grid-cols-3` (ja esta)
-
-### 7. Profile Page
-
-- Adicionar `mx-auto` ao container `max-w-2xl`
-
-### 8. AppLayout -- Padding Bottom para Bottom Nav
-
-- Adicionar `pb-20 md:pb-0` no main quando estiver no mobile para a bottom nav nao cobrir conteudo
-
-### 9. Cardapio (Cliente) -- Ajustes
-
-- Grid de produtos: `grid-cols-2` no mobile (em vez de 1)
-- Cards de produto menores com aspect ratio compacto
-- Floating cart bar na parte inferior mais compacta
-
-### 10. Sales Page -- Layout Mobile
-
-- No mobile, o carrinho vira um floating bottom sheet (ja existe parcialmente)
-- Produtos em `grid-cols-2` no mobile
-
-### 11. Orders Page -- Metadata Bar
-
-- Compactar o formulario de comanda/mesa/cliente para 2 colunas no mobile
-- Cards de pedidos abertos em lista vertical com menos padding
-
-### 12. CSS Utilities
-
-Adicionar no `index.css`:
-```css
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-```
-
-E safe area padding utility.
+### 10. Profile -- Botao Full Width Mobile
+- Botao salvar: `w-full md:w-auto`
 
 ## Detalhes Tecnicos
 
-### Arquivos a criar:
-1. `src/components/layout/MobileBottomNav.tsx` -- Bottom navigation
+### Arquivos a modificar
 
-### Arquivos a modificar:
-1. `src/components/layout/AppLayout.tsx` -- Incluir MobileBottomNav + pb mobile
-2. `src/index.css` -- page-title responsivo + no-scrollbar + safe area
-3. `src/pages/Index.tsx` -- KPI grid 2 cols mobile + chart height
-4. `src/pages/Production.tsx` -- stats grid + tabs scroll
-5. `src/pages/Sales.tsx` -- product grid 2 cols mobile
-6. `src/pages/Orders.tsx` -- metadata grid + compact
-7. `src/pages/Crm.tsx` -- tabs scroll horizontal
-8. `src/pages/Inventory.tsx` -- tabs scroll
-9. `src/pages/Recipes.tsx` -- tabs scroll + kpi grid
-10. `src/pages/CashRegister.tsx` -- compact mobile
-11. `src/pages/Profile.tsx` -- mx-auto
-12. `src/pages/Cardapio.tsx` -- grid 2 cols + compact cards
-13. `src/components/cashregister/DayKpis.tsx` -- compact values mobile
-14. `src/components/crm/CrmDashboardKpis.tsx` -- compact mobile
-15. `src/pages/Reports.tsx` -- compact mobile
+1. **`src/components/layout/MobileBottomNav.tsx`**
+   - Adicionar `active:scale-95 transition-transform` nos botoes
+   - Adicionar indicador visual (dot ou line) no item ativo
 
-### Componente MobileBottomNav
+2. **`src/components/layout/AppHeader.tsx`**
+   - No mobile: esconder botao hamburger (navegacao esta na bottom nav)
+   - Reduzir `py-3` para `py-2` no mobile
+
+3. **`src/pages/Sales.tsx`**
+   - Detectar `isMobile` com `useIsMobile()`
+   - No mobile: renderizar floating cart bar + Sheet para carrinho
+   - No desktop: manter layout atual (grid 5 cols)
+   - Vendas de Hoje: `p-4 md:p-6`
+
+4. **`src/pages/Orders.tsx`**
+   - Floating bar bottom: `bottom-20 md:bottom-6`
+   - Labels metadata: responsivos
+
+5. **`src/pages/Production.tsx`**
+   - Historico: layout de metadados em grid no mobile
+   - Botoes acao: tamanho minimo de toque
+
+6. **`src/pages/CashRegister.tsx`**
+   - Titulo: usar `.page-title`
+   - Filtros historico: `flex-col sm:flex-row`
+
+7. **`src/pages/Crm.tsx`**
+   - Search + sort: layout empilhado no mobile
+   - Status pills: `overflow-x-auto no-scrollbar`
+
+8. **`src/pages/Cardapio.tsx`**
+   - Categories section: titulo condicional, padding reduzido
+   - Melhorar spacing
+
+9. **`src/pages/Profile.tsx`**
+   - Botao: `w-full md:w-auto`
+
+10. **`src/pages/Index.tsx`** -- `space-y-5 md:space-y-8`
+11. **`src/pages/Recipes.tsx`** -- `space-y-4 md:space-y-6`
+12. **`src/pages/Reports.tsx`** -- `space-y-5 md:space-y-8`
+13. **`src/pages/Inventory.tsx`** -- `space-y-5 md:space-y-8`
+14. **`src/pages/Team.tsx`** -- `space-y-5 md:space-y-8`
+
+### Detalhe: Floating Cart Bar (Sales Mobile)
 
 ```text
 +--------------------------------------------------+
-| [icon]    [icon]    [icon]    [icon]    [icon]   |
-| Dashboard Pedidos   Vendas   Estoque    Mais     |
+| Pagina de Vendas (mobile)                        |
+|                                                   |
+| [Produtos em grid 2 cols, scroll livre]           |
+|                                                   |
+| [Vendas de Hoje - lista compacta]                 |
+|                                                   |
++--------------------------------------------------+
+| [3 itens] R$ 45,00  [Ver Carrinho >]   <- fixed  |
++--------------------------------------------------+
+| [Dashboard] [Pedidos] [Vendas] [Estoque] [Mais]  |  <- bottom nav
 +--------------------------------------------------+
 ```
 
-- Usa `useLocation` para highlight ativo
-- Usa `useAuth` para filtrar por role
-- Posicao: `fixed bottom-0 left-0 right-0 z-50`
-- Background: `bg-background/95 backdrop-blur-xl border-t`
-- Padding bottom: `env(safe-area-inset-bottom)`
+Ao clicar "Ver Carrinho", abre Sheet de baixo com:
+- Lista de itens do carrinho (editar qty, remover)
+- Anotacoes (comanda, mesa, cliente)
+- Canal + Pagamento
+- Total grande + Botao Finalizar
 
-### Hierarquia de roles na bottom nav
-
-- Owner: Dashboard, Pedidos, Vendas, Estoque, Mais
-- Employee: Producao, Pedidos, Vendas, Estoque, Mais  
-- "Mais" abre a sidebar sheet existente
