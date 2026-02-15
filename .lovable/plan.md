@@ -1,62 +1,43 @@
 
 
-# Separacao por Precificacao na Aba de Produtos
+# Banner da Logo no Topo do Cardapio Digital
 
 ## Objetivo
 
-Agrupar os produtos (receitas) na pagina `/recipes` por **faixas de precificacao**, permitindo ao administrador visualizar rapidamente quais produtos estao em cada faixa de preco e margem.
+Adicionar a imagem da logo "Cafe e Cafe Confeitaria" como um banner fixo no topo da pagina publica do cardapio (`/cardapio`), acima do header atual.
 
 ## Alteracoes
 
-### `src/pages/Recipes.tsx`
+### 1. Copiar a imagem para o projeto
 
-Adicionar um sistema de **abas ou filtros por faixa de precificacao** acima do grid de produtos:
+Copiar o arquivo enviado para `src/assets/banner-cardapio.png` para que seja importado como modulo ES6 no componente.
 
-1. **Tabs de precificacao** usando o componente `Tabs` ja disponivel:
-   - **Todos** -- mostra todos os produtos (padrao)
-   - **Margem Alta** (acima de 50%) -- cor verde
-   - **Margem Media** (entre 30% e 50%) -- cor amarela/dourada
-   - **Margem Baixa** (abaixo de 30%) -- cor vermelha
-   - **Sem Precificacao** -- produtos com preco ou custo zerado
+### 2. `src/pages/Cardapio.tsx`
 
-2. A filtragem sera feita no frontend com `useMemo`, calculando a margem de cada receita: `((sale_price - direct_cost) / sale_price) * 100`
+- Importar a imagem: `import bannerImg from '@/assets/banner-cardapio.png'`
+- Adicionar uma secao de banner **antes do header sticky**, com fundo preto e a imagem centralizada
+- A imagem tera largura maxima controlada (~280px mobile, ~400px desktop) e sera renderizada dentro de um container com `bg-black` para manter a estetica original da logo
+- O banner **nao sera sticky** -- ficara fixo no topo da pagina e rolara junto com o conteudo (o header com busca continuara sticky logo abaixo)
 
-3. Exibir um **resumo de KPIs** por aba selecionada:
-   - Quantidade de produtos na faixa
-   - Preco medio
-   - Margem media
-
-### `src/components/recipes/RecipeCard.tsx`
-
-Sem alteracoes significativas -- o card ja exibe Preco, Custo e Margem conforme o screenshot.
-
-## Detalhes Tecnicos
-
-### Logica de classificacao (dentro de Recipes.tsx):
+### Estrutura visual resultante:
 
 ```text
-Para cada receita:
-  cost = direct_cost || 0
-  price = sale_price
-  margin = price > 0 ? ((price - cost) / price) * 100 : -1
-
-  Se margin < 0 ou price == 0  -> "sem_precificacao"
-  Se margin < 30              -> "margem_baixa"
-  Se margin >= 30 e < 50      -> "margem_media"
-  Se margin >= 50             -> "margem_alta"
+[======= BANNER LOGO (fundo preto, logo centralizada) =======]
+[== HEADER STICKY (busca + carrinho + avatar) ================]
+[== CATEGORIAS STICKY ========================================]
+[== GRID DE PRODUTOS =========================================]
 ```
 
-### Estrutura visual:
+### Estilo do banner:
 
-```text
-[Todos (15)] [Margem Alta (8)] [Margem Media (4)] [Margem Baixa (2)] [Sem Preco (1)]
+- Fundo: `bg-black` para combinar com o fundo da imagem da logo
+- Padding vertical confortavel (py-6 mobile, py-8 desktop)
+- Imagem centralizada com `mx-auto`, max-width responsivo
+- Borda inferior sutil com gradiente dourado para transicao elegante
 
-  Produtos: 8  |  Preco Medio: R$ 137,00  |  Margem Media: 78%
+### Arquivo alterado:
+- `src/pages/Cardapio.tsx`
 
-  [Card] [Card] [Card]
-  [Card] [Card] [Card]
-```
-
-### Arquivos alterados:
-- `src/pages/Recipes.tsx` -- adicionar Tabs de precificacao, logica de filtragem por margem e KPIs resumidos
+### Arquivo criado:
+- `src/assets/banner-cardapio.png` (copia da imagem enviada)
 
