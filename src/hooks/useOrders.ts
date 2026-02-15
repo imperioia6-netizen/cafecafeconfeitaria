@@ -28,7 +28,7 @@ export function useCreateOrder() {
       customer_name?: string;
       channel?: string;
       notes?: string;
-      items: { recipe_id: string; inventory_id?: string; quantity: number; unit_price: number }[];
+      items: { recipe_id: string; inventory_id?: string; quantity: number; unit_price: number; notes?: string }[];
     }) => {
       const { data: order, error: orderErr } = await supabase
         .from('orders')
@@ -53,7 +53,8 @@ export function useCreateOrder() {
             quantity: i.quantity,
             unit_price: i.unit_price,
             subtotal: i.quantity * i.unit_price,
-          }))
+            notes: i.notes || null,
+          } as any))
         );
         if (itemsErr) throw itemsErr;
       }
