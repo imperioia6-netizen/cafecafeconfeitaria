@@ -243,7 +243,7 @@ const Cardapio = () => {
     <div className={`min-h-screen bg-background hero-gradient text-foreground pb-20 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
       {/* Simulation top bar */}
       {isSimulating && (
-        <div className="fixed top-0 left-0 right-0 h-8 bg-warning z-[60] flex items-center justify-center">
+        <div className="fixed top-0 left-0 right-0 h-8 bg-warning z-40 flex items-center justify-center">
           <span className="text-warning-foreground text-xs font-semibold">Visão: Cliente</span>
           <button onClick={exitSimulation} className="absolute right-3 text-warning-foreground hover:opacity-70 transition-opacity">
             <X className="h-4 w-4" />
