@@ -56,7 +56,15 @@ const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading,
                 <div className="text-center pb-3">
                   <div className="separator-gradient mb-3" />
                   <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Prévia da Produção</p>
-                  <p className="text-lg font-bold mt-1">{recipe.name}</p>
+                  <div className="flex items-center justify-center gap-3 mt-2">
+                    {recipe.photo_url && (
+                      <img src={recipe.photo_url} alt={recipe.name} className="h-12 w-12 rounded-lg object-cover ring-2 ring-accent/30" />
+                    )}
+                    <div>
+                      <p className="text-lg font-bold">{recipe.name}</p>
+                      <p className="text-xs text-muted-foreground">Preço sugerido: <span className="font-mono-numbers text-accent">R$ {Number(recipe.sale_price).toFixed(2)}</span></p>
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   {[
