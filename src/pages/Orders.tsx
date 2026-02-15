@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useActiveRecipes, type Recipe } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
-import { useOpenOrders, useCreateOrder, useRemoveOrderItem, useFinalizeOrder, useCancelOrder, useUpdateDeliveryStatus } from '@/hooks/useOrders';
+import { useOpenOrders, useCreateOrder, useAddOrderItem, useRemoveOrderItem, useFinalizeOrder, useCancelOrder, useUpdateDeliveryStatus } from '@/hooks/useOrders';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
@@ -175,6 +175,7 @@ const Orders = () => {
   const { data: recipes, isLoading: recipesLoading } = useActiveRecipes();
   const { data: openOrders, isLoading: ordersLoading } = useOpenOrders();
   const createOrder = useCreateOrder();
+  const addOrderItem = useAddOrderItem();
   const removeOrderItem = useRemoveOrderItem();
   const finalizeOrder = useFinalizeOrder();
   const cancelOrder = useCancelOrder();
@@ -185,6 +186,7 @@ const Orders = () => {
   const [tableNumber, setTableNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [channel, setChannel] = useState('balcao');
+  const [editingOrder, setEditingOrder] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('todos');
 
@@ -263,7 +265,45 @@ const Orders = () => {
   const cartTotal = cart.reduce((s, c) => s + c.quantity * c.unit_price, 0);
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
+  const handleEditOrder = (order: any) => {
+    setEditingOrder(order);
+    setOrderNumber(order.order_number || '');
+    setTableNumber(order.table_number || '');
+    setCustomerName(order.customer_name || '');
+    setChannel(order.channel || 'balcao');
+    setCart([]);
+    setActiveTab('cardapio');
+  };
+
+  const handleAddItemsToOrder = async () => {
+    if (!editingOrder || cart.length === 0) return;
+    try {
+      for (const c of cart) {
+        await addOrderItem.mutateAsync({
+          order_id: editingOrder.id,
+          recipe_id: c.recipe_id,
+          inventory_id: '',
+          quantity: c.quantity,
+          unit_price: c.unit_price,
+        });
+      }
+      toast.success(`Itens adicionados ao pedido!`);
+      setCart([]);
+      setEditingOrder(null);
+      setOrderNumber('');
+      setTableNumber('');
+      setCustomerName('');
+      setCartSheetOpen(false);
+      setActiveTab('pedidos');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao adicionar itens');
+    }
+  };
+
   const handleCreateOrder = async () => {
+    if (editingOrder) {
+      return handleAddItemsToOrder();
+    }
     if (!user || cart.length === 0) return;
     try {
       await createOrder.mutateAsync({
@@ -608,6 +648,13 @@ const Orders = () => {
                               <Trash2 className="h-3 w-3 mr-1" /> Cancelar
                             </Button>
                             <Button
+                              size="sm" variant="outline"
+                              className="text-xs gap-1 flex-1 rounded-xl"
+                              onClick={() => handleEditOrder(order)}
+                            >
+                              <Pencil className="h-3 w-3" /> Editar
+                            </Button>
+                            <Button
                               size="sm"
                               className="text-xs gap-1 flex-1 rounded-xl text-primary-foreground"
                               style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
@@ -668,9 +715,19 @@ const Orders = () => {
                 onClick={handleCreateOrder}
                 disabled={createOrder.isPending}
               >
-                {createOrder.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                Criar Pedido
+                {(createOrder.isPending || addOrderItem.isPending) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                {editingOrder ? `Adicionar ao Pedido #${editingOrder.order_number || editingOrder.id.slice(0, 4)}` : 'Criar Pedido'}
               </Button>
+              {editingOrder && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl text-xs gap-1 text-destructive/70 hover:text-destructive"
+                  onClick={() => { setEditingOrder(null); setCart([]); setOrderNumber(''); setTableNumber(''); setCustomerName(''); }}
+                >
+                  <X className="h-3.5 w-3.5" /> Cancelar
+                </Button>
+              )}
             </div>
           </div>
         </div>,
