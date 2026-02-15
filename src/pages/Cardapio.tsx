@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare, Package, ClipboardList, Truck, Hash } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare, Package, ClipboardList, Truck, Hash, Eye, LogOut } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
@@ -13,6 +13,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui/dropdown-menu';
 import bannerImg from '@/assets/banner-cardapio.png';
 
 const categoryFilters = [
@@ -41,7 +51,7 @@ type SelectedProduct = {
 
 const Cardapio = () => {
   const { data: recipes, isLoading } = useActiveRecipes();
-  const { user, viewAs, setViewAs } = useAuth();
+  const { user, viewAs, setViewAs, signOut, roles } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('todas');
@@ -313,14 +323,61 @@ const Cardapio = () => {
           </button>
           {/* Avatar */}
           {user ? (
-            <button onClick={() => isSimulating ? exitSimulation() : navigate('/profile')} className="cursor-pointer">
-              <Avatar className="h-9 w-9 border-2 border-accent/40">
-                {profilePhoto && <AvatarImage src={profilePhoto} alt={profileName || ''} />}
-                <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold">
-                  {profileName ? getInitials(profileName) : <UserCircle className="h-5 w-5" />}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="cursor-pointer outline-none">
+                  <Avatar className="h-9 w-9 border-2 border-accent/40">
+                    {profilePhoto && <AvatarImage src={profilePhoto} alt={profileName || ''} />}
+                    <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold">
+                      {profileName ? getInitials(profileName) : <UserCircle className="h-5 w-5" />}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 bg-popover border-border shadow-xl z-50">
+                <DropdownMenuItem onClick={() => navigate('/profile')} className="gap-2 cursor-pointer">
+                  <UserCircle className="h-4 w-4" />
+                  Meu Perfil
+                </DropdownMenuItem>
+
+                {roles.includes('owner') && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                        <Eye className="h-4 w-4" />
+                        Trocar Visão
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="bg-popover border-border shadow-xl z-50">
+                        {([
+                          { role: 'owner' as const, label: 'Proprietário' },
+                          { role: 'employee' as const, label: 'Funcionário' },
+                          { role: 'client' as const, label: 'Cliente' },
+                        ]).map(({ role, label }) => (
+                          <DropdownMenuItem
+                            key={role}
+                            onClick={() => {
+                              if (role === 'owner') { setViewAs(null); navigate('/'); }
+                              else if (role === 'employee') { setViewAs('employee'); navigate('/'); }
+                              else { setViewAs('client'); }
+                            }}
+                            className={`cursor-pointer ${(!viewAs && role === 'owner') || viewAs === role ? 'bg-accent/20 font-semibold' : ''}`}
+                          >
+                            {label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <button onClick={() => navigate('/auth')} className="p-1.5 rounded-full hover:bg-sidebar-accent/50 transition-colors cursor-pointer">
               <UserCircle className="h-6 w-6 text-sidebar-foreground/60" />
