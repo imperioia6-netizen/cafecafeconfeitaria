@@ -529,6 +529,97 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          id: string
+          inventory_id: string | null
+          order_id: string
+          quantity: number
+          recipe_id: string
+          subtotal: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          inventory_id?: string | null
+          order_id: string
+          quantity?: number
+          recipe_id: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Update: {
+          id?: string
+          inventory_id?: string | null
+          order_id?: string
+          quantity?: number
+          recipe_id?: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          channel: Database["public"]["Enums"]["sales_channel"]
+          closed_at: string | null
+          created_at: string
+          customer_name: string | null
+          id: string
+          notes: string | null
+          operator_id: string
+          order_number: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          table_number: string | null
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["sales_channel"]
+          closed_at?: string | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          operator_id: string
+          order_number?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          table_number?: string | null
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["sales_channel"]
+          closed_at?: string | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          order_number?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          table_number?: string | null
+        }
+        Relationships: []
+      }
       productions: {
         Row: {
           created_at: string
@@ -925,6 +1016,7 @@ export type Database = {
         | "upsell"
       customer_status: "ativo" | "inativo" | "novo"
       inventory_status: "normal" | "atencao" | "critico"
+      order_status: "aberto" | "finalizado" | "cancelado"
       payment_method: "pix" | "credito" | "debito" | "dinheiro" | "refeicao"
       product_category:
         | "bolo"
@@ -1082,6 +1174,7 @@ export const Constants = {
       ],
       customer_status: ["ativo", "inativo", "novo"],
       inventory_status: ["normal", "atencao", "critico"],
+      order_status: ["aberto", "finalizado", "cancelado"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
       product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
       sales_channel: ["balcao", "delivery", "ifood"],

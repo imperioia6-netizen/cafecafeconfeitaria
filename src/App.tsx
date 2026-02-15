@@ -16,6 +16,7 @@ import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import Profile from "./pages/Profile";
 import Crm from "./pages/Crm";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/production" element={<Production />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/sales" element={<Sales />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/cash-register" element={<CashRegister />} />
             <Route path="/reports" element={<Reports />} />
             
