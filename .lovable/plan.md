@@ -1,128 +1,105 @@
 
 
-# Pedidos do Cardapio Digital na tela de Pedidos + Rastreamento estilo iFood
+# Pedidos do Cardapio Digital + Rastreamento estilo iFood
 
-## O que muda
+## Resumo
 
-1. Os pedidos feitos pelo cardapio digital (por clientes) ja aparecem na aba "Pedidos Abertos" pois sao criados com status `aberto`. Porem, a interface nao diferencia se o pedido e local, delivery ou do cardapio digital. Vamos adicionar essa distincao visual.
+Os pedidos feitos pelo cardapio digital ja aparecem na aba "Pedidos Abertos" (status `aberto`), mas a interface nao diferencia o canal nem oferece controle de entrega. Este plano adiciona:
 
-2. Para pedidos de delivery, o operador podera gerenciar o status da entrega no estilo iFood: definir tempo estimado, marcar como "Preparando", "Saiu para entrega" e "Entregue", com contador regressivo visivel.
+1. **Distincao visual** entre pedidos locais, delivery e cardapio digital
+2. **Rastreamento estilo iFood** para pedidos delivery com barra de progresso, tempo estimado e countdown
 
-## Mudancas no banco de dados
+## Etapa 1 - Migracao de banco de dados
 
 Adicionar 3 colunas na tabela `orders`:
 
 ```sql
 ALTER TABLE public.orders
-  ADD COLUMN delivery_status text DEFAULT NULL,
-  ADD COLUMN estimated_delivery_minutes integer DEFAULT NULL,
-  ADD COLUMN delivery_started_at timestamptz DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS estimated_delivery_minutes integer DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS delivery_started_at timestamptz DEFAULT NULL;
 ```
 
-- `delivery_status`: valores como `preparando`, `saiu_entrega`, `entregue` (null para pedidos locais)
-- `estimated_delivery_minutes`: tempo estimado em minutos para entrega
-- `delivery_started_at`: timestamp de quando o pedido saiu para entrega (para calcular countdown)
+- `delivery_status`: `recebido`, `preparando`, `saiu_entrega`, `entregue`
+- `estimated_delivery_minutes`: tempo estimado (ex: 30, 45)
+- `delivery_started_at`: quando saiu para entrega (para countdown)
 
-## Mudancas na interface (src/pages/Orders.tsx)
+## Etapa 2 - Edge function (public-order)
 
-### Cards de pedidos abertos - Indicadores visuais
+No `supabase/functions/public-order/index.ts`, ao criar pedido com canal `cardapio_digital`, definir `delivery_status: 'recebido'` automaticamente no insert.
 
-Cada card de pedido recebera:
+## Etapa 3 - Hook useOrders
 
-- **Badge de canal** com cores distintas:
-  - Balcao: badge neutro cinza
-  - Delivery / Cardapio Digital (delivery): badge laranja com icone de moto/caminhao
-  - Cardapio Digital (local): badge verde com icone de mesa
-- **Nome do cliente e telefone** (para pedidos do cardapio digital que tem `customer_phone`)
-- **Hora do pedido** ja existe, mantida
-
-### Painel de delivery (estilo iFood)
-
-Para pedidos com canal `delivery` ou `cardapio_digital`, exibir dentro do card:
-
-1. **Barra de progresso** com 3 etapas: Recebido -> Preparando -> Saiu para entrega -> Entregue
-2. **Campo para definir tempo estimado** (input de minutos, ex: 30, 45, 60)
-3. **Botoes de acao** para avancar o status:
-   - "Iniciar Preparo" (seta delivery_status para `preparando`)
-   - "Saiu para Entrega" (seta delivery_status para `saiu_entrega` e registra `delivery_started_at`)
-   - "Entregue" (seta delivery_status para `entregue`)
-4. **Countdown** mostrando tempo restante estimado quando saiu para entrega (atualiza a cada segundo)
-
-### Layout do card redesenhado
-
-```text
-+--------------------------------------------+
-| #CD-ABC123   🛵 Delivery    14:35          |
-+--------------------------------------------+
-| 👤 Maria Silva  📱 (11) 99999-0000        |
-|                                            |
-| 2x Bolo de Chocolate         R$ 230,00    |
-| 1x Torta de Limao            R$ 45,00     |
-|   📝 Sem cobertura                        |
-|                                            |
-| ● Recebido ─── ● Preparando ─── ○ Entrega |
-| ⏱ Tempo estimado: [30] min                |
-|                                            |
-| Total                        R$ 275,00    |
-| [Cancelar]  [Preparando ▶]  [Finalizar]   |
-+--------------------------------------------+
-```
-
-## Mudancas no hook (src/hooks/useOrders.ts)
-
-- Adicionar hook `useUpdateDeliveryStatus` para atualizar `delivery_status`, `estimated_delivery_minutes` e `delivery_started_at`
-- Atualizar `useOpenOrders` para tambem incluir `customer_phone` nos dados retornados (ja vem do select `*`)
-
-## Mudancas no edge function (supabase/functions/public-order/index.ts)
-
-- Ao criar pedido do cardapio digital com canal `cardapio_digital`, definir `delivery_status = 'recebido'` automaticamente para pedidos de delivery
-
-## Detalhes tecnicos
-
-### Arquivo: `src/hooks/useOrders.ts`
-
-Novo hook:
+Adicionar `useUpdateDeliveryStatus` em `src/hooks/useOrders.ts`:
 
 ```typescript
 export function useUpdateDeliveryStatus() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      orderId: string;
-      delivery_status: string;
-      estimated_delivery_minutes?: number;
-      delivery_started_at?: string;
-    }) => {
-      const update: any = { delivery_status: input.delivery_status };
-      if (input.estimated_delivery_minutes !== undefined)
-        update.estimated_delivery_minutes = input.estimated_delivery_minutes;
-      if (input.delivery_started_at !== undefined)
-        update.delivery_started_at = input.delivery_started_at;
-      const { error } = await supabase
-        .from('orders')
-        .update(update)
-        .eq('id', input.orderId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
-  });
+  // mutation para atualizar delivery_status, estimated_delivery_minutes, delivery_started_at
 }
 ```
 
-### Arquivo: `src/pages/Orders.tsx`
+## Etapa 4 - Interface dos cards de pedidos (Orders.tsx)
 
-- Importar icones: `Truck`, `Clock`, `MapPin`, `Phone`
-- Adicionar labels de canal: `cardapio_digital: 'Cardápio Digital'`
-- Criar componente `DeliveryTracker` inline com barra de progresso de 3 etapas
-- Criar componente `DeliveryCountdown` com `useEffect` + `setInterval` para countdown em tempo real
-- Adicionar input de minutos estimados e botoes de acao de status no card de pedidos delivery
-- Condicional: so exibir painel de delivery quando `order.channel === 'delivery' || order.channel === 'cardapio_digital'`
+### Badges de canal com cores distintas
 
-### Arquivo: `supabase/functions/public-order/index.ts`
+- **Balcao**: badge cinza neutro
+- **Delivery / Cardapio Digital**: badge laranja com icone de caminhao (Truck)
+- **Cardapio Digital local**: badge verde
 
-- Adicionar `delivery_status: 'recebido'` ao insert do pedido quando o canal for `cardapio_digital`
+### Telefone do cliente
 
-### Migracao SQL
+Exibir `customer_phone` quando disponivel (pedidos do cardapio digital)
 
-Uma unica migration com os 3 novos campos na tabela `orders`.
+### Painel de delivery (apenas para pedidos delivery/cardapio_digital)
+
+Dentro de cada card de pedido delivery:
+
+1. **Barra de progresso** com 4 etapas visuais: Recebido → Preparando → Saiu p/ Entrega → Entregue
+2. **Input de tempo estimado** em minutos (30, 45, 60)
+3. **Botoes de acao** para avancar status:
+   - "Preparando" → seta `delivery_status = 'preparando'`
+   - "Saiu p/ Entrega" → seta `delivery_status = 'saiu_entrega'` + registra `delivery_started_at`
+   - "Entregue" → seta `delivery_status = 'entregue'`
+4. **Countdown em tempo real** mostrando minutos restantes quando saiu para entrega (useEffect + setInterval)
+
+### Layout visual do card redesenhado
+
+```text
++--------------------------------------------+
+| #CD-ABC123   Delivery (laranja)    14:35   |
++--------------------------------------------+
+| Cliente: Maria Silva   Tel: (11) 99999     |
+|                                            |
+| 2x Bolo de Chocolate         R$ 230,00    |
+| 1x Torta de Limao            R$ 45,00     |
+|   Obs: Sem cobertura                      |
+|                                            |
+| [●]──[●]──[○]──[○]                        |
+|  Recebido  Preparando  Entrega  Entregue  |
+|                                            |
+| Tempo estimado: [30] min   Restam: 22min  |
+|                                            |
+| Total                        R$ 275,00    |
+| [Cancelar]  [Preparando >>]  [Finalizar]  |
++--------------------------------------------+
+```
+
+### Tambem atualizar channelLabels
+
+Adicionar `cardapio_digital: 'Cardapio Digital'` ao mapa de labels.
+
+## Arquivos modificados
+
+1. **Nova migracao SQL** - 3 colunas em `orders`
+2. **`src/integrations/supabase/types.ts`** - regenerado com novos campos
+3. **`supabase/functions/public-order/index.ts`** - adicionar `delivery_status: 'recebido'`
+4. **`src/hooks/useOrders.ts`** - novo hook `useUpdateDeliveryStatus`
+5. **`src/pages/Orders.tsx`** - badges de canal, info do cliente, tracker de delivery, countdown, botoes de status
+
+## Consideracoes
+
+- Pedidos de balcao nao mostram o painel de delivery (delivery_status fica null)
+- O refetch a cada 15s ja garante que novos pedidos do cardapio digital aparecem rapidamente
+- O countdown atualiza a cada segundo no frontend via setInterval
+- Pedidos com `delivery_status = 'entregue'` ainda ficam visiveis ate serem finalizados (cobrar pagamento)
 
