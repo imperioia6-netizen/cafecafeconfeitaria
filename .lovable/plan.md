@@ -1,34 +1,19 @@
 
 
-# Melhorar Design da Secao de Categorias
+# Esconder a Barra de Scroll Vertical
 
 ## O que muda
 
-Redesign das pills de categorias na pagina `/cardapio` para um visual mais refinado, com tipografia melhorada e melhor espacamento.
+Adicionar CSS para ocultar a barra de rolagem vertical da pagina do cardapio, mantendo a funcionalidade de scroll por toque/mouse.
 
-## Alteracoes em `src/pages/Cardapio.tsx`
+## Alteracao em `src/pages/Cardapio.tsx`
 
-### Secao de categorias (linhas ~221-248)
+Na tag `<style>` que ja existe no final do componente (que ja esconde scrollbar horizontal do `.no-scrollbar`), adicionar regras para esconder o scrollbar do `body` ou do container principal da pagina:
 
-- **Titulo "Nossos Produtos"**: trocar fonte de Playfair Display para `'DM Sans'` com `font-semibold text-lg tracking-tight` para consistencia com o restante dos cards
-- **Separador dourado**: reduzir opacidade e adicionar margem inferior maior para mais respiro
-- **Pills de categoria**:
-  - Aumentar padding horizontal de `px-4` para `px-5`
-  - Trocar fonte para `'DM Sans'` com `text-[13px] font-medium tracking-wide`
-  - Estado ativo: manter `bg-accent text-accent-foreground` com `shadow-sm` em vez de `shadow-md glow-accent` (mais sutil)
-  - Estado inativo: usar `bg-card border border-border/60` em vez de `bg-secondary` para combinar com os cards de produto (visual creme/bege)
-  - Aumentar gap entre pills de `gap-2` para `gap-2.5`
-  - Altura consistente com `py-2` mantido
-
-### Resultado visual esperado:
-
-```text
-Nossos Produtos (DM Sans, semibold)
-─────────────────────────────────
-[Todas] [Bolos] [Tortas] [Salgados] [Bebidas] [Doces] [Outros]
-  ^ativo    ^inativos com fundo creme claro e borda sutil
-```
+- Expandir o bloco `<style>` existente para incluir regras que escondem a barra de rolagem vertical da pagina inteira
+- Usar `overflow-y: scroll` com `scrollbar-width: none` (Firefox) e `::-webkit-scrollbar { display: none }` (Chrome/Safari)
+- Aplicar no container principal ou via classe no `div` raiz do componente
 
 ### Arquivo alterado:
-- `src/pages/Cardapio.tsx`
+- `src/pages/Cardapio.tsx` -- expandir bloco `<style>` para esconder scrollbar vertical
 
