@@ -1,55 +1,58 @@
 
-# Redirecionamento por Perfil apos Login
+# Navbar Mobile Cinematografica -- Nivel Premium
 
-## Objetivo
+## Visao Geral
 
-Ao fazer login, cada perfil sera redirecionado automaticamente para sua pagina principal:
-- **Owner (Administrador)**: Dashboard (`/`)
-- **Employee (Atendente)**: Pedidos (`/orders`)
-- **Client (Usuario)**: Cardapio (`/cardapio`)
+Elevar a barra de navegacao inferior para um nivel cinematografico de alto impacto, com efeitos de profundidade, iluminacao e micro-interacoes que criam uma experiencia de app nativo premium.
 
-## Alteracoes
+## Mudancas Visuais
 
-### 1. `src/pages/Auth.tsx`
+### Fundo e Estrutura
+- Fundo mais profundo e rico com camadas de gradiente (3 camadas sobrepostas para efeito de vidro escuro)
+- Borda superior com efeito de "luz dourada" mais pronunciado -- duas linhas (uma fina intensa + uma difusa abaixo) criando ilusao de luz incidindo de cima
+- Sombra superior mais dramatica com multiplas camadas para efeito de flutuacao
 
-Atualmente, a linha `if (user) return <Navigate to="/" replace />` redireciona todos os usuarios para `/` (dashboard). Substituir por uma logica que consulta os roles do contexto de autenticacao:
+### Icone Ativo -- Efeito "Spotlight"
+- Pill do icone ativo mais largo e com gradiente radial dourado mais vibrante
+- Adicionar um "spotlight glow" abaixo do icone ativo -- um circulo de luz difusa que simula uma lanterna apontando de cima
+- Icone ativo com brilho mais forte (drop-shadow duplo) e leve animacao de pulse sutil no glow
+- Indicador ativo: um pequeno dot/barra dourada acima do icone ativo (tipo um "notch" de luz)
 
-```tsx
-const { user, loading, signIn, signUp, roles } = useAuth();
+### Icones Inativos
+- Cor mais sutil e apagada para maior contraste com o ativo
+- Transicao suave ao mudar de estado
 
-// Determinar rota baseada no perfil
-const getRedirectPath = () => {
-  if (roles.includes('owner')) return '/';
-  if (roles.includes('employee')) return '/orders';
-  return '/cardapio';
-};
+### Barra Superior Luminosa
+- Substituir a linha simples de 1px por uma composicao de 2 elementos:
+  - Linha fina (1px) com gradiente dourado concentrado no centro
+  - Faixa difusa (4px) com blur abaixo, criando efeito de "luz vazando" pela borda
 
-if (user && roles.length > 0) return <Navigate to={getRedirectPath()} replace />;
-```
+### Micro-detalhes
+- Adicionar uma leve textura de noise no fundo via pseudo-elemento CSS para profundidade
+- Aumentar a altura para ~80px para dar mais respiro e presenca
 
-A condicao `roles.length > 0` garante que o redirect so acontece DEPOIS que os roles foram carregados do banco, evitando redirecionar para a rota errada.
+## Detalhes Tecnicos
 
-### 2. `src/components/layout/AppLayout.tsx`
+### Arquivo: `src/components/layout/MobileBottomNav.tsx`
 
-Adicionar redirecionamento para funcionarios que tentam acessar o dashboard (rota `/`), enviando-os para `/orders`:
+**Estrutura atualizada:**
+- Adicionar div para o "glow bar" no topo (duas camadas de luz)
+- Adicionar div de "spotlight" posicionada dinamicamente sob o item ativo
+- Adicionar dot/notch indicador acima do icone ativo
+- Ajustar todas as cores, sombras e tamanhos conforme descrito
 
-```tsx
-if (viewAs === 'client') return <Navigate to="/cardapio" replace />;
+**Estilos inline atualizados:**
+- Background: gradiente mais escuro e rico com 3 stops
+- Box-shadow: 3 camadas de sombra para profundidade
+- Pill ativo: gradiente radial dourado + box-shadow com glow mais intenso + borda dourada sutil
+- Icone ativo: drop-shadow duplo para brilho cinematografico
+- Label ativo: text-shadow dourado sutil
 
-// Novo: funcionarios que acessam "/" vao para /orders
-const isEmployee = roles.includes('employee') && !roles.includes('owner');
-if (isEmployee && location.pathname === '/') return <Navigate to="/orders" replace />;
-```
+### Arquivo: `src/index.css`
 
-Importar `roles` do `useAuth()`.
-
-### 3. `src/hooks/useAuth.tsx`
-
-Nenhuma alteracao necessaria -- o hook ja expoe `roles` no contexto.
+- Adicionar keyframe `spotlight-pulse` para animacao sutil do glow do item ativo (opacidade oscilando entre 0.6 e 1)
+- Adicionar classe `.nav-spotlight` com a animacao
 
 ## Resultado
 
-- Admin loga e ve o Dashboard
-- Atendente loga e ve a tela de Pedidos
-- Cliente loga e ve o Cardapio
-- Se um atendente tentar acessar `/` manualmente, sera redirecionado para `/orders`
+Uma barra de navegacao que parece flutuar sobre a interface com iluminacao cinematografica, onde o item ativo se destaca como se tivesse um holofote apontado para ele, criando uma sensacao premium e imersiva.
