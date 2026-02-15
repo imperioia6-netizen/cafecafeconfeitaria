@@ -51,7 +51,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         }`}
       >
         <AppHeader onToggleSidebar={toggleSidebar} />
-        <main className="flex-1 p-3 md:p-8 pb-20 md:pb-8">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

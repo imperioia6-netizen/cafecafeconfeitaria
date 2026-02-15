@@ -51,7 +51,8 @@ interface AppSidebarProps {
   isMobile: boolean;
 }
 
-const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
+/* ── Desktop Sidebar Content (list style) ── */
+const DesktopSidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { signOut, isOwner, user, roles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -162,12 +163,143 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
   );
 };
 
+/* ── Mobile "More" Menu (Grid style, APK feel) ── */
+const MobileSidebarContent = ({ onNavigate }: { onNavigate: () => void }) => {
+  const { signOut, isOwner, user, roles } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [profileName, setProfileName] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setProfileName(data.name); });
+  }, [user]);
+
+  const initials = profileName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+
+  const handleNav = (path: string) => {
+    navigate(path);
+    onNavigate();
+  };
+
+  // Flatten all items for grid display
+  const allItems = navGroups.flatMap(g =>
+    g.items.filter(item => !item.ownerOnly || isOwner)
+  );
+
+  return (
+    <div className="flex h-full flex-col text-foreground" style={{ background: 'linear-gradient(180deg, hsl(24 25% 8%), hsl(24 30% 6%))' }}>
+      {/* User section */}
+      <div className="px-5 pt-6 pb-4 border-b border-border/20">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 ring-2 ring-accent/30">
+            <AvatarFallback className="bg-accent/15 text-accent text-base font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-semibold truncate" style={{ color: 'hsl(36 40% 92%)' }}>
+              {profileName || 'Usuário'}
+            </p>
+            <Badge
+              variant="outline"
+              className="text-[10px] px-2 py-0.5 mt-0.5 border-accent/30 text-accent"
+            >
+              {roleLabels[roles[0]] || 'Sem role'}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Grid */}
+      <div className="flex-1 overflow-y-auto px-4 py-5 no-scrollbar">
+        {navGroups.map((group) => {
+          const filteredItems = group.items.filter(item => !item.ownerOnly || isOwner);
+          if (filteredItems.length === 0) return null;
+          return (
+            <div key={group.label} className="mb-5">
+              <p className="px-1 mb-3 text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: 'hsl(36 20% 45%)' }}>
+                {group.label}
+              </p>
+              <div className="grid grid-cols-3 gap-2.5">
+                {filteredItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => handleNav(item.path)}
+                      className={cn(
+                        'flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl transition-all duration-200 active:scale-95',
+                        isActive
+                          ? 'ring-1 ring-accent/30'
+                          : 'hover:bg-white/5'
+                      )}
+                      style={isActive ? {
+                        background: 'hsl(36 70% 50% / 0.1)',
+                      } : {
+                        background: 'hsl(24 20% 14%)',
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center justify-center w-11 h-11 rounded-xl transition-all',
+                        )}
+                        style={isActive ? {
+                          background: 'hsl(36 70% 50% / 0.2)',
+                        } : {
+                          background: 'hsl(24 20% 18%)',
+                        }}
+                      >
+                        <item.icon
+                          className={cn(
+                            'h-5 w-5',
+                            isActive ? 'text-accent' : 'text-[hsl(36,25%,60%)]'
+                          )}
+                          strokeWidth={isActive ? 2.2 : 1.6}
+                        />
+                      </div>
+                      <span
+                        className={cn(
+                          'text-[11px] leading-tight text-center',
+                          isActive ? 'font-bold text-accent' : 'font-medium text-[hsl(36,20%,60%)]'
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Logout */}
+      <div className="px-4 py-4 border-t border-border/15">
+        <button
+          onClick={signOut}
+          className="flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium transition-all active:scale-95"
+          style={{
+            background: 'hsl(0 50% 20% / 0.3)',
+            color: 'hsl(0 60% 70%)',
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          Sair da conta
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const AppSidebar = ({ open, onClose, isMobile }: AppSidebarProps) => {
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-        <SheetContent side="left" className="p-0 w-64 border-r-0" style={{ background: 'transparent' }}>
-          <SidebarContent onNavigate={onClose} />
+        <SheetContent side="left" className="p-0 w-[280px] border-r-0" style={{ background: 'transparent' }}>
+          <MobileSidebarContent onNavigate={onClose} />
         </SheetContent>
       </Sheet>
     );
@@ -182,7 +314,7 @@ const AppSidebar = ({ open, onClose, isMobile }: AppSidebarProps) => {
     >
       {/* Glow line on right edge */}
       <div className="sidebar-glow-line" />
-      <SidebarContent />
+      <DesktopSidebarContent />
     </aside>
   );
 };
