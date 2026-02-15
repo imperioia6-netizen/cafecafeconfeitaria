@@ -1,38 +1,35 @@
 
 
-# Corrigir Legibilidade dos Cards Marrons
+# Corrigir Legibilidade dos Cards Marrons no Modo Escuro
 
 ## Problema
 
-Os cards com fundo marrom escuro (gradiente `hsl(24 60% 20%)` a `hsl(24 50% 14%)`) usam cores de texto com opacidade muito baixa:
-- Titulo: `text-primary-foreground/70` (30% invisivel)
-- Subtexto: `text-primary-foreground/50` (metade invisivel)  
-- Linhas 7d/30d: `text-primary-foreground/60` (40% invisivel)
+No modo escuro, a variavel `--primary-foreground` muda para `hsl(24 60% 10%)` (quase preto). Os cards marrons usam classes como `text-primary-foreground/90`, resultando em texto escuro sobre fundo escuro -- ilegivel.
 
-Resultado: texto praticamente ilegivel contra o fundo escuro.
+O card marrom tem fundo fixo via inline style (`hsl(24 60% 20%)` a `hsl(24 50% 14%)`), que nao muda com o tema. Mas as classes de texto mudam, quebrando o contraste no dark mode.
 
 ## Solucao
 
-Aumentar a opacidade e luminosidade do texto nos cards marrons para garantir contraste WCAG AA:
+Substituir todas as referencias a `text-primary-foreground` nos cards marrons (`isFirst`) por cores fixas claras que funcionam em ambos os temas, ja que o fundo desses cards e sempre escuro (inline style fixo).
 
-| Elemento | Antes | Depois |
+## Detalhe Tecnico
+
+### Arquivo 1: `src/pages/Index.tsx` (KpiCard)
+
+| Linha | Antes | Depois |
 |---|---|---|
-| Label (titulo) | `text-primary-foreground/70` | `text-primary-foreground/90` |
-| Subtexto | `text-primary-foreground/50` | `text-primary-foreground/70` |
-| Linhas periodo | `text-primary-foreground/60` | `text-primary-foreground/80` |
-| Divider | `border-white/10` | `border-white/20` |
+| 56 | `text-primary-foreground/90` | `text-white/90` |
+| 63 | `text-primary-foreground/70` | `text-white/70` |
+| 71 | `text-primary-foreground/80` | `text-white/80` |
+| 78 | `text-primary-foreground/80` | `text-white/80` |
 
-## Arquivos Afetados
+### Arquivo 2: `src/components/crm/CrmDashboardKpis.tsx` (CRM KPIs)
 
-### 1. `src/pages/Index.tsx` -- KpiCard do Dashboard
-- Linha 56: label do titulo `/70` para `/90`
-- Linha 63: "Hoje:" `/50` para `/70`
-- Linhas 71, 78: linhas 7d/30d `/60` para `/80`
-- Linha 70: border divider `white/10` para `white/20`
+| Linha | Antes | Depois |
+|---|---|---|
+| 73 | `text-primary-foreground/90` | `text-white/90` |
+| 80 | `text-primary-foreground/70` | `text-white/70` |
 
-### 2. `src/components/crm/CrmDashboardKpis.tsx` -- KPIs do CRM
-- Linha 73: label do titulo `/70` para `/90`
-- Linha 80: subtexto `/50` para `/70`
+Logica: como o fundo dos cards marrons e sempre escuro (inline style fixo, nao muda com tema), o texto deve ser sempre claro. Usar `text-white` com opacidades garante legibilidade em ambos os modos.
 
-Nenhuma mudanca estrutural, apenas ajuste de opacidades para legibilidade.
-
+2 arquivos, mudanca minima de classes apenas.
