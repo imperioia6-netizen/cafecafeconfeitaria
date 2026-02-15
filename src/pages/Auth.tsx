@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coffee, Eye, EyeOff, ShieldCheck, BarChart3, Package } from 'lucide-react';
+import { Coffee, Eye, EyeOff, ShieldCheck, BarChart3, Package, Phone, Cake } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+type AccountType = 'client' | 'employee';
 
 const Auth = () => {
   const { user, loading, signIn, signUp } = useAuth();
@@ -15,6 +17,9 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [accountType, setAccountType] = useState<AccountType>('client');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,7 +46,11 @@ const Auth = () => {
         toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
       }
     } else {
-      const { error } = await signUp(email, password, name);
+      const { error } = await signUp(email, password, name, {
+        phone: phone || undefined,
+        birthday: birthday || undefined,
+        role: accountType,
+      });
       if (error) {
         toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
       } else {
@@ -127,11 +136,59 @@ const Auth = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="name" style={{ color: 'hsl(36 30% 75%)' }}>Nome</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required={!isLogin} className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
-                </div>
+                <>
+                  {/* Account type selector */}
+                  <div className="space-y-2">
+                    <Label style={{ color: 'hsl(36 30% 75%)' }}>Tipo de conta</Label>
+                    <div className="flex gap-2">
+                      {([
+                        { value: 'client' as AccountType, label: 'Cliente' },
+                        { value: 'employee' as AccountType, label: 'Funcionário' },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setAccountType(opt.value)}
+                          className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-300"
+                          style={{
+                            background: accountType === opt.value
+                              ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
+                              : 'hsl(0 0% 100% / 0.05)',
+                            color: accountType === opt.value
+                              ? 'hsl(36 40% 95%)'
+                              : 'hsl(36 30% 65%)',
+                            border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.5)' : 'hsl(0 0% 100% / 0.1)'}`,
+                            boxShadow: accountType === opt.value ? '0 2px 12px hsl(24 60% 23% / 0.3)' : 'none',
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name" style={{ color: 'hsl(36 30% 75%)' }}>Nome</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" style={{ color: 'hsl(36 30% 75%)' }}>
+                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />Telefone</span>
+                      </Label>
+                      <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 99999-0000" className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="birthday" style={{ color: 'hsl(36 30% 75%)' }}>
+                        <span className="flex items-center gap-1"><Cake className="h-3 w-3" />Aniversário</span>
+                      </Label>
+                      <Input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+                    </div>
+                  </div>
+                </>
               )}
+
               <div className="space-y-2">
                 <Label htmlFor="email" style={{ color: 'hsl(36 30% 75%)' }}>Email</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />

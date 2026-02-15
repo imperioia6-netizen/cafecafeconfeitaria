@@ -14,7 +14,7 @@ interface AuthContextType {
   viewAs: AppRole | null;
   setViewAs: (role: AppRole | null) => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, name: string, extras?: { phone?: string; birthday?: string; role?: 'client' | 'employee' }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -75,12 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, extras?: { phone?: string; birthday?: string; role?: 'client' | 'employee' }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name },
+        data: {
+          name,
+          ...(extras?.phone && { phone: extras.phone }),
+          ...(extras?.birthday && { birthday: extras.birthday }),
+          ...(extras?.role && { role: extras.role }),
+        },
         emailRedirectTo: window.location.origin,
       },
     });
