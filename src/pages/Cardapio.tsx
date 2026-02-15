@@ -1,13 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const categoryFilters = [
   { key: 'todas', label: 'Todas', emoji: '🍽️' },
@@ -34,7 +35,25 @@ const Cardapio = () => {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState<{ order_number: string; total: number } | null>(null);
 
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
   const isSimulating = !!user && viewAs === 'client';
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name, photo_url').eq('user_id', user.id).single()
+      .then(({ data }) => {
+        if (data) {
+          setProfileName(data.name);
+          setProfilePhoto(data.photo_url);
+        }
+      });
+  }, [user]);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  };
 
   const exitSimulation = () => {
     setViewAs(null);
@@ -175,6 +194,21 @@ const Cardapio = () => {
               </span>
             )}
           </button>
+          {/* Avatar */}
+          {user ? (
+            <button onClick={isSimulating ? exitSimulation : undefined} className="cursor-pointer">
+              <Avatar className="h-9 w-9 border-2 border-accent/40">
+                {profilePhoto && <AvatarImage src={profilePhoto} alt={profileName || ''} />}
+                <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold">
+                  {profileName ? getInitials(profileName) : <UserCircle className="h-5 w-5" />}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          ) : (
+            <div className="p-1.5 rounded-full hover:bg-sidebar-accent/50 transition-colors">
+              <UserCircle className="h-6 w-6 text-sidebar-foreground/60" />
+            </div>
+          )}
         </div>
       </header>
 
