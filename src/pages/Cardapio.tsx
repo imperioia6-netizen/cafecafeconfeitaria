@@ -196,7 +196,7 @@ const Cardapio = () => {
           </button>
           {/* Avatar */}
           {user ? (
-            <button onClick={isSimulating ? exitSimulation : undefined} className="cursor-pointer">
+            <button onClick={() => isSimulating ? exitSimulation() : navigate('/profile')} className="cursor-pointer">
               <Avatar className="h-9 w-9 border-2 border-accent/40">
                 {profilePhoto && <AvatarImage src={profilePhoto} alt={profileName || ''} />}
                 <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold">
@@ -205,9 +205,9 @@ const Cardapio = () => {
               </Avatar>
             </button>
           ) : (
-            <div className="p-1.5 rounded-full hover:bg-sidebar-accent/50 transition-colors">
+            <button onClick={() => navigate('/auth')} className="p-1.5 rounded-full hover:bg-sidebar-accent/50 transition-colors cursor-pointer">
               <UserCircle className="h-6 w-6 text-sidebar-foreground/60" />
-            </div>
+            </button>
           )}
         </div>
       </header>
