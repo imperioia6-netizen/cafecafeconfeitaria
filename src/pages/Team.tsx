@@ -34,7 +34,7 @@ const Team = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title">Equipe</h1>

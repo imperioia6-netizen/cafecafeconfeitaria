@@ -42,12 +42,14 @@ const MobileBottomNav = ({ onOpenMore }: MobileBottomNavProps) => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all active:scale-90 ${
                 isActive ? 'text-accent' : 'text-muted-foreground'
               }`}
             >
-              <item.icon className={`h-5 w-5 ${isActive ? 'drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : ''}`} />
-              <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>
+              {/* Active indicator dot */}
+              <div className={`h-1 w-1 rounded-full mb-0.5 transition-all duration-300 ${isActive ? 'bg-accent scale-100' : 'scale-0'}`} />
+              <item.icon className={`h-5 w-5 transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)] scale-110' : ''}`} />
+              <span className={`text-[10px] transition-all duration-300 ${isActive ? 'font-bold' : 'font-medium'}`}>
                 {item.label}
               </span>
             </button>
@@ -55,8 +57,9 @@ const MobileBottomNav = ({ onOpenMore }: MobileBottomNavProps) => {
         })}
         <button
           onClick={onOpenMore}
-          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground transition-colors"
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground transition-all active:scale-90"
         >
+          <div className="h-1 w-1 rounded-full mb-0.5 scale-0" />
           <MoreHorizontal className="h-5 w-5" />
           <span className="text-[10px] font-medium">Mais</span>
         </button>

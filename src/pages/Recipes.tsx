@@ -56,7 +56,7 @@ const Recipes = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title">Produtos</h1>

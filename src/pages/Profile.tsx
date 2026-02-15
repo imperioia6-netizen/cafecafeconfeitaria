@@ -127,7 +127,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <Button onClick={handleSave} disabled={saving} className="h-11 px-8 shine-effect"
+                <Button onClick={handleSave} disabled={saving} className="w-full md:w-auto h-11 px-8 shine-effect"
                   style={{
                     background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%), hsl(24 60% 23%))',
                     boxShadow: '0 4px 20px hsl(24 60% 23% / 0.3)',

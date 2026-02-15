@@ -21,7 +21,7 @@ const Inventory = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         <div>
           <h1 className="page-title">Estoque</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Controle em tempo real</p>

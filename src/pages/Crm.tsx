@@ -139,7 +139,7 @@ const Crm = () => {
             {/* Toolbar: filters + search */}
             <div className="card-cinematic rounded-xl p-4 space-y-4">
               {/* Status pills */}
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
                 <span className="text-xs font-medium uppercase tracking-wider mr-1 text-foreground">Filtro:</span>
                 {statusFilters.map(s => (
                   <button
@@ -160,7 +160,7 @@ const Crm = () => {
               </div>
 
               {/* Search + Sort */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -171,7 +171,7 @@ const Crm = () => {
                   />
                 </div>
                 <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
-                  <SelectTrigger className="w-44 h-10">
+                  <SelectTrigger className="w-full sm:w-44 h-10">
                     <ArrowUpDown className="h-3 w-3 mr-1.5" />
                     <SelectValue />
                   </SelectTrigger>

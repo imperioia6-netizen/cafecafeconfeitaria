@@ -149,7 +149,7 @@ const Reports = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-5 md:space-y-8">
         <div>
           <h1 className="page-title">Relatórios</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Análise de desempenho</p>

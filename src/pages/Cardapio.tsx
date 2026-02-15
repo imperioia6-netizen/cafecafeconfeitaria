@@ -331,11 +331,11 @@ const Cardapio = () => {
 
       {/* Categories section */}
       <section className={`sticky ${isSimulating ? 'top-[105px]' : 'top-[73px]'} z-40 bg-background/90 backdrop-blur-xl border-b border-border/50`}>
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h2 className="text-lg font-semibold mb-3 tracking-tight text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        <div className="max-w-7xl mx-auto px-4 py-2 md:py-4">
+          <h2 className="hidden md:block text-lg font-semibold mb-3 tracking-tight text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             Nossos Produtos
           </h2>
-          <div className="separator-gradient mb-4 opacity-60" />
+          <div className="hidden md:block separator-gradient mb-4 opacity-60" />
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar">
             {categoryFilters.map(c => (
               <button
