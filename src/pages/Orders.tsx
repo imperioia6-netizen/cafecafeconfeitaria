@@ -331,7 +331,7 @@ const Orders = () => {
         {/* Open Orders section */}
         {(ordersLoading || (openOrders && openOrders.length > 0)) && (
           <div className="space-y-4 pb-24">
-            <h2 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-xl font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               Pedidos Abertos
             </h2>
             {ordersLoading ? (

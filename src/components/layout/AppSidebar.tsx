@@ -70,7 +70,7 @@ const AppSidebar = () => {
           <Coffee className="h-9 w-9 text-sidebar-primary glow-gold" />
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-lg font-bold tracking-tight text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Café Café
           </h1>
           <p className="text-[11px] text-sidebar-foreground/40 tracking-[0.2em] uppercase font-light">Confeitaria</p>

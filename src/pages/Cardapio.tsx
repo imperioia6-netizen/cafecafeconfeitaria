@@ -145,7 +145,7 @@ const Cardapio = () => {
           <div className="w-20 h-20 mx-auto rounded-full bg-accent/20 flex items-center justify-center">
             <CheckCircle2 className="h-12 w-12 text-accent" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient-gold" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-3xl font-bold text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Pedido enviado!
           </h1>
           <p className="text-muted-foreground">
@@ -191,7 +191,7 @@ const Cardapio = () => {
       {/* Header - dark cinematic */}
       <header className={`fixed ${isSimulating ? 'top-8' : 'top-0'} left-0 right-0 z-50 border-b border-sidebar-border shadow-lg`} style={{ background: 'linear-gradient(135deg, hsl(24 35% 15%), hsl(24 30% 10%))' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-2xl font-bold text-gradient-gold whitespace-nowrap" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             🍰 Cardápio
           </h1>
           <div className="flex-1 max-w-lg mx-auto relative">

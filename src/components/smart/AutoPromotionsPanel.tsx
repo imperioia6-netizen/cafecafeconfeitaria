@@ -34,7 +34,7 @@ const AutoPromotionsPanel = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <Zap className="h-5 w-5 text-accent" />
             Promoções Automáticas
           </h2>

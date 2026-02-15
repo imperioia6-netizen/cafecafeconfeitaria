@@ -58,7 +58,7 @@ const AppHeader = () => {
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
       <div className="animate-fade-in">
-        <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {getGreeting()}, <span className="text-gradient-gold">{firstName}</span>
         </h2>
         <p className="text-sm text-muted-foreground/70 font-mono text-xs tracking-wide">

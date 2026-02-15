@@ -189,7 +189,7 @@ const Dashboard = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-1">
                     <div>
-                      <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      <h3 className="text-lg font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         Seu Desempenho
                       </h3>
                       <p className="text-xs opacity-40 mt-0.5">{chartLabel}</p>
@@ -340,7 +340,7 @@ const Dashboard = () => {
               {/* ── Alerts Panel ── */}
               <div className="card-cinematic rounded-xl opacity-0 animate-fade-in" style={{ animationDelay: '450ms' }}>
                 <div className="p-6">
-                  <h3 className="text-base font-bold flex items-center gap-2 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     <AlertTriangle className="h-4 w-4 text-accent" />
                     Alertas Ativos
                   </h3>

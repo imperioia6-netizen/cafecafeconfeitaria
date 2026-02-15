@@ -46,7 +46,7 @@ const AiReportsPanel = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <Brain className="h-5 w-5 text-accent" />
             Relatórios Inteligentes
           </h2>
