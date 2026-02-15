@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import bannerImg from '@/assets/banner-cardapio.png';
 
 const categoryFilters = [
   { key: 'todas', label: 'Todas', emoji: '🍽️' },
@@ -153,6 +154,15 @@ const Cardapio = () => {
 
   return (
     <div className="min-h-screen bg-background hero-gradient text-foreground pb-24">
+      {/* Banner logo */}
+      <div className="bg-black py-6 md:py-8">
+        <img
+          src={bannerImg}
+          alt="Cafe e Cafe Confeitaria"
+          className="mx-auto max-w-[280px] md:max-w-[400px] w-full h-auto"
+        />
+        <div className="mt-4 h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--accent)), transparent)' }} />
+      </div>
       {/* Simulation badge */}
       {isSimulating && (
         <div className="fixed top-3 right-3 z-[60]">
