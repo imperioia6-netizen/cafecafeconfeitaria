@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 type AccountType = 'client' | 'employee';
 
 const Auth = () => {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, roles } = useAuth();
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -34,7 +34,13 @@ const Auth = () => {
     );
   }
 
-  if (user) return <Navigate to="/" replace />;
+  const getRedirectPath = () => {
+    if (roles.includes('owner')) return '/';
+    if (roles.includes('employee')) return '/orders';
+    return '/cardapio';
+  };
+
+  if (user && roles.length > 0) return <Navigate to={getRedirectPath()} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
