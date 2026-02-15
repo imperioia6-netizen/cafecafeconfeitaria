@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveAlerts } from '@/hooks/useAlerts';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, CheckCircle, UserCircle, LogOut, Eye, Menu } from 'lucide-react';
+import { Bell, CheckCircle, UserCircle, LogOut, Eye, Menu, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +43,16 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
   const isMobile = useIsMobile();
   const [profileName, setProfileName] = useState('');
   const [clock, setClock] = useState(new Date());
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return document.documentElement.classList.contains('dark');
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 60000);
@@ -59,12 +69,13 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
   const initials = profileName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   const alertCount = alerts?.length ?? 0;
 
+  const toggleTheme = () => setDark(prev => !prev);
+
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 md:py-4 backdrop-blur-2xl bg-background/80 border-b border-border/30">
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
       <div className="flex items-center gap-3 min-w-0">
-        {/* Hamburger - hidden on mobile since bottom nav handles navigation */}
         <button
           onClick={onToggleSidebar}
           className="hidden md:flex p-2 rounded-xl hover:bg-muted/50 transition-colors shrink-0"
@@ -94,7 +105,6 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-3 md:gap-4 shrink-0">
-        {/* Simulated view badge */}
         {viewAs && (
           <Badge
             variant="outline"
@@ -107,7 +117,6 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
           </Badge>
         )}
 
-        {/* System status badge - hidden on small mobile */}
         {!isMobile && (
           alertCount > 0 ? (
             <Badge
@@ -125,6 +134,19 @@ const AppHeader = ({ onToggleSidebar }: AppHeaderProps) => {
             </Badge>
           )
         )}
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="relative p-2.5 rounded-xl transition-all duration-300 hover:bg-muted/50 active:scale-90"
+          aria-label="Alternar tema"
+        >
+          {dark ? (
+            <Sun className="h-[22px] w-[22px] text-muted-foreground" />
+          ) : (
+            <Moon className="h-[22px] w-[22px] text-muted-foreground" />
+          )}
+        </button>
 
         {/* Notifications bell */}
         <button
