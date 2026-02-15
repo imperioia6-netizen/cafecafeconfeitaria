@@ -1,26 +1,34 @@
 
-# Reposicionar o Botao "Visao: Cliente"
 
-## Problema
-O badge "Visao: Cliente" esta posicionado em `fixed top-3 right-3` com `z-[60]`, sobrepondo os icones de carrinho e perfil no header fixo.
+# Melhorar Design da Secao de Categorias
 
-## Solucao
-Mover o badge para o **topo da pagina**, acima do header fixo, como uma barra fina de aviso. Assim nao conflita com nenhum elemento interativo.
+## O que muda
 
-### Alteracoes em `src/pages/Cardapio.tsx`
+Redesign das pills de categorias na pagina `/cardapio` para um visual mais refinado, com tipografia melhorada e melhor espacamento.
 
-1. **Remover o badge flutuante** (linhas 166-177) da posicao `fixed top-3 right-3`
-2. **Criar uma barra fixa no topo** (`fixed top-0`) com `z-[60]`, fundo `bg-warning`, altura compacta (~32px), largura total, com o texto "Visao: Cliente" centralizado e o botao X a direita
-3. **Ajustar o header** de `top-0` para `top-8` (abaixo da barra de simulacao quando ativa)
-4. **Ajustar o padding-top** do container principal de `pt-[73px]` para `pt-[105px]` quando simulando, e manter `pt-[73px]` quando nao
+## Alteracoes em `src/pages/Cardapio.tsx`
 
-### Resultado visual:
+### Secao de categorias (linhas ~221-248)
+
+- **Titulo "Nossos Produtos"**: trocar fonte de Playfair Display para `'DM Sans'` com `font-semibold text-lg tracking-tight` para consistencia com o restante dos cards
+- **Separador dourado**: reduzir opacidade e adicionar margem inferior maior para mais respiro
+- **Pills de categoria**:
+  - Aumentar padding horizontal de `px-4` para `px-5`
+  - Trocar fonte para `'DM Sans'` com `text-[13px] font-medium tracking-wide`
+  - Estado ativo: manter `bg-accent text-accent-foreground` com `shadow-sm` em vez de `shadow-md glow-accent` (mais sutil)
+  - Estado inativo: usar `bg-card border border-border/60` em vez de `bg-secondary` para combinar com os cards de produto (visual creme/bege)
+  - Aumentar gap entre pills de `gap-2` para `gap-2.5`
+  - Altura consistente com `py-2` mantido
+
+### Resultado visual esperado:
 
 ```text
-[===== Visao: Cliente  [X] ======]  <- barra fina fixa no topo
-[== HEADER (busca + carrinho) ===]  <- header logo abaixo
-[== CATEGORIAS ==================]
+Nossos Produtos (DM Sans, semibold)
+─────────────────────────────────
+[Todas] [Bolos] [Tortas] [Salgados] [Bebidas] [Doces] [Outros]
+  ^ativo    ^inativos com fundo creme claro e borda sutil
 ```
 
 ### Arquivo alterado:
 - `src/pages/Cardapio.tsx`
+
