@@ -533,6 +533,7 @@ export type Database = {
         Row: {
           id: string
           inventory_id: string | null
+          notes: string | null
           order_id: string
           quantity: number
           recipe_id: string
@@ -542,6 +543,7 @@ export type Database = {
         Insert: {
           id?: string
           inventory_id?: string | null
+          notes?: string | null
           order_id: string
           quantity?: number
           recipe_id: string
@@ -551,6 +553,7 @@ export type Database = {
         Update: {
           id?: string
           inventory_id?: string | null
+          notes?: string | null
           order_id?: string
           quantity?: number
           recipe_id?: string
