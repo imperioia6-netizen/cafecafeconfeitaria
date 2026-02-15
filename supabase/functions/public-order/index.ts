@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
         quantity: qty,
         unit_price: price,
         subtotal: qty * price,
+        notes: typeof item.notes === "string" && item.notes.trim().length > 0 ? item.notes.trim() : null,
       };
     });
 

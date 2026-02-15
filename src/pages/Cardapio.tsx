@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X, UserCircle, MapPin, Store, MessageSquare } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import bannerImg from '@/assets/banner-cardapio.png';
@@ -23,7 +25,19 @@ const categoryFilters = [
   { key: 'outro', label: 'Outros', emoji: '🍴' },
 ];
 
-type CartItem = { recipe_id: string; name: string; price: number; quantity: number; photo_url?: string | null };
+const categoryLabels: Record<string, string> = {
+  bolo: 'Bolo', torta: 'Torta', salgado: 'Salgado', bebida: 'Bebida', doce: 'Doce', outro: 'Outro',
+};
+
+type CartItem = { recipe_id: string; name: string; price: number; quantity: number; photo_url?: string | null; notes?: string };
+
+type SelectedProduct = {
+  id: string;
+  name: string;
+  sale_price: number;
+  photo_url?: string | null;
+  category: string;
+};
 
 const Cardapio = () => {
   const { data: recipes, isLoading } = useActiveRecipes();
@@ -41,6 +55,11 @@ const Cardapio = () => {
   const [address, setAddress] = useState('');
   const [addressNumber, setAddressNumber] = useState('');
   const [addressComplement, setAddressComplement] = useState('');
+
+  // Product detail dialog state
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
+  const [dialogQty, setDialogQty] = useState(1);
+  const [dialogNotes, setDialogNotes] = useState('');
 
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -81,7 +100,8 @@ const Cardapio = () => {
 
   const getCartQty = (recipeId: string) => cart.find(c => c.recipe_id === recipeId)?.quantity || 0;
 
-  const addToCart = (recipe: any) => {
+  // Quick add (+1, no dialog)
+  const quickAddToCart = (recipe: any) => {
     setCart(prev => {
       const existing = prev.find(c => c.recipe_id === recipe.id);
       if (existing) {
@@ -89,6 +109,24 @@ const Cardapio = () => {
       }
       return [...prev, { recipe_id: recipe.id, name: recipe.name, price: Number(recipe.sale_price), quantity: 1, photo_url: recipe.photo_url }];
     });
+  };
+
+  // Add/update from dialog (with qty + notes)
+  const addFromDialog = () => {
+    if (!selectedProduct) return;
+    const p = selectedProduct;
+    setCart(prev => {
+      const filtered = prev.filter(c => c.recipe_id !== p.id);
+      return [...filtered, {
+        recipe_id: p.id,
+        name: p.name,
+        price: Number(p.sale_price),
+        quantity: dialogQty,
+        photo_url: p.photo_url,
+        notes: dialogNotes.trim() || undefined,
+      }];
+    });
+    setSelectedProduct(null);
   };
 
   const removeFromCart = (recipeId: string) => {
@@ -100,6 +138,20 @@ const Cardapio = () => {
     });
   };
 
+  // Open product dialog
+  const openProductDialog = (recipe: any) => {
+    const existing = cart.find(c => c.recipe_id === recipe.id);
+    setSelectedProduct({
+      id: recipe.id,
+      name: recipe.name,
+      sale_price: Number(recipe.sale_price),
+      photo_url: recipe.photo_url,
+      category: recipe.category,
+    });
+    setDialogQty(existing?.quantity || 1);
+    setDialogNotes(existing?.notes || '');
+  };
+
   const handleSubmitOrder = async () => {
     if (!customerName.trim() || cart.length === 0) return;
     setSending(true);
@@ -108,7 +160,7 @@ const Cardapio = () => {
         body: {
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
-          items: cart.map(c => ({ recipe_id: c.recipe_id, quantity: c.quantity })),
+          items: cart.map(c => ({ recipe_id: c.recipe_id, quantity: c.quantity, notes: c.notes || null })),
           delivery_mode: deliveryMode,
           address: deliveryMode === 'delivery' ? address.trim() : null,
           address_number: deliveryMode === 'delivery' ? addressNumber.trim() : null,
@@ -165,6 +217,8 @@ const Cardapio = () => {
       </div>
     );
   }
+
+  const dialogSubtotal = selectedProduct ? dialogQty * selectedProduct.sale_price : 0;
 
   return (
     <div className={`min-h-screen bg-background hero-gradient text-foreground pb-24 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
@@ -278,7 +332,8 @@ const Cardapio = () => {
               return (
                 <div
                   key={recipe.id}
-                  className="bg-card border border-border/60 rounded-2xl overflow-hidden group shadow-sm hover:shadow-md transition-shadow duration-300"
+                  className="bg-card border border-border/60 rounded-2xl overflow-hidden group shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer"
+                  onClick={() => openProductDialog(recipe)}
                 >
                   <div className="aspect-[4/3] bg-muted overflow-hidden rounded-t-2xl">
                     {recipe.photo_url ? (
@@ -304,13 +359,13 @@ const Cardapio = () => {
                       </p>
                       {qty === 0 ? (
                         <button
-                          onClick={() => addToCart(recipe)}
+                          onClick={(e) => { e.stopPropagation(); quickAddToCart(recipe); }}
                           className="flex items-center justify-center w-9 h-9 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all shadow-sm"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
                       ) : (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => removeFromCart(recipe.id)}
                             className="flex items-center justify-center w-7 h-7 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
@@ -319,7 +374,7 @@ const Cardapio = () => {
                           </button>
                           <span className="text-sm font-bold w-5 text-center" style={{ fontFamily: "'DM Sans', sans-serif" }}>{qty}</span>
                           <button
-                            onClick={() => addToCart(recipe)}
+                            onClick={() => quickAddToCart(recipe)}
                             className="flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-foreground hover:brightness-110 transition-all"
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -334,6 +389,93 @@ const Cardapio = () => {
           </div>
         )}
       </main>
+
+      {/* Product Detail Dialog */}
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => { if (!open) setSelectedProduct(null); }}>
+        <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl border-border/60 bg-card gap-0">
+          <DialogTitle className="sr-only">{selectedProduct?.name || 'Detalhes do produto'}</DialogTitle>
+          {selectedProduct && (
+            <>
+              {/* Product image */}
+              <div className="aspect-[16/9] bg-muted overflow-hidden">
+                {selectedProduct.photo_url ? (
+                  <img
+                    src={selectedProduct.photo_url}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-6xl bg-secondary/50">
+                    {selectedProduct.category === 'bolo' ? '🎂' : selectedProduct.category === 'torta' ? '🥧' : selectedProduct.category === 'salgado' ? '🥪' : selectedProduct.category === 'bebida' ? '🥤' : selectedProduct.category === 'doce' ? '🍬' : '🍴'}
+                  </div>
+                )}
+              </div>
+
+              {/* Product info */}
+              <div className="p-5 space-y-5">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    {selectedProduct.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    {categoryLabels[selectedProduct.category] || selectedProduct.category}
+                  </p>
+                  <p className="text-lg font-bold mt-2" style={{ color: '#8B6914', fontFamily: "'DM Sans', sans-serif" }}>
+                    R$ {selectedProduct.sale_price.toFixed(2).replace('.', ',')}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">/unidade</span>
+                  </p>
+                </div>
+
+                {/* Quantity controls */}
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 block" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Quantidade
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setDialogQty(q => Math.max(1, q - 1))}
+                      className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary/60 transition-colors"
+                    >
+                      <Minus className="h-4 w-4 text-foreground" />
+                    </button>
+                    <span className="text-xl font-bold w-10 text-center text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {dialogQty}
+                    </span>
+                    <button
+                      onClick={() => setDialogQty(q => q + 1)}
+                      className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-secondary/60 transition-colors"
+                    >
+                      <Plus className="h-4 w-4 text-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 block" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Observações
+                  </label>
+                  <Textarea
+                    value={dialogNotes}
+                    onChange={e => setDialogNotes(e.target.value)}
+                    placeholder="Ex: sem açúcar, fatia grande, metade morango..."
+                    className="resize-none bg-secondary/30 border-border/60 rounded-xl text-sm min-h-[70px]"
+                  />
+                </div>
+
+                {/* Add button */}
+                <button
+                  onClick={addFromDialog}
+                  className="w-full py-3.5 rounded-full font-semibold text-white hover:brightness-110 transition-all shadow-md text-sm"
+                  style={{ background: 'linear-gradient(135deg, #8B6914, #A67C00)' }}
+                >
+                  + Adicionar — R$ {dialogSubtotal.toFixed(2).replace('.', ',')}
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Floating cart bar */}
       {cartCount > 0 && (
@@ -392,7 +534,7 @@ const Cardapio = () => {
                 </span>
                 <div className="space-y-3">
                   {cart.map(item => (
-                    <div key={item.recipe_id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+                    <div key={item.recipe_id} className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
                       <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         {item.photo_url ? (
                           <img src={item.photo_url} alt={item.name} className="w-full h-full object-cover" />
@@ -402,14 +544,20 @@ const Cardapio = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.name}</p>
-                        <p className="text-sm font-semibold text-[#8B6914] font-mono">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                        {item.notes && (
+                          <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 truncate">
+                            <MessageSquare className="h-3 w-3 flex-shrink-0" />
+                            {item.notes}
+                          </p>
+                        )}
+                        <p className="text-sm font-semibold text-[#8B6914] font-mono mt-0.5">R$ {item.price.toFixed(2).replace('.', ',')}</p>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button onClick={() => removeFromCart(item.recipe_id)} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors">
                           <Minus className="h-3 w-3 text-gray-600" />
                         </button>
                         <span className="text-sm font-bold w-5 text-center text-gray-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>{item.quantity}</span>
-                        <button onClick={() => addToCart({ id: item.recipe_id, name: item.name, sale_price: item.price, photo_url: item.photo_url })} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors">
+                        <button onClick={() => quickAddToCart({ id: item.recipe_id, name: item.name, sale_price: item.price, photo_url: item.photo_url })} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors">
                           <Plus className="h-3 w-3 text-gray-600" />
                         </button>
                       </div>
