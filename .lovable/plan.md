@@ -1,43 +1,41 @@
 
 
-# Banner da Logo no Topo do Cardapio Digital
+# Melhorar Design dos Cards do Cardapio
 
-## Objetivo
+## O que muda
 
-Adicionar a imagem da logo "Cafe e Cafe Confeitaria" como um banner fixo no topo da pagina publica do cardapio (`/cardapio`), acima do header atual.
+Redesign dos cards de produto na pagina `/cardapio` para um visual mais limpo e elegante, com tipografia melhorada.
 
-## Alteracoes
+## Alteracoes em `src/pages/Cardapio.tsx`
 
-### 1. Copiar a imagem para o projeto
+### Cards de produto (linhas 266-316)
 
-Copiar o arquivo enviado para `src/assets/banner-cardapio.png` para que seja importado como modulo ES6 no componente.
+- Trocar `card-cinematic` por classes diretas com fundo creme/bege claro (`bg-card`), borda sutil e `rounded-2xl` para cantos mais suaves
+- Aumentar `aspect-ratio` da imagem para `[4/3]` com `rounded-t-2xl` na imagem
+- Nome do produto: trocar de `text-sm font-semibold` para `text-[15px] font-medium` com `font-family: 'DM Sans'` (ja importada no projeto) para leitura mais limpa
+- Preco: trocar `font-mono-numbers` (JetBrains Mono) para `'DM Sans'` com `font-semibold tracking-wide text-base` -- visual mais moderno e legivel, sem monospace
+- Botao de adicionar (+): manter circular com `bg-accent` mas aumentar levemente para `w-9 h-9`
+- Adicionar `shadow-sm hover:shadow-md` para elevacao suave no hover em vez do `translateY` atual
+- Padding interno do conteudo: `p-4` em vez de `p-3`
 
-### 2. `src/pages/Cardapio.tsx`
-
-- Importar a imagem: `import bannerImg from '@/assets/banner-cardapio.png'`
-- Adicionar uma secao de banner **antes do header sticky**, com fundo preto e a imagem centralizada
-- A imagem tera largura maxima controlada (~280px mobile, ~400px desktop) e sera renderizada dentro de um container com `bg-black` para manter a estetica original da logo
-- O banner **nao sera sticky** -- ficara fixo no topo da pagina e rolara junto com o conteudo (o header com busca continuara sticky logo abaixo)
-
-### Estrutura visual resultante:
+### Resultado visual esperado:
 
 ```text
-[======= BANNER LOGO (fundo preto, logo centralizada) =======]
-[== HEADER STICKY (busca + carrinho + avatar) ================]
-[== CATEGORIAS STICKY ========================================]
-[== GRID DE PRODUTOS =========================================]
++---------------------------+
+|                           |
+|   [Foto do produto]      |
+|   (rounded-t, aspect 4/3)|
+|                           |
++---------------------------+
+|  Nome do Produto          |
+|                           |
+|  R$ 115,00          (+)   |
++---------------------------+
 ```
 
-### Estilo do banner:
-
-- Fundo: `bg-black` para combinar com o fundo da imagem da logo
-- Padding vertical confortavel (py-6 mobile, py-8 desktop)
-- Imagem centralizada com `mx-auto`, max-width responsivo
-- Borda inferior sutil com gradiente dourado para transicao elegante
+- Fonte do nome: DM Sans, peso medio, tamanho 15px
+- Fonte do preco: DM Sans, peso semibold, tracking mais aberto
+- Card: fundo claro, borda sutil, sombra leve, cantos arredondados 2xl
 
 ### Arquivo alterado:
-- `src/pages/Cardapio.tsx`
-
-### Arquivo criado:
-- `src/assets/banner-cardapio.png` (copia da imagem enviada)
-
+- `src/pages/Cardapio.tsx` -- redesign dos cards e tipografia
