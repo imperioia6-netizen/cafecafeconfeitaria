@@ -77,14 +77,14 @@ const CrmDashboardKpis = () => {
               <div className={`rounded-xl p-2.5 animate-float ${kpi.isFirst ? 'bg-accent/20' : 'bg-primary/10'}`}>
                 <kpi.icon className={`h-4 w-4 ${kpi.isFirst ? 'text-accent drop-shadow-[0_0_6px_hsl(36_70%_50%/0.5)]' : 'text-primary'}`} />
               </div>
-              <span className={`text-sm font-medium ${kpi.isFirst ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+              <span className={`text-sm font-medium ${kpi.isFirst ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
                 {kpi.label}
               </span>
             </div>
             <p className={`font-mono-numbers text-lg md:text-2xl font-bold leading-none ${kpi.isFirst ? 'glow-gold' : 'text-foreground'}`}>
               {kpi.value}
             </p>
-            <p className={`text-[10px] ${kpi.isFirst ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
+            <p className={`text-[10px] ${kpi.isFirst ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
               {kpi.sub}
             </p>
           </div>
