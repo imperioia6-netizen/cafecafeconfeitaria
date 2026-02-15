@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useActiveRecipes } from '@/hooks/useRecipes';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Plus, Minus, Loader2, ShoppingCart, CheckCircle2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +23,8 @@ type CartItem = { recipe_id: string; name: string; price: number; quantity: numb
 
 const Cardapio = () => {
   const { data: recipes, isLoading } = useActiveRecipes();
+  const { user, viewAs, setViewAs } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('todas');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -29,6 +33,13 @@ const Cardapio = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState<{ order_number: string; total: number } | null>(null);
+
+  const isSimulating = !!user && viewAs === 'client';
+
+  const exitSimulation = () => {
+    setViewAs(null);
+    navigate('/');
+  };
 
   const filtered = useMemo(() => {
     if (!recipes) return [];
@@ -115,6 +126,18 @@ const Cardapio = () => {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 pb-24" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+      {/* Simulation badge */}
+      {isSimulating && (
+        <div className="fixed top-3 right-3 z-[60]">
+          <button
+            onClick={exitSimulation}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold shadow-lg hover:bg-amber-600 transition-colors"
+          >
+            Visão: Cliente
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
