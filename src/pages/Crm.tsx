@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,7 +22,6 @@ type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
 const Crm = () => {
   const { loading, user, isOwner } = useAuth();
-  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('todos');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
@@ -33,8 +32,8 @@ const Crm = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const { data: customers, isLoading } = useCustomers(statusFilter);
 
-  if (!loading && !user) { navigate('/auth'); return null; }
-  if (!loading && !isOwner) { navigate('/'); return null; }
+  if (!loading && !user) return <Navigate to="/auth" replace />;
+  if (!loading && !isOwner) return <Navigate to="/" replace />;
 
   const all = customers || [];
   const activeCount = all.filter(c => c.status === 'ativo').length;

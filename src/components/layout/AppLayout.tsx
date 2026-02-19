@@ -12,7 +12,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, loading, viewAs, roles } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);

@@ -697,7 +697,7 @@ const Orders = () => {
             <div className="flex items-center gap-2">
               {editingOrder && (
                 <Badge variant="outline" className="text-[10px] border-accent/40 text-accent font-semibold rounded-full">
-                  Editando #{editingOrder.order_number || editingOrder.id.slice(0, 4)}
+                  Editando #{editingOrder?.order_number || (editingOrder?.id?.slice(0, 4) ?? '...')}
                 </Badge>
               )}
               <span
@@ -941,7 +941,7 @@ const Orders = () => {
                 disabled={createOrder.isPending || addOrderItem.isPending}
               >
                 {(createOrder.isPending || addOrderItem.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                {editingOrder ? `Adicionar ao Pedido #${editingOrder.order_number || editingOrder.id.slice(0, 4)}` : 'Criar Pedido'}
+                {editingOrder ? `Adicionar ao Pedido #${editingOrder?.order_number || (editingOrder?.id?.slice(0, 4) ?? '...')}` : 'Criar Pedido'}
               </Button>
               {editingOrder ? (
                 <Button
