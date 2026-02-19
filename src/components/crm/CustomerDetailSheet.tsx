@@ -48,8 +48,13 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
   const customerMessages = messages || [];
 
   const handleDelete = async () => {
-    await deleteCustomer.mutateAsync(customer.id);
-    onOpenChange(false);
+    try {
+      await deleteCustomer.mutateAsync(customer.id);
+      onOpenChange(false);
+    } catch (e: any) {
+      const { toast } = await import('sonner');
+      toast.error(e?.message || 'Erro ao excluir cliente');
+    }
   };
 
   const handleSendReactivation = () => {
