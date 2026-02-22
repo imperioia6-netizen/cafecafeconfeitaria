@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, Camera, X, Loader2 } from 'lucide-react';
 import { useCreateRecipe, useUpdateRecipe, type Recipe, type RecipeInsert } from '@/hooks/useRecipes';
 import { Constants } from '@/integrations/supabase/types';
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório').max(100),
+  description: z.string().max(500).optional().or(z.literal('')),
   category: z.enum(['bolo', 'torta', 'salgado', 'bebida', 'doce', 'outro']),
   sells_whole: z.boolean(),
   sells_slice: z.boolean(),
@@ -80,6 +82,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
     resolver: zodResolver(schema),
     defaultValues: recipe ? {
       name: recipe.name,
+      description: (recipe as any).description || '',
       category: recipe.category,
       sells_whole: r.sells_whole ?? false,
       sells_slice: r.sells_slice ?? true,
@@ -91,6 +94,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
       recipe_total_weight_grams: r.whole_weight_grams ? Number(r.whole_weight_grams) : null,
     } : {
       name: '',
+      description: '',
       category: 'bolo',
       sells_whole: false,
       sells_slice: true,
@@ -166,6 +170,7 @@ export default function RecipeForm({ recipe, onClose }: Props) {
 
       const payload: any = {
         name: data.name,
+        description: data.description || null,
         category: data.category,
         sells_whole: data.sells_whole,
         sells_slice: data.sells_slice,
@@ -231,6 +236,12 @@ export default function RecipeForm({ recipe, onClose }: Props) {
         <Label htmlFor="name">Nome do Produto</Label>
         <Input id="name" {...register('name')} placeholder="Ex: Bolo de Chocolate" />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Descrição do Produto</Label>
+        <Textarea id="description" {...register('description')} placeholder="Ex: Bolo de chocolate belga com cobertura de ganache..." className="resize-none min-h-[70px]" maxLength={500} />
+        {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
       </div>
 
       <div className="space-y-2">
