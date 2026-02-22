@@ -168,6 +168,7 @@ interface NewOrderItem {
   photo_url?: string | null;
   category: string;
   notes?: string;
+  unit_type?: 'slice' | 'whole';
 }
 
 const Orders = () => {
@@ -198,6 +199,7 @@ const Orders = () => {
   const [selectedProduct, setSelectedProduct] = useState<Recipe | null>(null);
   const [dialogQty, setDialogQty] = useState(1);
   const [dialogNotes, setDialogNotes] = useState('');
+  const [dialogUnitType, setDialogUnitType] = useState<'slice' | 'whole'>('slice');
 
   // Cart sheet state
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
@@ -224,26 +226,33 @@ const Orders = () => {
   // Open product dialog
   const openProductDialog = (recipe: Recipe) => {
     const existing = cart.find(c => c.recipe_id === recipe.id);
+    const r = recipe as any;
     setSelectedProduct(recipe);
     setDialogQty(existing?.quantity ?? 1);
     setDialogNotes(existing?.notes ?? '');
+    setDialogUnitType(existing?.unit_type || (r.sells_slice ? 'slice' : 'whole'));
   };
 
   // Confirm add/update from dialog
   const confirmProduct = () => {
     if (!selectedProduct) return;
+    const r = selectedProduct as any;
+    const price = dialogUnitType === 'whole'
+      ? Number(r.whole_price || selectedProduct.sale_price)
+      : Number(r.slice_price || selectedProduct.sale_price);
     const existing = cart.find(c => c.recipe_id === selectedProduct.id);
     if (existing) {
-      setCart(cart.map(c => c.recipe_id === selectedProduct.id ? { ...c, quantity: dialogQty, notes: dialogNotes } : c));
+      setCart(cart.map(c => c.recipe_id === selectedProduct.id ? { ...c, quantity: dialogQty, notes: dialogNotes, unit_price: price, unit_type: dialogUnitType } : c));
     } else {
       setCart([...cart, {
         recipe_id: selectedProduct.id,
         recipe_name: selectedProduct.name,
         quantity: dialogQty,
-        unit_price: Number(selectedProduct.sale_price),
+        unit_price: price,
         photo_url: selectedProduct.photo_url,
         category: selectedProduct.category,
         notes: dialogNotes,
+        unit_type: dialogUnitType,
       }]);
     }
     setSelectedProduct(null);
@@ -317,6 +326,7 @@ const Orders = () => {
           quantity: c.quantity,
           unit_price: c.unit_price,
           notes: c.notes || undefined,
+          unit_type: c.unit_type || 'slice',
         })),
       });
       toast.success('Pedido criado!');
@@ -718,7 +728,12 @@ const Orders = () => {
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-2xl">
           {selectedProduct && (() => {
             const inCart = isInCart(selectedProduct.id);
-            const subtotal = dialogQty * Number(selectedProduct.sale_price);
+            const r = selectedProduct as any;
+            const currentPrice = dialogUnitType === 'whole'
+              ? Number(r.whole_price || selectedProduct.sale_price)
+              : Number(r.slice_price || selectedProduct.sale_price);
+            const subtotal = dialogQty * currentPrice;
+            const showSelector = r.sells_whole && r.sells_slice;
             return (
               <>
                 {/* Product image */}
@@ -738,13 +753,50 @@ const Orders = () => {
                 </div>
 
                 <div className="px-5 pb-5 space-y-5">
-                  {/* Price */}
-                  <div className="text-center">
-                    <span className="text-2xl font-bold font-mono-numbers text-gradient-gold">
-                      R$ {Number(selectedProduct.sale_price).toFixed(2)}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-1">/ unidade</span>
-                  </div>
+                  {/* Description */}
+                  {r.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {r.description}
+                    </p>
+                  )}
+
+                  {/* Slice/Whole selector or Price */}
+                  {showSelector ? (
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Modo de Venda</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setDialogUnitType('slice')}
+                          className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                            dialogUnitType === 'slice'
+                              ? 'bg-accent text-accent-foreground shadow-md'
+                              : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                          }`}
+                        >
+                          🍰 Fatia
+                          <span className="block text-xs font-mono mt-0.5">R$ {Number(r.slice_price || 0).toFixed(2)}</span>
+                        </button>
+                        <button
+                          onClick={() => setDialogUnitType('whole')}
+                          className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                            dialogUnitType === 'whole'
+                              ? 'bg-accent text-accent-foreground shadow-md'
+                              : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                          }`}
+                        >
+                          🎂 Inteiro
+                          <span className="block text-xs font-mono mt-0.5">R$ {Number(r.whole_price || 0).toFixed(2)}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <span className="text-2xl font-bold font-mono-numbers text-gradient-gold">
+                        R$ {currentPrice.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1">/ {r.sells_whole ? 'inteiro' : 'unidade'}</span>
+                    </div>
+                  )}
 
                   {/* Quantity control */}
                   <div className="space-y-2">
@@ -852,7 +904,14 @@ const Orders = () => {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-foreground leading-tight">{item.recipe_name}</h4>
+                        <h4 className="text-sm font-semibold text-foreground leading-tight">
+                          {item.recipe_name}
+                          {item.unit_type && (
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                              ({item.unit_type === 'whole' ? 'Inteiro' : 'Fatia'})
+                            </span>
+                          )}
+                        </h4>
                         <div className="flex items-center justify-between mt-0.5">
                           <p className="text-xs text-muted-foreground font-mono-numbers">
                             {item.quantity}× R$ {item.unit_price.toFixed(2)}

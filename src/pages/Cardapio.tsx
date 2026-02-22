@@ -39,7 +39,7 @@ const categoryLabels: Record<string, string> = {
   bolo: 'Bolo', torta: 'Torta', salgado: 'Salgado', bebida: 'Bebida', doce: 'Doce', outro: 'Outro',
 };
 
-type CartItem = { recipe_id: string; name: string; price: number; quantity: number; photo_url?: string | null; notes?: string };
+type CartItem = { recipe_id: string; name: string; price: number; quantity: number; photo_url?: string | null; notes?: string; unit_type?: 'slice' | 'whole' };
 
 type SelectedProduct = {
   id: string;
@@ -47,6 +47,11 @@ type SelectedProduct = {
   sale_price: number;
   photo_url?: string | null;
   category: string;
+  description?: string | null;
+  sells_whole?: boolean;
+  sells_slice?: boolean;
+  whole_price?: number | null;
+  slice_price?: number | null;
 };
 
 const Cardapio = () => {
@@ -71,6 +76,7 @@ const Cardapio = () => {
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
   const [dialogQty, setDialogQty] = useState(1);
   const [dialogNotes, setDialogNotes] = useState('');
+  const [dialogUnitType, setDialogUnitType] = useState<'slice' | 'whole'>('slice');
 
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -113,28 +119,35 @@ const Cardapio = () => {
 
   // Quick add (+1, no dialog)
   const quickAddToCart = (recipe: any) => {
+    const r = recipe as any;
+    const defaultType: 'slice' | 'whole' = r.sells_slice ? 'slice' : 'whole';
+    const price = defaultType === 'whole' ? Number(r.whole_price || r.sale_price) : Number(r.slice_price || r.sale_price);
     setCart(prev => {
       const existing = prev.find(c => c.recipe_id === recipe.id);
       if (existing) {
         return prev.map(c => c.recipe_id === recipe.id ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      return [...prev, { recipe_id: recipe.id, name: recipe.name, price: Number(recipe.sale_price), quantity: 1, photo_url: recipe.photo_url }];
+      return [...prev, { recipe_id: recipe.id, name: recipe.name, price, quantity: 1, photo_url: recipe.photo_url, unit_type: defaultType }];
     });
   };
 
-  // Add/update from dialog (with qty + notes)
+  // Add/update from dialog (with qty + notes + unit_type)
   const addFromDialog = () => {
     if (!selectedProduct) return;
     const p = selectedProduct;
+    const price = dialogUnitType === 'whole'
+      ? Number(p.whole_price || p.sale_price)
+      : Number(p.slice_price || p.sale_price);
     setCart(prev => {
       const filtered = prev.filter(c => c.recipe_id !== p.id);
       return [...filtered, {
         recipe_id: p.id,
         name: p.name,
-        price: Number(p.sale_price),
+        price,
         quantity: dialogQty,
         photo_url: p.photo_url,
         notes: dialogNotes.trim() || undefined,
+        unit_type: dialogUnitType,
       }];
     });
     setSelectedProduct(null);
@@ -152,15 +165,24 @@ const Cardapio = () => {
   // Open product dialog
   const openProductDialog = (recipe: any) => {
     const existing = cart.find(c => c.recipe_id === recipe.id);
+    const r = recipe as any;
     setSelectedProduct({
       id: recipe.id,
       name: recipe.name,
       sale_price: Number(recipe.sale_price),
       photo_url: recipe.photo_url,
       category: recipe.category,
+      description: r.description || null,
+      sells_whole: r.sells_whole ?? false,
+      sells_slice: r.sells_slice ?? true,
+      whole_price: r.whole_price ? Number(r.whole_price) : null,
+      slice_price: r.slice_price ? Number(r.slice_price) : null,
     });
     setDialogQty(existing?.quantity || 1);
     setDialogNotes(existing?.notes || '');
+    // Set default unit type
+    const defaultType = existing?.unit_type || (r.sells_slice ? 'slice' : 'whole');
+    setDialogUnitType(defaultType);
   };
 
   const handleSubmitOrder = async () => {
@@ -237,7 +259,12 @@ const Cardapio = () => {
     );
   }
 
-  const dialogSubtotal = selectedProduct ? dialogQty * selectedProduct.sale_price : 0;
+  const dialogPrice = selectedProduct
+    ? (dialogUnitType === 'whole'
+        ? Number(selectedProduct.whole_price || selectedProduct.sale_price)
+        : Number(selectedProduct.slice_price || selectedProduct.sale_price))
+    : 0;
+  const dialogSubtotal = dialogQty * dialogPrice;
 
   return (
     <div className={`min-h-screen bg-background hero-gradient text-foreground pb-20 cardapio-page overflow-y-auto ${isSimulating ? 'pt-[105px]' : 'pt-[73px]'}`}>
@@ -512,7 +539,7 @@ const Cardapio = () => {
                 )}
               </div>
 
-              {/* Product info */}
+               {/* Product info */}
               <div className="p-5 space-y-5">
                 <div>
                   <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -521,11 +548,52 @@ const Cardapio = () => {
                   <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     {categoryLabels[selectedProduct.category] || selectedProduct.category}
                   </p>
-                  <p className="text-lg font-bold mt-2" style={{ color: '#8B6914', fontFamily: "'DM Sans', sans-serif" }}>
-                    R$ {selectedProduct.sale_price.toFixed(2).replace('.', ',')}
-                    <span className="text-xs font-normal text-muted-foreground ml-1">/unidade</span>
-                  </p>
+                  {selectedProduct.description && (
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {selectedProduct.description}
+                    </p>
+                  )}
                 </div>
+
+                {/* Slice / Whole selector */}
+                {selectedProduct.sells_whole && selectedProduct.sells_slice ? (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 block" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      Modo de Venda
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setDialogUnitType('slice')}
+                        className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                          dialogUnitType === 'slice'
+                            ? 'bg-accent text-accent-foreground shadow-md'
+                            : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                        }`}
+                      >
+                        🍰 Fatia
+                        <span className="block text-xs font-mono mt-0.5">R$ {Number(selectedProduct.slice_price || 0).toFixed(2).replace('.', ',')}</span>
+                      </button>
+                      <button
+                        onClick={() => setDialogUnitType('whole')}
+                        className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                          dialogUnitType === 'whole'
+                            ? 'bg-accent text-accent-foreground shadow-md'
+                            : 'bg-secondary/50 text-muted-foreground border border-border/60 hover:bg-secondary/80'
+                        }`}
+                      >
+                        🎂 Inteiro
+                        <span className="block text-xs font-mono mt-0.5">R$ {Number(selectedProduct.whole_price || 0).toFixed(2).replace('.', ',')}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-lg font-bold" style={{ color: '#8B6914', fontFamily: "'DM Sans', sans-serif" }}>
+                    R$ {dialogPrice.toFixed(2).replace('.', ',')}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      /{selectedProduct.sells_whole ? 'inteiro' : 'unidade'}
+                    </span>
+                  </p>
+                )}
 
                 {/* Quantity controls */}
                 <div>
@@ -663,6 +731,11 @@ const Cardapio = () => {
                       <div className="flex-1 min-w-0 pr-4">
                         <p className="text-sm font-medium text-foreground truncate leading-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                           {item.name}
+                          {item.unit_type && (
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                              ({item.unit_type === 'whole' ? 'Inteiro' : 'Fatia'})
+                            </span>
+                          )}
                         </p>
                         {item.notes && (
                           <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 truncate">

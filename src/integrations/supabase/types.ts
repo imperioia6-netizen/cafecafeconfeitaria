@@ -769,6 +769,7 @@ export type Database = {
           category: Database["public"]["Enums"]["product_category"]
           cost_per_gram: number | null
           created_at: string
+          description: string | null
           direct_cost: number | null
           id: string
           min_stock: number
@@ -791,6 +792,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["product_category"]
           cost_per_gram?: number | null
           created_at?: string
+          description?: string | null
           direct_cost?: number | null
           id?: string
           min_stock?: number
@@ -813,6 +815,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["product_category"]
           cost_per_gram?: number | null
           created_at?: string
+          description?: string | null
           direct_cost?: number | null
           id?: string
           min_stock?: number
