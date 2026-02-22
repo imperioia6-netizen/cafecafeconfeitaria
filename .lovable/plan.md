@@ -1,108 +1,62 @@
 
-# Corrigir Bugs de Interface que Causam Tela Branca
+# Seletor de Fatia/Inteiro no Pedido + Descricao do Produto
 
-## Raiz dos Problemas
+## O que muda
 
-Tela branca em React acontece quando um componente lança uma exceção durante o render ou quando uma Promise rejeitada não tratada corrompe o estado. Foram identificados os seguintes padrões de risco no projeto:
+### 1. Novo campo "Descricao" no banco e no cadastro do produto
+- Adicionar coluna `description` (text, nullable) na tabela `recipes` via migration
+- Adicionar campo de textarea "Descricao" no formulario de cadastro/edicao do produto (`RecipeForm.tsx`)
+- A descricao aparece no dialog de detalhes do produto no Cardapio publico e no Cardapio interno (Orders)
 
-### 1. `Orders.tsx` — Acesso inseguro em `editingOrder`
+### 2. Seletor de modo de venda (Fatia ou Inteiro) no dialog de pedido
+Quando o produto tem `sells_whole = true` E `sells_slice = true`, o dialog de detalhes mostra um seletor para o cliente/operador escolher:
+- **Fatia** (com preco `slice_price`)
+- **Inteiro** (com preco `whole_price`)
 
-Na linha 700, `editingOrder.id.slice(0, 4)` assume que `id` existe e é string. Se `editingOrder.id` for `undefined` em qualquer instante de transição de estado, o app quebra. Mesmo padrão ocorre nas linhas 387, 700 e 944.
+Quando so tem um modo ativo, o preco correspondente aparece automaticamente sem seletor.
 
-Também na linha 675, `createPortal(…, document.body)` — se o componente renderizar durante SSR ou com `document` undefined (edge case em hot reload), quebra.
+O preco, subtotal e item no carrinho refletem a escolha (fatia ou inteiro).
 
-### 2. `Crm.tsx` — Early return antes de todos os hooks (padrão incorreto)
+## Detalhes Tecnicos
 
-Nas linhas 36-37:
+### Migration SQL
+```sql
+ALTER TABLE recipes ADD COLUMN description text;
 ```
-if (!loading && !user) { navigate('/auth'); return null; }
-if (!loading && !isOwner) { navigate('/'); return null; }
-```
-Esses retornos condicionais acontecem **durante o render**, chamando `navigate()` dentro do corpo do componente (não em effect). Isso viola as regras de React e pode causar loops de render ou tela branca em certas navegações. O correto é usar `<Navigate />` ou um `useEffect`.
 
-### 3. `CustomerDetailSheet.tsx` — `mutateAsync` sem try/catch
+### Arquivo: `src/components/recipes/RecipeForm.tsx`
+- Adicionar campo `description` ao schema zod (string opcional, max 500 chars)
+- Adicionar textarea "Descricao do Produto" no formulario, abaixo do nome
+- Incluir `description` no payload de criacao/atualizacao
 
-`handleDelete` usa `await deleteCustomer.mutateAsync(...)` diretamente sem try/catch. Se a mutation falhar, a Promise rejeitada sobe sem ser capturada, potencialmente causando crash.
+### Arquivo: `src/integrations/supabase/types.ts`
+- Sera regenerado automaticamente com o novo campo `description`
 
-### 4. `AppLayout.tsx` — `window.innerWidth` no estado inicial
-
-```tsx
-const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
-```
-Em contextos de hot-reload ou quando o componente monta antes do window estar totalmente disponível, isso pode lançar erro. Mais seguro: usar `typeof window !== 'undefined'` com fallback.
-
-### 5. `Sales.tsx` — `handleSubmit` sem try/catch completo
-
-O fluxo de criação de venda pode ter rejeições não capturadas em edge cases.
-
-### 6. `useAuth.tsx` — `fetchRoles` sem try/catch
-
-A função `fetchRoles` não tem tratamento de erro. Se o Supabase retornar erro (como o `refresh_token_not_found` que já aparece nos logs), pode gerar estado inconsistente.
-
-## Plano de Correção
-
-### Arquivo: `src/pages/Crm.tsx`
-- Substituir os early returns imperativos com `navigate()` por retornos JSX com `<Navigate />` do react-router — forma correta de redirecionar durante render sem violar regras de hooks
+### Arquivo: `src/pages/Cardapio.tsx`
+- Atualizar o tipo `SelectedProduct` para incluir `description`, `sells_whole`, `sells_slice`, `whole_price`, `slice_price`
+- No dialog de detalhes do produto:
+  - Mostrar a descricao do produto abaixo do nome/categoria
+  - Adicionar seletor de tipo (Fatia/Inteiro) quando ambos estao ativos
+  - O preco e subtotal mudam conforme a selecao
+- No `CartItem`, adicionar campo `unit_type` (slice/whole) para rastrear qual modo foi escolhido
+- Ajustar `addFromDialog` e `quickAddToCart` para usar o preco correto baseado no modo
 
 ### Arquivo: `src/pages/Orders.tsx`
-- Adicionar optional chaining em todos os acessos a `editingOrder`: `editingOrder?.order_number`, `editingOrder?.id?.slice(0, 4) ?? '...'`
-- Envolver `createPortal` em verificação `typeof document !== 'undefined'`
-- Proteger a linha 700 e 944 com `editingOrder?.id?.slice(0, 4) ?? '???'`
+- No `NewOrderItem`, adicionar `unit_type` (slice/whole)
+- No dialog de produto:
+  - Mostrar descricao do produto
+  - Adicionar seletor Fatia/Inteiro quando ambos modos estao disponiveis
+  - Preco e subtotal refletem a selecao
+- No `confirmProduct`, salvar `unit_type` e o preco correto
+- No carrinho e sheet, mostrar se e "Fatia" ou "Inteiro" ao lado do nome
 
-### Arquivo: `src/components/crm/CustomerDetailSheet.tsx`
-- Adicionar try/catch em `handleDelete` com toast.error de feedback
+### Fluxo do usuario (Cardapio publico)
+1. Cliente clica no bolo
+2. Dialog abre mostrando foto, nome, descricao
+3. Se o bolo vende fatia E inteiro: seletor com dois botoes (Fatia R$15 / Inteiro R$120)
+4. Quantidade ajustavel (1, 2, 3...)
+5. Observacoes
+6. Botao "+ Adicionar -- R$ X" com o subtotal correto
 
-### Arquivo: `src/hooks/useAuth.tsx`
-- Adicionar try/catch em `fetchRoles` para que erro de token expirado não cause crash
-
-### Arquivo: `src/components/layout/AppLayout.tsx`
-- Usar fallback seguro no `useState` inicial: `() => typeof window !== 'undefined' && window.innerWidth >= 768`
-
-### Arquivo: `src/pages/Sales.tsx`
-- Verificar e reforçar try/catch no handler de submit da venda
-
-## Detalhes Técnicos
-
-**Crm.tsx early return (problema crítico):**
-```tsx
-// ANTES (errado — chama navigate durante render)
-if (!loading && !user) { navigate('/auth'); return null; }
-
-// DEPOIS (correto)
-if (!loading && !user) return <Navigate to="/auth" replace />;
-if (!loading && !isOwner) return <Navigate to="/" replace />;
-```
-
-**Orders.tsx acesso seguro:**
-```tsx
-// ANTES
-editingOrder.order_number || editingOrder.id.slice(0, 4)
-
-// DEPOIS
-editingOrder?.order_number || editingOrder?.id?.slice(0, 4) ?? '...'
-```
-
-**useAuth.tsx fetchRoles protegida:**
-```tsx
-const fetchRoles = async (userId: string) => {
-  try {
-    const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', userId);
-    if (error) throw error;
-    if (data) setRoles(data.map(r => r.role as AppRole));
-  } catch {
-    setRoles([]);
-  }
-};
-```
-
-**CustomerDetailSheet.tsx handleDelete com tratamento:**
-```tsx
-const handleDelete = async () => {
-  try {
-    await deleteCustomer.mutateAsync(customer.id);
-    onOpenChange(false);
-  } catch (e: any) {
-    toast.error(e?.message || 'Erro ao excluir cliente');
-  }
-};
-```
+### Fluxo do operador (Orders interno)
+Mesma logica: ao clicar no produto, dialog mostra seletor de tipo quando ambos modos estao ativos, com precos diferenciados.
