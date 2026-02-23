@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Phone, Mail, Instagram, Cake, Send, Edit2, Trash2, MessageSquare, DollarSign } from 'lucide-react';
+import { Phone, Mail, Cake, Send, Edit2, Trash2, MessageSquare, DollarSign } from 'lucide-react';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import CustomerForm from './CustomerForm';
