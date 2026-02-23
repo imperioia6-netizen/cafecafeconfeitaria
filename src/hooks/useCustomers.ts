@@ -7,12 +7,11 @@ export interface Customer {
   name: string;
   phone: string | null;
   email: string | null;
-  instagram_handle: string | null;
-  instagram_followers: number;
+  remote_jid: string;
   birthday: string | null;
   family_name: string | null;
   family_birthday: string | null;
-  preferred_channel: string;
+  preferred_channel: string | null;
   favorite_recipe_id: string | null;
   last_purchase_at: string | null;
   total_spent: number;
