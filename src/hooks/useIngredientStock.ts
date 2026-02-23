@@ -60,6 +60,36 @@ export function useUpdateIngredientStock() {
   });
 }
 
+export function useUpdateIngredient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: {
+      id: string;
+      name?: string;
+      unit?: string;
+      price_per_unit?: number;
+      stock_quantity?: number;
+      min_stock?: number;
+      expiry_date?: string | null;
+    }) => {
+      const { error } = await supabase.from('ingredients').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredient-stock'] }),
+  });
+}
+
+export function useDeleteIngredient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('ingredients').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredient-stock'] }),
+  });
+}
+
 export function useLowStockCount() {
   return useQuery({
     queryKey: ['ingredient-stock', 'low-count'],

@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBasket, Plus, Minus, Loader2, AlertTriangle, Calendar } from 'lucide-react';
-import { useIngredientStock, useAddIngredient, useUpdateIngredientStock } from '@/hooks/useIngredientStock';
+import { ShoppingBasket, Plus, Minus, Loader2, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { useIngredientStock, useAddIngredient, useUpdateIngredientStock, useUpdateIngredient, useDeleteIngredient, type IngredientStock } from '@/hooks/useIngredientStock';
 import { toast } from 'sonner';
 
 function StockBar({ current, min }: { current: number; min: number }) {
@@ -30,13 +31,51 @@ function StockBar({ current, min }: { current: number; min: number }) {
   );
 }
 
+type IngredientForm = { name: string; unit: string; price_per_unit: string; stock_quantity: string; min_stock: string; expiry_date: string };
+const emptyForm: IngredientForm = { name: '', unit: 'kg', price_per_unit: '', stock_quantity: '', min_stock: '', expiry_date: '' };
+
+function IngredientFormFields({ form, setForm }: { form: IngredientForm; setForm: React.Dispatch<React.SetStateAction<IngredientForm>> }) {
+  return (
+    <div className="space-y-4">
+      <div><Label>Nome</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Farinha de trigo" className="input-glow" /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Unidade</Label>
+          <Select value={form.unit} onValueChange={v => setForm(p => ({ ...p, unit: v }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="kg">kg</SelectItem>
+              <SelectItem value="g">g</SelectItem>
+              <SelectItem value="L">L</SelectItem>
+              <SelectItem value="ml">ml</SelectItem>
+              <SelectItem value="un">un</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div><Label>Preço/{form.unit}</Label><Input type="number" value={form.price_per_unit} onChange={e => setForm(p => ({ ...p, price_per_unit: e.target.value }))} placeholder="0.00" className="input-glow" /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Quantidade</Label><Input type="number" value={form.stock_quantity} onChange={e => setForm(p => ({ ...p, stock_quantity: e.target.value }))} placeholder="0" className="input-glow" /></div>
+        <div><Label>Estoque Mínimo</Label><Input type="number" value={form.min_stock} onChange={e => setForm(p => ({ ...p, min_stock: e.target.value }))} placeholder="0" className="input-glow" /></div>
+      </div>
+      <div><Label>Validade</Label><Input type="date" value={form.expiry_date} onChange={e => setForm(p => ({ ...p, expiry_date: e.target.value }))} className="input-glow" /></div>
+    </div>
+  );
+}
+
 export default function EstoqueTab() {
   const { data: ingredients, isLoading } = useIngredientStock();
   const addMutation = useAddIngredient();
   const updateMutation = useUpdateIngredientStock();
+  const updateIngredientMutation = useUpdateIngredient();
+  const deleteMutation = useDeleteIngredient();
   const [filter, setFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', unit: 'kg', price_per_unit: '', stock_quantity: '', min_stock: '', expiry_date: '' });
+  const [form, setForm] = useState<IngredientForm>(emptyForm);
+  const [editingItem, setEditingItem] = useState<IngredientStock | null>(null);
+  const [editForm, setEditForm] = useState<IngredientForm>(emptyForm);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<IngredientStock | null>(null);
 
   const filtered = ingredients?.filter(item => {
     if (filter === 'all') return true;
@@ -61,7 +100,7 @@ export default function EstoqueTab() {
         expiry_date: form.expiry_date || null,
       });
       toast.success('Ingrediente adicionado');
-      setForm({ name: '', unit: 'kg', price_per_unit: '', stock_quantity: '', min_stock: '', expiry_date: '' });
+      setForm(emptyForm);
       setDialogOpen(false);
     } catch { toast.error('Erro ao adicionar'); }
   };
@@ -71,6 +110,46 @@ export default function EstoqueTab() {
     try {
       await updateMutation.mutateAsync({ id, stock_quantity: newQty });
     } catch { toast.error('Erro ao atualizar'); }
+  };
+
+  const openEdit = (item: IngredientStock) => {
+    setEditingItem(item);
+    setEditForm({
+      name: item.name,
+      unit: item.unit,
+      price_per_unit: String(item.price_per_unit),
+      stock_quantity: String(item.stock_quantity),
+      min_stock: String(item.min_stock),
+      expiry_date: item.expiry_date || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editingItem || !editForm.name.trim()) return;
+    try {
+      await updateIngredientMutation.mutateAsync({
+        id: editingItem.id,
+        name: editForm.name.trim(),
+        unit: editForm.unit,
+        price_per_unit: Number(editForm.price_per_unit) || 0,
+        stock_quantity: Number(editForm.stock_quantity) || 0,
+        min_stock: Number(editForm.min_stock) || 0,
+        expiry_date: editForm.expiry_date || null,
+      });
+      toast.success('Ingrediente atualizado');
+      setEditDialogOpen(false);
+      setEditingItem(null);
+    } catch { toast.error('Erro ao atualizar'); }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingItem) return;
+    try {
+      await deleteMutation.mutateAsync(deletingItem.id);
+      toast.success(`${deletingItem.name} excluído`);
+      setDeletingItem(null);
+    } catch { toast.error('Erro ao excluir'); }
   };
 
   const filters = [
@@ -109,36 +188,13 @@ export default function EstoqueTab() {
           </DialogTrigger>
           <DialogContent className="glass-card depth-shadow border-shine">
             <DialogHeader><DialogTitle>Novo Ingrediente</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Nome</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Farinha de trigo" className="input-glow" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Unidade</Label>
-                  <Select value={form.unit} onValueChange={v => setForm(p => ({ ...p, unit: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kg">kg</SelectItem>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="L">L</SelectItem>
-                      <SelectItem value="ml">ml</SelectItem>
-                      <SelectItem value="un">un</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Preço/{form.unit}</Label><Input type="number" value={form.price_per_unit} onChange={e => setForm(p => ({ ...p, price_per_unit: e.target.value }))} placeholder="0.00" className="input-glow" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Quantidade</Label><Input type="number" value={form.stock_quantity} onChange={e => setForm(p => ({ ...p, stock_quantity: e.target.value }))} placeholder="0" className="input-glow" /></div>
-                <div><Label>Estoque Mínimo</Label><Input type="number" value={form.min_stock} onChange={e => setForm(p => ({ ...p, min_stock: e.target.value }))} placeholder="0" className="input-glow" /></div>
-              </div>
-              <div><Label>Validade</Label><Input type="date" value={form.expiry_date} onChange={e => setForm(p => ({ ...p, expiry_date: e.target.value }))} className="input-glow" /></div>
-              <Button onClick={handleAdd} disabled={!form.name.trim() || addMutation.isPending} className="w-full h-11 shine-effect" style={{ background: 'linear-gradient(135deg, hsl(142 60% 40%), hsl(142 60% 35%))' }}>
-                <span className="relative z-10 flex items-center gap-2">
-                  {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Salvar
-                </span>
-              </Button>
-            </div>
+            <IngredientFormFields form={form} setForm={setForm} />
+            <Button onClick={handleAdd} disabled={!form.name.trim() || addMutation.isPending} className="w-full h-11 shine-effect" style={{ background: 'linear-gradient(135deg, hsl(142 60% 40%), hsl(142 60% 35%))' }}>
+              <span className="relative z-10 flex items-center gap-2">
+                {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Salvar
+              </span>
+            </Button>
           </DialogContent>
         </Dialog>
       </div>
@@ -173,7 +229,13 @@ export default function EstoqueTab() {
                       <h3 className="font-semibold text-base">{item.name}</h3>
                       <span className="text-xs text-muted-foreground">{item.unit}</span>
                     </div>
-                    <div className="flex gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(item)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setDeletingItem(item)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                       {isLow && <Badge variant="destructive" className="text-[10px] glow-destructive">Baixo</Badge>}
                       {isExpired && <Badge variant="destructive" className="text-[10px] glow-destructive">Vencido</Badge>}
                       {isExpiring && !isExpired && <Badge className="bg-warning/15 text-warning border border-warning/30 text-[10px]">Vencendo</Badge>}
@@ -202,7 +264,7 @@ export default function EstoqueTab() {
                     </div>
                   )}
 
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="flex-1 min-h-[44px]" onClick={() => handleQtyChange(item.id, item.stock_quantity, -1)} disabled={item.stock_quantity <= 0 || updateMutation.isPending}>
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -216,6 +278,39 @@ export default function EstoqueTab() {
           })}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={o => { setEditDialogOpen(o); if (!o) setEditingItem(null); }}>
+        <DialogContent className="glass-card depth-shadow border-shine">
+          <DialogHeader><DialogTitle>Editar Ingrediente</DialogTitle></DialogHeader>
+          <IngredientFormFields form={editForm} setForm={setEditForm} />
+          <Button onClick={handleEdit} disabled={!editForm.name.trim() || updateIngredientMutation.isPending} className="w-full h-11 shine-effect" style={{ background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))' }}>
+            <span className="relative z-10 flex items-center gap-2">
+              {updateIngredientMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar Alterações
+            </span>
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingItem} onOpenChange={o => { if (!o) setDeletingItem(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ingrediente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deletingItem?.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
