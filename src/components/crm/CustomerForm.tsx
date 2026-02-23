@@ -14,7 +14,7 @@ interface CustomerFormProps {
 }
 
 const emptyForm = {
-  name: '', phone: '', email: '', instagram_handle: '', instagram_followers: 0,
+  name: '', phone: '', email: '',
   birthday: '', family_name: '', family_birthday: '', preferred_channel: 'balcao',
 };
 
@@ -29,8 +29,6 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create' }: CustomerFormProp
         name: customer.name || '',
         phone: customer.phone || '',
         email: customer.email || '',
-        instagram_handle: customer.instagram_handle || '',
-        instagram_followers: customer.instagram_followers || 0,
         birthday: customer.birthday || '',
         family_name: customer.family_name || '',
         family_birthday: customer.family_birthday || '',
@@ -47,7 +45,7 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create' }: CustomerFormProp
       family_birthday: form.family_birthday || null,
       phone: form.phone || null,
       email: form.email || null,
-      instagram_handle: form.instagram_handle || null,
+      
       family_name: form.family_name || null,
     };
     if (mode === 'edit' && customer) {
@@ -112,14 +110,6 @@ const FormFields = ({ form, update }: { form: typeof emptyForm; update: (k: stri
     <div>
       <Label>Email</Label>
       <Input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input-glow" />
-    </div>
-    <div>
-      <Label>Instagram</Label>
-      <Input value={form.instagram_handle} onChange={e => update('instagram_handle', e.target.value)} placeholder="@usuario" className="input-glow" />
-    </div>
-    <div>
-      <Label>Seguidores</Label>
-      <Input type="number" value={form.instagram_followers} onChange={e => update('instagram_followers', Number(e.target.value))} className="input-glow" />
     </div>
     <div>
       <Label>Aniversário</Label>

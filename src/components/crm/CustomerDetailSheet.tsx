@@ -131,15 +131,6 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
               <span className="truncate">{customer.email}</span>
             </div>
           )}
-          {customer.instagram_handle && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs">
-              <Instagram className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{customer.instagram_handle}</span>
-              {customer.instagram_followers > 0 && (
-                <Badge variant="secondary" className="text-[9px] ml-auto">{customer.instagram_followers} seg.</Badge>
-              )}
-            </div>
-          )}
           {customer.birthday && (
             <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs">
               <Cake className="h-3.5 w-3.5 text-muted-foreground" />
@@ -152,9 +143,6 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
         <div className="mt-3 flex flex-wrap gap-1.5">
           {customer.preferred_channel && (
             <Badge variant="outline" className="text-[9px]">📍 {customer.preferred_channel}</Badge>
-          )}
-          {customer.instagram_followers >= 5000 && (
-            <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">⭐ Influenciador</Badge>
           )}
           {customer.family_name && (
             <Badge variant="outline" className="text-[9px]">👨‍👩‍👧 {customer.family_name}</Badge>

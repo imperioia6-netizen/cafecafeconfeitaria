@@ -44,8 +44,7 @@ const Crm = () => {
     .filter(c =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.instagram_handle?.toLowerCase().includes(search.toLowerCase())
+      c.email?.toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => {
       switch (sortBy) {

@@ -69,12 +69,6 @@ const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
         {customer.phone && (
           <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{customer.phone}</span>
         )}
-        {customer.instagram_handle && (
-          <span className="flex items-center gap-1"><Instagram className="h-2.5 w-2.5" />{customer.instagram_handle}</span>
-        )}
-        {customer.instagram_followers >= 5000 && (
-          <Badge variant="outline" className="text-[8px] bg-accent/10 text-accent border-accent/30 py-0">⭐ Influencer</Badge>
-        )}
         {customer.birthday && (
           <span className="flex items-center gap-1">
             <Cake className="h-2.5 w-2.5" />
