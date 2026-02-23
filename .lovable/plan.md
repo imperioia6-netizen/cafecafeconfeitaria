@@ -1,38 +1,39 @@
 
-# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
+# Corrigir Tela Branca nas Abas do CRM
 
-## O que muda
+## Problema Identificado
+As abas Pipeline, Aniversarios, Reativacao e Config podem causar tela branca por dois motivos:
 
-Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
+1. **N8nSettingsPanel (Config)**: Chama `setState` diretamente no corpo do render (linhas 25-30), o que e um anti-pattern do React que pode causar loops de re-render
+2. **Falta de tratamento de erro**: Nenhum dos componentes das abas tem tratamento de erros (error boundary ou try/catch no render). Se qualquer query do Supabase falhar, o componente crasha e a tela fica branca
+3. **Imports nao utilizados**: `Instagram` importado em `CustomerCard.tsx` e `CustomerDetailSheet.tsx` sem uso
 
-## Detalhes Tecnicos
+## Solucao
 
-### Arquivo: `src/hooks/useIngredientStock.ts`
-- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
-- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
+### 1. Corrigir N8nSettingsPanel - setState no render
+Substituir a logica de `if (settings && !loaded) { setState... }` por um `useEffect`, que e o padrao correto do React para sincronizar estado com dados externos.
 
-### Arquivo: `src/components/inventory/EstoqueTab.tsx`
-- Importar icones `Pencil`, `Trash2` do lucide-react
-- Importar `AlertDialog` components para confirmacao de exclusao
-- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
-- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
-- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
-  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
-  - Lixeira (Excluir): abre AlertDialog de confirmacao
-- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
-- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
-- Ambas acoes com try/catch e toast de feedback
+### 2. Adicionar tratamento de erro em cada aba
+Envolver cada `TabsContent` com tratamento seguro:
+- Verificar `isError` dos hooks de query antes de renderizar
+- Mostrar mensagem de fallback amigavel em caso de erro
+- Usar optional chaining (`?.`) em todos os acessos a dados
 
-### Layout dos botoes no card
+### 3. Limpar imports nao utilizados
+Remover `Instagram` dos imports de `CustomerCard.tsx` e `CustomerDetailSheet.tsx`.
 
-Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+## Arquivos Modificados
 
-```text
-+----------------------------------+
-| Nome do Ingrediente  [E][X] Baixo|
-| kg                               |
-| ...                              |
-+----------------------------------+
-```
+### `src/components/crm/N8nSettingsPanel.tsx`
+- Substituir bloco de setState no render body por `useEffect`
+- Importar `useEffect` do React
 
-Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
+### `src/components/crm/CustomerCard.tsx`
+- Remover `Instagram` do import
+
+### `src/components/crm/CustomerDetailSheet.tsx`
+- Remover `Instagram` do import
+
+### `src/pages/Crm.tsx`
+- Envolver componentes das abas com verificacao de erro
+- Adicionar fallback visual para erros de carregamento
