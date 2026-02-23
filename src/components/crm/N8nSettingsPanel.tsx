@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCrmSettings } from '@/hooks/useCrmSettings';
 import { useCrmN8n } from '@/hooks/useCrmN8n';
 import { useCrmMessages } from '@/hooks/useCrmMessages';
@@ -22,12 +22,14 @@ const N8nSettingsPanel = () => {
   const [loaded, setLoaded] = useState(false);
   const [connectionTested, setConnectionTested] = useState<'idle' | 'success' | 'error'>('idle');
 
-  if (settings && !loaded) {
-    setWebhookUrl(getSetting('n8n_webhook_url') || '');
-    setAutoReturnEnabled(getSetting('auto_return_enabled') === 'true');
-    setNoResponseMinutes(getSetting('no_response_minutes') || '30');
-    setLoaded(true);
-  }
+  useEffect(() => {
+    if (settings && !loaded) {
+      setWebhookUrl(getSetting('n8n_webhook_url') || '');
+      setAutoReturnEnabled(getSetting('auto_return_enabled') === 'true');
+      setNoResponseMinutes(getSetting('no_response_minutes') || '30');
+      setLoaded(true);
+    }
+  }, [settings, loaded]);
 
   const saveWebhook = () => upsertSetting.mutate({ key: 'n8n_webhook_url', value: webhookUrl });
 

@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { differenceInDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Phone, Mail, Instagram, Cake } from 'lucide-react';
+import { Phone, Mail, Cake } from 'lucide-react';
 
 interface CustomerCardProps {
   customer: Customer;
