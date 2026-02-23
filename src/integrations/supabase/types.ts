@@ -350,12 +350,11 @@ export type Database = {
           family_name: string | null
           favorite_recipe_id: string | null
           id: string
-          instagram_followers: number | null
-          instagram_handle: string | null
           last_purchase_at: string | null
           name: string
           phone: string | null
           preferred_channel: string | null
+          remote_jid: string
           status: Database["public"]["Enums"]["customer_status"]
           total_spent: number
           updated_at: string
@@ -368,12 +367,11 @@ export type Database = {
           family_name?: string | null
           favorite_recipe_id?: string | null
           id?: string
-          instagram_followers?: number | null
-          instagram_handle?: string | null
           last_purchase_at?: string | null
           name: string
           phone?: string | null
           preferred_channel?: string | null
+          remote_jid: string
           status?: Database["public"]["Enums"]["customer_status"]
           total_spent?: number
           updated_at?: string
@@ -386,12 +384,11 @@ export type Database = {
           family_name?: string | null
           favorite_recipe_id?: string | null
           id?: string
-          instagram_followers?: number | null
-          instagram_handle?: string | null
           last_purchase_at?: string | null
           name?: string
           phone?: string | null
           preferred_channel?: string | null
+          remote_jid?: string
           status?: Database["public"]["Enums"]["customer_status"]
           total_spent?: number
           updated_at?: string
@@ -531,6 +528,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_moviments: {
+        Row: {
+          action: string | null
+          actor_hole: string | null
+          actor_remote_jid: string | null
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          note: string | null
+          quantity_after: number | null
+          quantity_before: number | null
+          quantity_change: number | null
+        }
+        Insert: {
+          action?: string | null
+          actor_hole?: string | null
+          actor_remote_jid?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          note?: string | null
+          quantity_after?: number | null
+          quantity_before?: number | null
+          quantity_change?: number | null
+        }
+        Update: {
+          action?: string | null
+          actor_hole?: string | null
+          actor_remote_jid?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          note?: string | null
+          quantity_after?: number | null
+          quantity_before?: number | null
+          quantity_change?: number | null
+        }
+        Relationships: []
+      }
+      "messaages log": {
+        Row: {
+          from_me: boolean | null
+          id: string
+          remote_jid: string
+          text: string | null
+        }
+        Insert: {
+          from_me?: boolean | null
+          id?: string
+          remote_jid: string
+          text?: string | null
+        }
+        Update: {
+          from_me?: boolean | null
+          id?: string
+          remote_jid?: string
+          text?: string | null
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -950,6 +1007,51 @@ export type Database = {
           },
         ]
       }
+      sessions: {
+        Row: {
+          address: string | null
+          customer_name: string | null
+          delivery_free: number | null
+          id: string | null
+          memory: Json
+          payment_method: string | null
+          remote_jid: string
+          "status text": Database["public"]["Enums"]["status text"] | null
+          subtotal: number | null
+          total: number | null
+          "type text": Database["public"]["Enums"]["type text"][] | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          customer_name?: string | null
+          delivery_free?: number | null
+          id?: string | null
+          memory: Json
+          payment_method?: string | null
+          remote_jid: string
+          "status text"?: Database["public"]["Enums"]["status text"] | null
+          subtotal?: number | null
+          total?: number | null
+          "type text"?: Database["public"]["Enums"]["type text"][] | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          customer_name?: string | null
+          delivery_free?: number | null
+          id?: string | null
+          memory?: Json
+          payment_method?: string | null
+          remote_jid?: string
+          "status text"?: Database["public"]["Enums"]["status text"] | null
+          subtotal?: number | null
+          total?: number | null
+          "type text"?: Database["public"]["Enums"]["type text"][] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       social_leads: {
         Row: {
           converted_at: string | null
@@ -1085,6 +1187,8 @@ export type Database = {
         | "novo_lead"
         | "em_negociacao"
         | "proposta_aceita"
+      "status text": "novo,confirmado,em_preparo,saiu,finalizado"
+      "type text": "retirada/entrega"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1238,6 +1342,8 @@ export const Constants = {
         "em_negociacao",
         "proposta_aceita",
       ],
+      "status text": ["novo,confirmado,em_preparo,saiu,finalizado"],
+      "type text": ["retirada/entrega"],
     },
   },
 } as const
