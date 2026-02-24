@@ -12,9 +12,9 @@ import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset } from 'lucide-reac
 import { format, parseISO } from 'date-fns';
 
 const N8nSettingsPanel = () => {
-  const { data: settings, getSetting, upsertSetting } = useCrmSettings();
+  const { data: settings, isError: settingsError, getSetting, upsertSetting } = useCrmSettings();
   const { testConnection } = useCrmN8n();
-  const { data: allMessages } = useCrmMessages();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
 
   const [webhookUrl, setWebhookUrl] = useState('');
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(false);
