@@ -73,7 +73,7 @@ const SourceIcon = ({ source }: { source: LeadSource }) => {
 };
 
 const LeadsKanban = () => {
-  const { data: leads, createLead, updateLead, deleteLead } = useSocialLeads();
+  const { data: leads, isError, createLead, updateLead, deleteLead } = useSocialLeads();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<SocialLead | null>(null);
