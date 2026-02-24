@@ -22,6 +22,16 @@ const BirthdayTimeline = () => {
   const today = startOfDay(new Date());
   const next30 = addDays(today, 30);
 
+  if (customersError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar dados</p>
+        <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+      </div>
+    );
+  }
+
   const upcomingBirthdays: BirthdayEntry[] = (customers || [])
     .flatMap(c => {
       const entries: BirthdayEntry[] = [];
