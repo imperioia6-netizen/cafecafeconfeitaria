@@ -2,7 +2,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useCrmMessages } from '@/hooks/useCrmMessages';
 import { differenceInDays, parseISO, format, addDays, isBefore, startOfDay, endOfWeek, startOfWeek, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Cake, Send, Zap } from 'lucide-react';
+import { Cake, Send, Zap, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
