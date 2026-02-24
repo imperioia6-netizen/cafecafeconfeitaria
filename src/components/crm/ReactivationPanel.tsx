@@ -34,15 +34,18 @@ const ReactivationPanel = () => {
 
   // Segment by severity
   const seg30 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 30 && d < 60;
   });
   const seg60 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 60 && d < 90;
   });
   const seg90 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 90;
   });
 
