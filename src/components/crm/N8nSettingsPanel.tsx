@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset } from 'lucide-react';
+import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const N8nSettingsPanel = () => {
