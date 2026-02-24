@@ -1141,6 +1141,21 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_processed_events: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1167,6 +1182,8 @@ export type Database = {
         | "reativacao"
         | "social_seller"
         | "upsell"
+        | "whatsapp_entrada"
+        | "whatsapp_saida"
       customer_status: "ativo" | "inativo" | "novo"
       inventory_status: "normal" | "atencao" | "critico"
       order_status: "aberto" | "finalizado" | "cancelado"
@@ -1326,6 +1343,8 @@ export const Constants = {
         "reativacao",
         "social_seller",
         "upsell",
+        "whatsapp_entrada",
+        "whatsapp_saida",
       ],
       customer_status: ["ativo", "inativo", "novo"],
       inventory_status: ["normal", "atencao", "critico"],
