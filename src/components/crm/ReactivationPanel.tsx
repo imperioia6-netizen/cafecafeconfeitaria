@@ -8,30 +8,44 @@ import { Send, AlertTriangle, Zap, DollarSign, Users } from 'lucide-react';
 import { useCrmN8n } from '@/hooks/useCrmN8n';
 
 const ReactivationPanel = () => {
-  const { data: customers } = useCustomers();
-  const { data: allMessages } = useCrmMessages();
+  const { data: customers, isError: customersError } = useCustomers();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
   const { trigger } = useCrmN8n();
+
+  if (customersError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar dados</p>
+        <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+      </div>
+    );
+  }
 
   const inactiveCustomers = (customers || []).filter(c => {
     if (!c.last_purchase_at) return false;
     return differenceInDays(new Date(), parseISO(c.last_purchase_at)) >= 30;
   }).sort((a, b) => {
-    const dA = differenceInDays(new Date(), parseISO(a.last_purchase_at!));
-    const dB = differenceInDays(new Date(), parseISO(b.last_purchase_at!));
+    if (!a.last_purchase_at || !b.last_purchase_at) return 0;
+    const dA = differenceInDays(new Date(), parseISO(a.last_purchase_at));
+    const dB = differenceInDays(new Date(), parseISO(b.last_purchase_at));
     return dB - dA;
   });
 
   // Segment by severity
   const seg30 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 30 && d < 60;
   });
   const seg60 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 60 && d < 90;
   });
   const seg90 = inactiveCustomers.filter(c => {
-    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    if (!c.last_purchase_at) return false;
+    const d = differenceInDays(new Date(), parseISO(c.last_purchase_at));
     return d >= 90;
   });
 
@@ -47,7 +61,7 @@ const ReactivationPanel = () => {
       customer_data: {
         customer_id: customer.id,
         customer_name: customer.name,
-        days_inactive: differenceInDays(new Date(), parseISO(customer.last_purchase_at!)),
+        days_inactive: customer.last_purchase_at ? differenceInDays(new Date(), parseISO(customer.last_purchase_at)) : 0,
         total_spent: customer.total_spent,
         favorite_product: customer.favorite_recipe_id,
         phone: customer.phone,
@@ -76,7 +90,7 @@ const ReactivationPanel = () => {
   ];
 
   const renderCustomerRow = (c: typeof inactiveCustomers[0]) => {
-    const days = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    const days = c.last_purchase_at ? differenceInDays(new Date(), parseISO(c.last_purchase_at)) : 0;
     const attempts = getAttempts(c.id);
     const severity = days >= 90 ? 'bg-red-500/10 border-red-500/20' : days >= 60 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-amber-500/10 border-amber-500/20';
     const severityText = days >= 90 ? 'text-red-400' : days >= 60 ? 'text-orange-400' : 'text-amber-400';

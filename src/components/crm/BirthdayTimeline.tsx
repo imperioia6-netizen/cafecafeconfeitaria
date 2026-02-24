@@ -2,7 +2,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useCrmMessages } from '@/hooks/useCrmMessages';
 import { differenceInDays, parseISO, format, addDays, isBefore, startOfDay, endOfWeek, startOfWeek, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Cake, Send, Zap } from 'lucide-react';
+import { Cake, Send, Zap, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -16,11 +16,21 @@ interface BirthdayEntry {
 }
 
 const BirthdayTimeline = () => {
-  const { data: customers } = useCustomers();
-  const { data: allMessages } = useCrmMessages();
+  const { data: customers, isError: customersError } = useCustomers();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
   const { trigger } = useCrmN8n();
   const today = startOfDay(new Date());
   const next30 = addDays(today, 30);
+
+  if (customersError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar dados</p>
+        <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+      </div>
+    );
+  }
 
   const upcomingBirthdays: BirthdayEntry[] = (customers || [])
     .flatMap(c => {

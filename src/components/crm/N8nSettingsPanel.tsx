@@ -8,13 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset } from 'lucide-react';
+import { Webhook, Zap, CheckCircle2, XCircle, Clock, Headset, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const N8nSettingsPanel = () => {
-  const { data: settings, getSetting, upsertSetting } = useCrmSettings();
+  const { data: settings, isError: settingsError, getSetting, upsertSetting } = useCrmSettings();
   const { testConnection } = useCrmN8n();
-  const { data: allMessages } = useCrmMessages();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
 
   const [webhookUrl, setWebhookUrl] = useState('');
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(false);
@@ -42,6 +42,16 @@ const N8nSettingsPanel = () => {
 
   // Recent messages log
   const recentMessages = (allMessages || []).slice(0, 5);
+
+  if (settingsError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar configurações</p>
+        <p className="text-xs text-muted-foreground mt-1">Verifique suas permissões ou recarregue a página</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

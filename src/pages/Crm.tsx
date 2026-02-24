@@ -16,6 +16,7 @@ import ReactivationPanel from '@/components/crm/ReactivationPanel';
 import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
 import LeadsKanban from '@/components/crm/LeadsKanban';
 import CustomerForm from '@/components/crm/CustomerForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, Plus } from 'lucide-react';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
@@ -241,6 +242,16 @@ const Crm = () => {
 
         <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} />
         <WhatsAppConnectDialog open={whatsappOpen} onOpenChange={setWhatsappOpen} />
+
+        {/* Dialog Novo Cliente */}
+        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+          <DialogContent className="glass-card border-border/30 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Cadastrar Cliente</DialogTitle>
+            </DialogHeader>
+            <CustomerForm mode="create" onSuccess={() => setShowAddForm(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
