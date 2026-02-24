@@ -241,6 +241,16 @@ const Crm = () => {
 
         <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} />
         <WhatsAppConnectDialog open={whatsappOpen} onOpenChange={setWhatsappOpen} />
+
+        {/* Dialog Novo Cliente */}
+        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+          <DialogContent className="glass-card border-border/30 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Cadastrar Cliente</DialogTitle>
+            </DialogHeader>
+            <CustomerForm mode="create" onSuccess={() => setShowAddForm(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
