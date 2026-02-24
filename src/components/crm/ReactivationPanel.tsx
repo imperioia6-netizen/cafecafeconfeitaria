@@ -12,12 +12,23 @@ const ReactivationPanel = () => {
   const { data: allMessages, isError: messagesError } = useCrmMessages();
   const { trigger } = useCrmN8n();
 
+  if (customersError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar dados</p>
+        <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+      </div>
+    );
+  }
+
   const inactiveCustomers = (customers || []).filter(c => {
     if (!c.last_purchase_at) return false;
     return differenceInDays(new Date(), parseISO(c.last_purchase_at)) >= 30;
   }).sort((a, b) => {
-    const dA = differenceInDays(new Date(), parseISO(a.last_purchase_at!));
-    const dB = differenceInDays(new Date(), parseISO(b.last_purchase_at!));
+    if (!a.last_purchase_at || !b.last_purchase_at) return 0;
+    const dA = differenceInDays(new Date(), parseISO(a.last_purchase_at));
+    const dB = differenceInDays(new Date(), parseISO(b.last_purchase_at));
     return dB - dA;
   });
 

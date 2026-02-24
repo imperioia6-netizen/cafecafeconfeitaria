@@ -174,6 +174,16 @@ const LeadsKanban = () => {
 
   const totalPipeline = COLUMNS.reduce((s, c) => s + getColumnTotal(c.status), 0);
 
+  if (isError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar pipeline</p>
+        <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}

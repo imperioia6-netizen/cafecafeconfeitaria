@@ -43,6 +43,16 @@ const N8nSettingsPanel = () => {
   // Recent messages log
   const recentMessages = (allMessages || []).slice(0, 5);
 
+  if (settingsError || messagesError) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-10 w-10 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">Erro ao carregar configurações</p>
+        <p className="text-xs text-muted-foreground mt-1">Verifique suas permissões ou recarregue a página</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Atendimento Config */}

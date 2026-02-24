@@ -3,7 +3,16 @@ import { differenceInDays, parseISO, addDays, startOfDay } from 'date-fns';
 import { Users, DollarSign, TrendingUp, Cake, AlertTriangle } from 'lucide-react';
 
 const CrmDashboardKpis = () => {
-  const { data: customers } = useCustomers();
+  const { data: customers, isError } = useCustomers();
+
+  if (isError) {
+    return (
+      <div className="text-center py-8">
+        <AlertTriangle className="h-8 w-8 text-destructive/40 mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">Erro ao carregar KPIs</p>
+      </div>
+    );
+  }
   const all = customers || [];
   const today = startOfDay(new Date());
   const next7 = addDays(today, 7);

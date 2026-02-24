@@ -16,6 +16,7 @@ import ReactivationPanel from '@/components/crm/ReactivationPanel';
 import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
 import LeadsKanban from '@/components/crm/LeadsKanban';
 import CustomerForm from '@/components/crm/CustomerForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, Plus } from 'lucide-react';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
