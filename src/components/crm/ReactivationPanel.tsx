@@ -8,8 +8,8 @@ import { Send, AlertTriangle, Zap, DollarSign, Users } from 'lucide-react';
 import { useCrmN8n } from '@/hooks/useCrmN8n';
 
 const ReactivationPanel = () => {
-  const { data: customers } = useCustomers();
-  const { data: allMessages } = useCrmMessages();
+  const { data: customers, isError: customersError } = useCustomers();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
   const { trigger } = useCrmN8n();
 
   const inactiveCustomers = (customers || []).filter(c => {
