@@ -61,7 +61,7 @@ const ReactivationPanel = () => {
       customer_data: {
         customer_id: customer.id,
         customer_name: customer.name,
-        days_inactive: differenceInDays(new Date(), parseISO(customer.last_purchase_at!)),
+        days_inactive: customer.last_purchase_at ? differenceInDays(new Date(), parseISO(customer.last_purchase_at)) : 0,
         total_spent: customer.total_spent,
         favorite_product: customer.favorite_recipe_id,
         phone: customer.phone,
