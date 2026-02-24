@@ -16,8 +16,8 @@ interface BirthdayEntry {
 }
 
 const BirthdayTimeline = () => {
-  const { data: customers } = useCustomers();
-  const { data: allMessages } = useCrmMessages();
+  const { data: customers, isError: customersError } = useCustomers();
+  const { data: allMessages, isError: messagesError } = useCrmMessages();
   const { trigger } = useCrmN8n();
   const today = startOfDay(new Date());
   const next30 = addDays(today, 30);
