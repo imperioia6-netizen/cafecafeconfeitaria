@@ -90,7 +90,7 @@ const ReactivationPanel = () => {
   ];
 
   const renderCustomerRow = (c: typeof inactiveCustomers[0]) => {
-    const days = differenceInDays(new Date(), parseISO(c.last_purchase_at!));
+    const days = c.last_purchase_at ? differenceInDays(new Date(), parseISO(c.last_purchase_at)) : 0;
     const attempts = getAttempts(c.id);
     const severity = days >= 90 ? 'bg-red-500/10 border-red-500/20' : days >= 60 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-amber-500/10 border-amber-500/20';
     const severityText = days >= 90 ? 'text-red-400' : days >= 60 ? 'text-orange-400' : 'text-amber-400';
