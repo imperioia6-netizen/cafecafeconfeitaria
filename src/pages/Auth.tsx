@@ -228,7 +228,7 @@ const Auth = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                      <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                         Nome
                       </Label>
                       <Input
@@ -237,8 +237,8 @@ const Auth = () => {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Seu nome completo"
                         required
-                        className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                        style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                        className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                        style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                       />
                     </div>
 
