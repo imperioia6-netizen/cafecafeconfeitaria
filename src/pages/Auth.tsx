@@ -275,7 +275,7 @@ const Auth = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
                     Email
                   </Label>
                   <Input
@@ -285,8 +285,8 @@ const Auth = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
                     required
-                    className="h-12 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
-                    style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                    className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
+                    style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
                   />
                 </div>
 
