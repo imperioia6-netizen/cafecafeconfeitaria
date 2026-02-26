@@ -174,8 +174,8 @@ const Auth = () => {
           <Card
             className="border rounded-2xl overflow-hidden"
             style={{
-              background: 'hsl(0 0% 100%)',
-              borderColor: 'hsl(0 0% 90%)',
+              background: 'linear-gradient(160deg, hsl(24 30% 12%) 0%, hsl(24 25% 8%) 100%)',
+              borderColor: 'hsl(24 20% 18%)',
               boxShadow: '0 8px 40px hsl(24 30% 4% / 0.3)',
             }}
           >
