@@ -258,7 +258,7 @@ const Auth = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="birthday" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                        <Label htmlFor="birthday" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                           <span className="flex items-center gap-1"><Cake className="h-3 w-3" />Aniversário</span>
                         </Label>
                         <Input
@@ -266,8 +266,8 @@ const Auth = () => {
                           type="date"
                           value={birthday}
                           onChange={(e) => setBirthday(e.target.value)}
-                          className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                          style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                          className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                          style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                         />
                       </div>
                     </div>
