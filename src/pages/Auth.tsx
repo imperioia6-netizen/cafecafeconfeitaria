@@ -212,14 +212,14 @@ const Auth = () => {
                             onClick={() => setAccountType(opt.value)}
                             className="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200"
                             style={{
-                              background: accountType === opt.value
-                                ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
-                                : 'hsl(0 0% 100% / 0.03)',
-                              color: accountType === opt.value
-                                ? 'hsl(36 40% 95%)'
-                                : 'hsl(36 20% 50%)',
-                              border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(0 0% 100% / 0.06)'}`,
-                            }}
+                               background: accountType === opt.value
+                                 ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
+                                 : 'hsl(24 10% 95%)',
+                               color: accountType === opt.value
+                                 ? 'hsl(36 40% 95%)'
+                                 : 'hsl(24 15% 40%)',
+                               border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(24 10% 85%)'}`,
+                             }}
                           >
                             {opt.label}
                           </button>
