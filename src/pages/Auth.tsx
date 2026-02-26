@@ -214,11 +214,11 @@ const Auth = () => {
                             style={{
                                background: accountType === opt.value
                                  ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
-                                 : 'hsl(24 10% 95%)',
+                                 : 'hsl(0 0% 100% / 0.05)',
                                color: accountType === opt.value
                                  ? 'hsl(36 40% 95%)'
-                                 : 'hsl(24 15% 40%)',
-                               border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(24 10% 85%)'}`,
+                                 : 'hsl(36 20% 55%)',
+                               border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(0 0% 100% / 0.08)'}`,
                              }}
                           >
                             {opt.label}
