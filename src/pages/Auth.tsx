@@ -70,7 +70,7 @@ const Auth = () => {
   ];
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'hsl(24 28% 5%)' }}>
+    <div className="flex min-h-screen" style={{ background: 'hsl(0 0% 100%)' }}>
       {/* ── Left Branding Panel ── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative"
