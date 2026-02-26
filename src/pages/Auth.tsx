@@ -184,11 +184,11 @@ const Auth = () => {
               <div className="mb-8">
                 <h2
                   className="text-2xl font-bold tracking-tight mb-1"
-                  style={{ color: 'hsl(36 40% 93%)' }}
+                  style={{ color: 'hsl(24 20% 15%)' }}
                 >
                   {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
                 </h2>
-                <p className="text-sm" style={{ color: 'hsl(36 20% 50%)' }}>
+                <p className="text-sm" style={{ color: 'hsl(24 15% 45%)' }}>
                   {isLogin ? 'Entre com suas credenciais' : 'Preencha os dados para começar'}
                 </p>
               </div>
