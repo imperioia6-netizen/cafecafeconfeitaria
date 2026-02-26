@@ -26,7 +26,7 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: 'hsl(24 28% 5%)' }}>
-        <Coffee className="h-8 w-8 text-accent opacity-60" />
+        <Coffee className="h-8 w-8 text-accent opacity-60" style={{ color: 'hsl(24 40% 30%)' }} />
       </div>
     );
   }
