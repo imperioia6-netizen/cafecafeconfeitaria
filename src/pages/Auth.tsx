@@ -336,7 +336,7 @@ const Auth = () => {
               {/* Separator */}
               <div className="flex items-center gap-4 my-6">
                 <div className="flex-1 separator-gradient" />
-                <span className="text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(36 20% 40%)' }}>ou</span>
+                <span className="text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(24 15% 65%)' }}>ou</span>
                 <div className="flex-1 separator-gradient" />
               </div>
 
