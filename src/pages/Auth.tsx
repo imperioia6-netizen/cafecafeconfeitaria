@@ -356,7 +356,7 @@ const Auth = () => {
           {/* Footer */}
           <p
             className="text-center mt-8 text-[10px] uppercase tracking-[0.2em]"
-            style={{ color: 'hsl(36 15% 30%)' }}
+            style={{ color: 'hsl(24 15% 55%)' }}
           >
             Café Café © 2026
           </p>
