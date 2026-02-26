@@ -174,9 +174,9 @@ const Auth = () => {
           <Card
             className="border rounded-2xl overflow-hidden"
             style={{
-              background: 'hsl(24 22% 8% / 0.6)',
-              borderColor: 'hsl(36 20% 30% / 0.15)',
-              boxShadow: '0 8px 40px hsl(24 30% 4% / 0.5), inset 0 1px 0 hsl(36 70% 50% / 0.04)',
+              background: 'hsl(0 0% 100%)',
+              borderColor: 'hsl(0 0% 90%)',
+              boxShadow: '0 8px 40px hsl(24 30% 4% / 0.3)',
             }}
           >
             <CardContent className="p-7 sm:p-8">
