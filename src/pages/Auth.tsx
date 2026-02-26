@@ -198,7 +198,7 @@ const Auth = () => {
                   <>
                     {/* Account type */}
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                      <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                         Tipo de conta
                       </Label>
                       <div className="flex gap-2">
