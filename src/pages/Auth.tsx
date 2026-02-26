@@ -4,8 +4,8 @@ import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coffee, Eye, EyeOff, ShieldCheck, BarChart3, Package, Phone, Cake } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Coffee, Eye, EyeOff, Phone, Cake, BarChart3, Package, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type AccountType = 'client' | 'employee';
@@ -25,11 +25,8 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="relative">
-          <Coffee className="h-10 w-10 animate-spin text-primary" />
-          <div className="absolute inset-0 animate-glow-pulse" style={{ boxShadow: '0 0 30px hsl(36 70% 50% / 0.3)' }} />
-        </div>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'hsl(24 28% 5%)' }}>
+        <Coffee className="h-8 w-8 text-accent opacity-60" />
       </div>
     );
   }
@@ -73,164 +70,297 @@ const Auth = () => {
   ];
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden"
+    <div className="flex min-h-screen" style={{ background: 'hsl(24 28% 5%)' }}>
+      {/* ── Left Branding Panel ── */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative"
         style={{
-          background: 'linear-gradient(135deg, hsl(24, 55%, 20%) 0%, hsl(24, 45%, 12%) 30%, hsl(24, 40%, 6%) 60%, hsl(24, 35%, 10%) 100%)',
-          backgroundSize: '200% 200%',
-          animation: 'gradient-shift 8s ease-in-out infinite',
+          background: 'linear-gradient(160deg, hsl(24 40% 10%) 0%, hsl(24 35% 6%) 50%, hsl(24 30% 4%) 100%)',
         }}
       >
-        {/* Floating shapes */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full animate-float" style={{ background: 'radial-gradient(circle, hsl(36 70% 50% / 0.06), transparent 70%)', animationDelay: '0s' }} />
-          <div className="absolute bottom-20 -right-24 w-[400px] h-[400px] rounded-full animate-float" style={{ background: 'radial-gradient(circle, hsl(36 70% 50% / 0.08), transparent 70%)', animationDelay: '1.5s' }} />
-          <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full animate-float" style={{ background: 'radial-gradient(circle, hsl(24 60% 23% / 0.05), transparent 70%)', animationDelay: '3s' }} />
-        </div>
+        {/* Subtle ambient glow */}
+        <div
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at 30% 30%, hsl(36 70% 50% / 0.04) 0%, transparent 60%)',
+          }}
+        />
 
-        <div className="relative z-10 text-center px-16 max-w-lg">
-          <div className="flex items-center justify-center mb-10 opacity-0 animate-scale-in">
-            <div className="relative animate-float">
-              <Coffee className="h-20 w-20 text-accent" style={{ filter: 'drop-shadow(0 0 20px hsl(36 70% 50% / 0.4))' }} />
-            </div>
+        {/* Gold vertical line separator */}
+        <div
+          className="absolute right-0 top-[10%] bottom-[10%] w-px"
+          style={{
+            background: 'linear-gradient(180deg, transparent, hsl(36 70% 50% / 0.3), hsl(36 70% 50% / 0.5), hsl(36 70% 50% / 0.3), transparent)',
+          }}
+        />
+
+        <div className="relative z-10 max-w-md px-12">
+          {/* Badge */}
+          <div className="mb-12">
+            <span
+              className="inline-block text-[10px] font-semibold uppercase tracking-[0.25em] px-4 py-1.5 rounded-full"
+              style={{
+                color: 'hsl(36 70% 55%)',
+                border: '1px solid hsl(36 70% 50% / 0.2)',
+                background: 'hsl(36 70% 50% / 0.05)',
+              }}
+            >
+              Sistema de Gestão
+            </span>
           </div>
-          <h1 className="text-5xl font-bold mb-4 tracking-tight opacity-0 animate-fade-in text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", animationDelay: '200ms' }}>
-            Café Café
+
+          {/* Title — pure typography, no icon */}
+          <h1
+            className="text-6xl font-extrabold tracking-tight leading-none mb-3 text-gradient-gold"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            Café
+            <br />
+            Café
           </h1>
-          <p className="text-lg font-light mb-14 opacity-0 animate-fade-in tracking-wide" style={{ animationDelay: '400ms', color: 'hsl(36 30% 70%)' }}>
-            Confeitaria & Gestão Inteligente
+          <p
+            className="text-sm font-light tracking-[0.3em] uppercase mb-16"
+            style={{ color: 'hsl(36 30% 55%)' }}
+          >
+            Confeitaria & Gestão
           </p>
 
-          <div className="space-y-6">
+          {/* Features */}
+          <div className="space-y-0">
             {features.map((f, i) => (
-              <div
-                key={f.label}
-                className="flex items-center gap-4 opacity-0 animate-fade-in"
-                style={{ animationDelay: `${600 + i * 150}ms`, color: 'hsl(36 30% 70%)' }}
-              >
-                <div className="rounded-xl p-3 animate-float" style={{ background: 'hsl(36 70% 50% / 0.08)', animationDelay: `${i * 0.5}s` }}>
-                  <f.icon className="h-5 w-5 text-accent" />
+              <div key={f.label}>
+                <div className="flex items-center gap-4 py-4">
+                  <div
+                    className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ background: 'hsl(36 70% 50% / 0.08)' }}
+                  >
+                    <f.icon className="h-4 w-4 text-accent" />
+                  </div>
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: 'hsl(36 30% 70%)' }}
+                  >
+                    {f.label}
+                  </span>
                 </div>
-                <span className="text-sm">{f.label}</span>
+                {i < features.length - 1 && (
+                  <div className="separator-gradient" />
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-8"
+      {/* ── Right Form Panel ── */}
+      <div
+        className="flex w-full lg:w-1/2 flex-col items-center justify-center relative nav-cinema-bg p-6 sm:p-8"
         style={{
-          background: 'linear-gradient(160deg, hsl(24, 45%, 14%) 0%, hsl(24, 40%, 10%) 50%, hsl(24, 35%, 8%) 100%)',
-          color: 'hsl(36 40% 95%)',
+          background: 'linear-gradient(160deg, hsl(24 25% 9%) 0%, hsl(24 28% 6%) 50%, hsl(24 30% 4%) 100%)',
         }}
       >
-        <Card className="w-full max-w-md border-0 shadow-none bg-transparent" style={{ color: 'inherit' }}>
-          <CardHeader className="text-center space-y-2 pb-6">
-            <div className="flex items-center justify-center gap-2 lg:hidden mb-4">
-              <Coffee className="h-9 w-9 text-accent" />
-              <span className="text-2xl font-bold text-gradient-gold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Café Café</span>
-            </div>
-            <CardTitle className="text-2xl" style={{ color: 'hsl(36 40% 95%)' }}>
-              {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
-            </CardTitle>
-            <CardDescription style={{ color: 'hsl(36 30% 65%)' }}>
-              {isLogin ? 'Entre com suas credenciais' : 'Preencha os dados para começar'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {!isLogin && (
-                <>
-                  {/* Account type selector */}
-                  <div className="space-y-2">
-                    <Label style={{ color: 'hsl(36 30% 75%)' }}>Tipo de conta</Label>
-                    <div className="flex gap-2">
-                      {([
-                        { value: 'client' as AccountType, label: 'Cliente' },
-                        { value: 'employee' as AccountType, label: 'Funcionário' },
-                      ]).map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setAccountType(opt.value)}
-                          className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-300"
-                          style={{
-                            background: accountType === opt.value
-                              ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
-                              : 'hsl(0 0% 100% / 0.05)',
-                            color: accountType === opt.value
-                              ? 'hsl(36 40% 95%)'
-                              : 'hsl(36 30% 65%)',
-                            border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.5)' : 'hsl(0 0% 100% / 0.1)'}`,
-                            boxShadow: accountType === opt.value ? '0 2px 12px hsl(24 60% 23% / 0.3)' : 'none',
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+        <div className="w-full max-w-sm relative z-10">
+          {/* Mobile branding */}
+          <div className="flex items-center gap-3 lg:hidden mb-10">
+            <Coffee className="h-7 w-7 text-accent" />
+            <span
+              className="text-xl font-bold text-gradient-gold"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              Café Café
+            </span>
+          </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="name" style={{ color: 'hsl(36 30% 75%)' }}>Nome</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" required className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" style={{ color: 'hsl(36 30% 75%)' }}>
-                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />Telefone</span>
-                      </Label>
-                      <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 99999-0000" className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="birthday" style={{ color: 'hsl(36 30% 75%)' }}>
-                        <span className="flex items-center gap-1"><Cake className="h-3 w-3" />Aniversário</span>
-                      </Label>
-                      <Input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email" style={{ color: 'hsl(36 30% 75%)' }}>Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="h-11 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+          <Card
+            className="border rounded-2xl overflow-hidden"
+            style={{
+              background: 'hsl(24 22% 8% / 0.6)',
+              borderColor: 'hsl(36 20% 30% / 0.15)',
+              boxShadow: '0 8px 40px hsl(24 30% 4% / 0.5), inset 0 1px 0 hsl(36 70% 50% / 0.04)',
+            }}
+          >
+            <CardContent className="p-7 sm:p-8">
+              {/* Header */}
+              <div className="mb-8">
+                <h2
+                  className="text-2xl font-bold tracking-tight mb-1"
+                  style={{ color: 'hsl(36 40% 93%)' }}
+                >
+                  {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
+                </h2>
+                <p className="text-sm" style={{ color: 'hsl(36 20% 50%)' }}>
+                  {isLogin ? 'Entre com suas credenciais' : 'Preencha os dados para começar'}
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" style={{ color: 'hsl(36 30% 75%)' }}>Senha</Label>
-                <div className="relative">
-                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-11 pr-10 input-glow bg-white/5 border-white/10 text-white placeholder:text-white/30" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {!isLogin && (
+                  <>
+                    {/* Account type */}
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                        Tipo de conta
+                      </Label>
+                      <div className="flex gap-2">
+                        {([
+                          { value: 'client' as AccountType, label: 'Cliente' },
+                          { value: 'employee' as AccountType, label: 'Funcionário' },
+                        ]).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setAccountType(opt.value)}
+                            className="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200"
+                            style={{
+                              background: accountType === opt.value
+                                ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
+                                : 'hsl(0 0% 100% / 0.03)',
+                              color: accountType === opt.value
+                                ? 'hsl(36 40% 95%)'
+                                : 'hsl(36 20% 50%)',
+                              border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(0 0% 100% / 0.06)'}`,
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                        Nome
+                      </Label>
+                      <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Seu nome completo"
+                        required
+                        className="h-12 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
+                        style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />Telefone</span>
+                        </Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="(11) 99999-0000"
+                          className="h-12 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
+                          style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="birthday" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                          <span className="flex items-center gap-1"><Cake className="h-3 w-3" />Aniversário</span>
+                        </Label>
+                        <Input
+                          id="birthday"
+                          type="date"
+                          value={birthday}
+                          onChange={(e) => setBirthday(e.target.value)}
+                          className="h-12 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
+                          style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                    className="h-12 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
+                    style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                  />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
+                    Senha
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                      className="h-12 pr-11 rounded-xl input-glow border-white/[0.06] text-white placeholder:text-white/20"
+                      style={{ background: 'hsl(0 0% 100% / 0.03)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                      style={{ color: 'hsl(36 20% 40%)' }}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-14 text-sm font-bold rounded-full shine-effect transition-all duration-300 mt-2"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(24 60% 25%), hsl(36 70% 45%), hsl(24 55% 30%))',
+                    color: 'hsl(36 40% 95%)',
+                    boxShadow: '0 4px 24px hsl(24 60% 20% / 0.4), 0 0 0 1px hsl(36 70% 50% / 0.1)',
+                  }}
+                  disabled={submitting}
+                >
+                  <span className="relative z-10">
+                    {submitting ? <Coffee className="h-4 w-4 animate-spin" /> : isLogin ? 'Entrar' : 'Criar conta'}
+                  </span>
+                </Button>
+              </form>
+
+              {/* Separator */}
+              <div className="flex items-center gap-4 my-6">
+                <div className="flex-1 separator-gradient" />
+                <span className="text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(36 20% 40%)' }}>ou</span>
+                <div className="flex-1 separator-gradient" />
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-sm font-semibold shine-effect transition-all duration-500"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%), hsl(24 60% 23%))',
-                  boxShadow: '0 4px 20px hsl(24 60% 23% / 0.3)',
-                }}
-                disabled={submitting}
-              >
-                <span className="relative z-10">
-                  {submitting ? <Coffee className="h-4 w-4 animate-spin" /> : isLogin ? 'Entrar' : 'Criar conta'}
-                </span>
-              </Button>
-            </form>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-sm font-medium transition-colors duration-200 hover:underline underline-offset-4"
+                  style={{ color: 'hsl(36 50% 55%)' }}
+                >
+                  {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
+                </button>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="mt-6 text-center">
-              <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-accent transition-colors duration-300">
-                {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Footer */}
+          <p
+            className="text-center mt-8 text-[10px] uppercase tracking-[0.2em]"
+            style={{ color: 'hsl(36 15% 30%)' }}
+          >
+            Café Café © 2026
+          </p>
+        </div>
       </div>
     </div>
   );
