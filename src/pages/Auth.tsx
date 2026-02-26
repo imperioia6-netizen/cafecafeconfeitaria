@@ -345,7 +345,7 @@ const Auth = () => {
                   type="button"
                   onClick={() => setIsLogin(!isLogin)}
                   className="text-sm font-medium transition-colors duration-200 hover:underline underline-offset-4"
-                  style={{ color: 'hsl(24 60% 40%)' }}
+                  style={{ color: 'hsl(36 50% 55%)' }}
                 >
                   {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
                 </button>
