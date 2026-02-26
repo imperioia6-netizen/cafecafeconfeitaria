@@ -154,9 +154,9 @@ const Auth = () => {
 
       {/* ── Right Form Panel ── */}
       <div
-        className="flex w-full lg:w-1/2 flex-col items-center justify-center relative nav-cinema-bg p-6 sm:p-8"
+        className="flex w-full lg:w-1/2 flex-col items-center justify-center relative p-6 sm:p-8"
         style={{
-          background: 'linear-gradient(160deg, hsl(24 25% 9%) 0%, hsl(24 28% 6%) 50%, hsl(24 30% 4%) 100%)',
+          background: 'hsl(0 0% 100%)',
         }}
       >
         <div className="w-full max-w-sm relative z-10">
