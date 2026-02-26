@@ -26,7 +26,7 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: 'hsl(24 28% 5%)' }}>
-        <Coffee className="h-8 w-8 text-accent opacity-60" />
+        <Coffee className="h-8 w-8 text-accent opacity-60" style={{ color: 'hsl(24 40% 30%)' }} />
       </div>
     );
   }
@@ -70,7 +70,7 @@ const Auth = () => {
   ];
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'hsl(24 28% 5%)' }}>
+    <div className="flex min-h-screen" style={{ background: 'hsl(0 0% 100%)' }}>
       {/* ── Left Branding Panel ── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative"
@@ -154,9 +154,9 @@ const Auth = () => {
 
       {/* ── Right Form Panel ── */}
       <div
-        className="flex w-full lg:w-1/2 flex-col items-center justify-center relative nav-cinema-bg p-6 sm:p-8"
+        className="flex w-full lg:w-1/2 flex-col items-center justify-center relative p-6 sm:p-8"
         style={{
-          background: 'linear-gradient(160deg, hsl(24 25% 9%) 0%, hsl(24 28% 6%) 50%, hsl(24 30% 4%) 100%)',
+          background: 'hsl(0 0% 100%)',
         }}
       >
         <div className="w-full max-w-sm relative z-10">
@@ -174,8 +174,8 @@ const Auth = () => {
           <Card
             className="border rounded-2xl overflow-hidden"
             style={{
-              background: 'hsl(0 0% 100%)',
-              borderColor: 'hsl(0 0% 90%)',
+              background: 'linear-gradient(160deg, hsl(24 30% 12%) 0%, hsl(24 25% 8%) 100%)',
+              borderColor: 'hsl(24 20% 18%)',
               boxShadow: '0 8px 40px hsl(24 30% 4% / 0.3)',
             }}
           >
@@ -184,11 +184,11 @@ const Auth = () => {
               <div className="mb-8">
                 <h2
                   className="text-2xl font-bold tracking-tight mb-1"
-                  style={{ color: 'hsl(24 20% 15%)' }}
+                  style={{ color: 'hsl(36 40% 93%)' }}
                 >
                   {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
                 </h2>
-                <p className="text-sm" style={{ color: 'hsl(24 15% 45%)' }}>
+                <p className="text-sm" style={{ color: 'hsl(36 20% 50%)' }}>
                   {isLogin ? 'Entre com suas credenciais' : 'Preencha os dados para começar'}
                 </p>
               </div>
@@ -198,7 +198,7 @@ const Auth = () => {
                   <>
                     {/* Account type */}
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                      <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                         Tipo de conta
                       </Label>
                       <div className="flex gap-2">
@@ -214,11 +214,11 @@ const Auth = () => {
                             style={{
                                background: accountType === opt.value
                                  ? 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))'
-                                 : 'hsl(24 10% 95%)',
+                                 : 'hsl(0 0% 100% / 0.05)',
                                color: accountType === opt.value
                                  ? 'hsl(36 40% 95%)'
-                                 : 'hsl(24 15% 40%)',
-                               border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(24 10% 85%)'}`,
+                                 : 'hsl(36 20% 55%)',
+                               border: `1px solid ${accountType === opt.value ? 'hsl(36 70% 40% / 0.4)' : 'hsl(0 0% 100% / 0.08)'}`,
                              }}
                           >
                             {opt.label}
@@ -228,7 +228,7 @@ const Auth = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                      <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                         Nome
                       </Label>
                       <Input
@@ -237,14 +237,14 @@ const Auth = () => {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Seu nome completo"
                         required
-                        className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                        style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                        className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                        style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                        <Label htmlFor="phone" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                           <span className="flex items-center gap-1"><Phone className="h-3 w-3" />Telefone</span>
                         </Label>
                         <Input
@@ -253,12 +253,12 @@ const Auth = () => {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="(11) 99999-0000"
-                          className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                          style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                          className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                          style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="birthday" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                        <Label htmlFor="birthday" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                           <span className="flex items-center gap-1"><Cake className="h-3 w-3" />Aniversário</span>
                         </Label>
                         <Input
@@ -266,8 +266,8 @@ const Auth = () => {
                           type="date"
                           value={birthday}
                           onChange={(e) => setBirthday(e.target.value)}
-                          className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                          style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                          className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                          style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                         />
                       </div>
                     </div>
@@ -275,7 +275,7 @@ const Auth = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                     Email
                   </Label>
                   <Input
@@ -285,13 +285,13 @@ const Auth = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
                     required
-                    className="h-12 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                    style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                    className="h-12 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                    style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(24 15% 45%)' }}>
+                  <Label htmlFor="password" className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'hsl(36 20% 50%)' }}>
                     Senha
                   </Label>
                   <div className="relative">
@@ -303,14 +303,14 @@ const Auth = () => {
                       placeholder="••••••••"
                       required
                       minLength={6}
-                      className="h-12 pr-11 rounded-xl border text-foreground placeholder:text-muted-foreground/50"
-                      style={{ background: 'hsl(24 10% 96%)', borderColor: 'hsl(24 10% 88%)' }}
+                      className="h-12 pr-11 rounded-xl border-white/[0.08] text-white placeholder:text-white/25"
+                      style={{ background: 'hsl(0 0% 100% / 0.05)' }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                      style={{ color: 'hsl(24 15% 55%)' }}
+                      style={{ color: 'hsl(36 20% 45%)' }}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -336,7 +336,7 @@ const Auth = () => {
               {/* Separator */}
               <div className="flex items-center gap-4 my-6">
                 <div className="flex-1 separator-gradient" />
-                <span className="text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(24 15% 65%)' }}>ou</span>
+                <span className="text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(36 20% 40%)' }}>ou</span>
                 <div className="flex-1 separator-gradient" />
               </div>
 
@@ -345,7 +345,7 @@ const Auth = () => {
                   type="button"
                   onClick={() => setIsLogin(!isLogin)}
                   className="text-sm font-medium transition-colors duration-200 hover:underline underline-offset-4"
-                  style={{ color: 'hsl(24 60% 40%)' }}
+                  style={{ color: 'hsl(36 50% 55%)' }}
                 >
                   {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
                 </button>
@@ -356,7 +356,7 @@ const Auth = () => {
           {/* Footer */}
           <p
             className="text-center mt-8 text-[10px] uppercase tracking-[0.2em]"
-            style={{ color: 'hsl(36 15% 30%)' }}
+            style={{ color: 'hsl(24 15% 55%)' }}
           >
             Café Café © 2026
           </p>
