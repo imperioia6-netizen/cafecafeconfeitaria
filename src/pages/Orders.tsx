@@ -1063,7 +1063,7 @@ const Orders = () => {
                   )}
 
                   {/* Complementos (açaí / montar) */}
-                  {(selectedProduct.category === 'acai' || (r.complementos && Array.isArray(r.complementos) && r.complementos.length > 0)) && (
+                  {((selectedProduct.category as string) === 'acai' || (r.complementos && Array.isArray(r.complementos) && r.complementos.length > 0)) && (
                     <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Complementos</Label>
                       <div className="flex flex-wrap gap-2">

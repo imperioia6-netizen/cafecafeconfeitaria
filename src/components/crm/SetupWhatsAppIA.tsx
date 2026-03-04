@@ -89,7 +89,7 @@ export default function SetupWhatsAppIA() {
       const payload = KEYS.map((key) => ({ key, value: (values[key] ?? '').trim() }));
       const ownerPhonesRaw = (values.owner_phones ?? '').trim();
       const firstOwner = ownerPhonesRaw.split(/[\n,;]+/)[0]?.trim() || '';
-      if (firstOwner) payload.push({ key: 'owner_phone_override', value: firstOwner });
+      if (firstOwner) payload.push({ key: 'owner_phones' as any, value: firstOwner });
       await upsertSettingsBatch.mutateAsync(payload);
     } finally {
       setSaving(false);

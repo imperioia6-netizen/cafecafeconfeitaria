@@ -251,7 +251,7 @@ export function useMarkOrderDeposit50() {
     mutationFn: async (orderId: string) => {
       const { error } = await supabase
         .from('orders')
-        .update({ deposit_50_paid: true as any })
+        .update({ notes: 'Sinal 50% pago' } as any)
         .eq('id', orderId);
       if (error) throw error;
     },
