@@ -1,0 +1,9 @@
+UPDATE recipes SET photo_url = '/cakes/morango.png' WHERE id IN ('a799c1e6-3be5-404a-9b43-035330555685', '7248abef-7c0f-4c5b-af34-7150a9a68f82');
+UPDATE recipes SET photo_url = '/cakes/mousse_de_chocolate_branco.png' WHERE id IN ('c26ffa75-ab70-4910-8c1b-1bf1280ce1bd', '188b4dc7-0c16-46e4-97f0-57e40766409c');
+UPDATE recipes SET photo_url = '/cakes/mousse_de_chocolate_preto_e_branco.png' WHERE id IN ('a470ffb3-2a59-472a-82ee-f13d2db8ec08', '58b06d5a-0598-44ee-a2c3-96cbf5a1b318');
+UPDATE recipes SET photo_url = '/cakes/mousse_de_chocolate_preto.png' WHERE id IN ('d756a038-948e-4444-8e24-2e6d242819e2', 'a340c2ca-b04d-4ebe-a722-b27914c23652');
+UPDATE recipes SET photo_url = '/cakes/napolitano.png' WHERE id IN ('37d8af3c-66c2-4ae5-a065-39a5051679dc', 'df137974-6503-4b6a-acdc-b13fd995e03c');
+UPDATE recipes SET photo_url = '/cakes/ninho_com_abacaxi.png' WHERE id IN ('779bda76-47af-4151-bbe4-8bfc224651e7', '4e690f92-4fc2-4aac-bbbe-c8e6db22d65f');
+UPDATE recipes SET photo_url = '/cakes/ninho_com_morango.png' WHERE id IN ('c1b1649d-a36d-473b-a79c-6d64f1983e78', '8be8aea1-f2d3-4107-b995-e45556166bf7');
+UPDATE recipes SET photo_url = '/cakes/ninho_com_nutella.png' WHERE id IN ('4f7efffe-9712-4cf1-a9c4-347093716a7f', '1f42e0a2-0064-40f8-821a-c07b4d2f6169');
+UPDATE recipes SET photo_url = '/cakes/morango_com_brigadeiro_branco.png' WHERE id IN ('95d83927-88b9-4101-aab8-59651d16f401', '16927ecc-449c-4886-8c69-0dfa6f16c7ef');
