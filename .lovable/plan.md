@@ -1,22 +1,38 @@
 
+# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-# Atualizar Fotos de Mais 8 Bolos
+## O que muda
 
-## Mapeamento Foto → Receitas
+Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
 
-| Foto | Receitas (fatia + inteiro) | IDs |
-|------|---------------------------|-----|
-| brigadeiro_branco.png | Brigadeiro Branco + Bolo Brigadeiro Branco | bcc9f552, 994b3c1d |
-| brigadeiro_preto_com_maracuja.png | Brigadeiro com Mousse de Maracujá + Bolo Brigadeiro com Mousse de Maracujá | c61e0eb1, 5f3b1bf0 |
-| brigadeiro.png | Brigadeiro + Bolo Brigadeiro | 414b8793, 14221fcb |
-| cafe.png | Café + Bolo Café | 3c33812f, c2778776 |
-| camafeu-de-nozes.png | Camafeu de Nozes + Bolo Camafeu de Nozes | dc39ea3c, 90ec69da |
-| cappuccino.png | Cappuccino + Bolo Cappuccino | f6b7ef75, ac3cde0f |
-| casadinho.png | Casadinho + Bolo Casadinho | f4ff3b22, 0c9cdfcc |
-| cherry_branco.png | Cherry Branco + Bolo Cherry Branco | 4cb74544, 0ef8edb0 |
+## Detalhes Tecnicos
 
-## Implementacao
+### Arquivo: `src/hooks/useIngredientStock.ts`
+- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
+- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
 
-1. Copiar 8 imagens de `user-uploads://` para `public/cakes/` (normalizando nomes sem acentos)
-2. Atualizar `photo_url` de 16 receitas no Supabase via SQL de dados
+### Arquivo: `src/components/inventory/EstoqueTab.tsx`
+- Importar icones `Pencil`, `Trash2` do lucide-react
+- Importar `AlertDialog` components para confirmacao de exclusao
+- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
+- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
+- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
+  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
+  - Lixeira (Excluir): abre AlertDialog de confirmacao
+- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
+- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
+- Ambas acoes com try/catch e toast de feedback
 
+### Layout dos botoes no card
+
+Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+
+```text
++----------------------------------+
+| Nome do Ingrediente  [E][X] Baixo|
+| kg                               |
+| ...                              |
++----------------------------------+
+```
+
+Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
