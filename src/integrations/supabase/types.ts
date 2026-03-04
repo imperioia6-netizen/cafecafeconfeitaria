@@ -405,57 +405,57 @@ export type Database = {
       }
       encomendas: {
         Row: {
-          id: string
+          address: string | null
+          created_at: string
           customer_name: string
           customer_phone: string | null
-          product_description: string
-          quantity: number
-          total_value: number
-          address: string | null
-          payment_method: string
-          paid_50_percent: boolean
-          observations: string | null
           delivery_date: string | null
           delivery_time_slot: string | null
-          status: string
+          id: string
+          observations: string | null
+          paid_50_percent: boolean
+          payment_method: string
+          product_description: string
+          quantity: number
           source: string | null
-          created_at: string
+          status: string
+          total_value: number
           updated_at: string
         }
         Insert: {
-          id?: string
+          address?: string | null
+          created_at?: string
           customer_name: string
           customer_phone?: string | null
-          product_description: string
-          quantity?: number
-          total_value: number
-          address?: string | null
-          payment_method?: string
-          paid_50_percent?: boolean
-          observations?: string | null
           delivery_date?: string | null
           delivery_time_slot?: string | null
-          status?: string
+          id?: string
+          observations?: string | null
+          paid_50_percent?: boolean
+          payment_method?: string
+          product_description: string
+          quantity?: number
           source?: string | null
-          created_at?: string
+          status?: string
+          total_value?: number
           updated_at?: string
         }
         Update: {
-          id?: string
+          address?: string | null
+          created_at?: string
           customer_name?: string
           customer_phone?: string | null
-          product_description?: string
-          quantity?: number
-          total_value?: number
-          address?: string | null
-          payment_method?: string
-          paid_50_percent?: boolean
-          observations?: string | null
           delivery_date?: string | null
           delivery_time_slot?: string | null
-          status?: string
+          id?: string
+          observations?: string | null
+          paid_50_percent?: boolean
+          payment_method?: string
+          product_description?: string
+          quantity?: number
           source?: string | null
-          created_at?: string
+          status?: string
+          total_value?: number
           updated_at?: string
         }
         Relationships: []
@@ -720,7 +720,6 @@ export type Database = {
           order_number: string | null
           status: Database["public"]["Enums"]["order_status"]
           table_number: string | null
-          deposit_50_paid: boolean
         }
         Insert: {
           channel?: Database["public"]["Enums"]["sales_channel"]
@@ -737,7 +736,6 @@ export type Database = {
           order_number?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
-          deposit_50_paid?: boolean
         }
         Update: {
           channel?: Database["public"]["Enums"]["sales_channel"]
@@ -754,7 +752,6 @@ export type Database = {
           order_number?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
-          deposit_50_paid?: boolean
         }
         Relationships: []
       }
@@ -884,7 +881,6 @@ export type Database = {
         Row: {
           active: boolean
           category: Database["public"]["Enums"]["product_category"]
-          complementos: string[] | null
           cost_per_gram: number | null
           created_at: string
           description: string | null
@@ -908,7 +904,6 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: Database["public"]["Enums"]["product_category"]
-          complementos?: string[] | null
           cost_per_gram?: number | null
           created_at?: string
           description?: string | null
@@ -932,7 +927,6 @@ export type Database = {
         Update: {
           active?: boolean
           category?: Database["public"]["Enums"]["product_category"]
-          complementos?: string[] | null
           cost_per_gram?: number | null
           created_at?: string
           description?: string | null
@@ -1204,11 +1198,27 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_processed_events: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      crm_auto_return: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1398,7 +1408,7 @@ export const Constants = {
       inventory_status: ["normal", "atencao", "critico"],
       order_status: ["aberto", "finalizado", "cancelado"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
-      product_category: ["bolo", "torta", "salgado", "bebida", "doce", "acai", "outro"],
+      product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
       sales_channel: ["balcao", "delivery", "ifood", "cardapio_digital"],
       social_lead_status: [
         "novo_seguidor",
