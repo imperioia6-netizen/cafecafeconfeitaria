@@ -1,38 +1,28 @@
 
-# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-## O que muda
+# Atualizar Fotos dos Bolos por Nome
 
-Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
+## Mapeamento Foto → Receitas
 
-## Detalhes Tecnicos
+Cada foto sera copiada para `public/cakes/` e a `photo_url` sera atualizada para ambas as versoes (fatia e bolo inteiro) de cada receita:
 
-### Arquivo: `src/hooks/useIngredientStock.ts`
-- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
-- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
+| Foto | Receitas (fatia + inteiro) |
+|------|---------------------------|
+| abacaxi_com_creme.png | Abacaxi com Creme + Bolo Abacaxi com Creme |
+| abacaxi_com_doce_de_leite.png | Abacaxi com Doce de Leite + Bolo Abacaxi com Doce de Leite |
+| alpes-suiços.png | Alpes Suiço + Bolo Alpes Suiço |
+| ameixa.png | Ameixa com Doce de Leite + Bolo Ameixa com Doce de Leite |
+| beehgui.png | Beehgui + Bolo Beehgui |
+| bem-casado.png | Bem Casado + Bolo Bem Casado |
+| bicho_de_pé_com_brigadeiro.png | Bicho de Pé com Brigadeiro + Bolo Bicho de Pé com Brigadeiro |
+| bicho_de_pé_com_morango.png | Bicho de Pé com Morango + Bolo Bicho de Pé com morango |
+| bicho_de_pé.png | Bicho de Pé + Bolo Bicho de Pé |
+| brigadeiro_branco_com_maracujá.png | Brigadeiro Branco com Maracujá (se existir) |
 
-### Arquivo: `src/components/inventory/EstoqueTab.tsx`
-- Importar icones `Pencil`, `Trash2` do lucide-react
-- Importar `AlertDialog` components para confirmacao de exclusao
-- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
-- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
-- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
-  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
-  - Lixeira (Excluir): abre AlertDialog de confirmacao
-- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
-- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
-- Ambas acoes com try/catch e toast de feedback
+## Implementacao
 
-### Layout dos botoes no card
+1. **Copiar 10 imagens** de `user-uploads://` para `public/cakes/`
+2. **Atualizar `photo_url`** de ~20 receitas no Supabase apontando para `/cakes/nome.png` (servido pelo dominio publicado)
 
-Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+As URLs usarao o formato relativo `/cakes/nome.png` que funciona tanto no preview quanto no dominio publicado.
 
-```text
-+----------------------------------+
-| Nome do Ingrediente  [E][X] Baixo|
-| kg                               |
-| ...                              |
-+----------------------------------+
-```
-
-Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
