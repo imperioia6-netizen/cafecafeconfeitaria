@@ -1,38 +1,21 @@
 
-# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-## O que muda
+# Fix: Tela Branca — Arquivo `.env` Ausente
 
-Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
+## Diagnóstico
 
-## Detalhes Tecnicos
+O arquivo `.env` foi deletado ou perdido. Sem ele, as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` são `undefined`, causando o erro `supabaseUrl is required` na inicialização do cliente Supabase — crash imediato, tela branca.
 
-### Arquivo: `src/hooks/useIngredientStock.ts`
-- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
-- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
+## Solução
 
-### Arquivo: `src/components/inventory/EstoqueTab.tsx`
-- Importar icones `Pencil`, `Trash2` do lucide-react
-- Importar `AlertDialog` components para confirmacao de exclusao
-- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
-- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
-- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
-  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
-  - Lixeira (Excluir): abre AlertDialog de confirmacao
-- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
-- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
-- Ambas acoes com try/catch e toast de feedback
+1. **Recriar o arquivo `.env`** com as credenciais do projeto Supabase já conhecidas:
+   - `VITE_SUPABASE_PROJECT_ID=osewboiklhfiunetoxzo`
+   - `VITE_SUPABASE_URL=https://osewboiklhfiunetoxzo.supabase.co`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (anon key completa)
 
-### Layout dos botoes no card
+2. **Adicionar validação defensiva** no `client.ts` para evitar crash silencioso caso as env vars sumam novamente — logar erro legível no console em vez de tela branca.
 
-Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+## Escopo
+- Criar `.env`
+- Editar `src/integrations/supabase/client.ts` com fallback defensivo
 
-```text
-+----------------------------------+
-| Nome do Ingrediente  [E][X] Baixo|
-| kg                               |
-| ...                              |
-+----------------------------------+
-```
-
-Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
