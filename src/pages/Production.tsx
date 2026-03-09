@@ -313,7 +313,6 @@ const Production = () => {
               {[
                 { value: 'production', label: 'Produção', icon: Coffee },
                 { value: 'promotions', label: 'Promoções 12h+', icon: Zap },
-                { value: 'reports', label: 'Relatórios IA', icon: Brain },
               ].map(tab => (
                 <TabsTrigger
                   key={tab.value}
@@ -347,10 +346,6 @@ const Production = () => {
 
             <TabsContent value="promotions">
               <AutoPromotionsPanel />
-            </TabsContent>
-
-            <TabsContent value="reports">
-              <AiReportsPanel />
             </TabsContent>
           </Tabs>
         ) : (

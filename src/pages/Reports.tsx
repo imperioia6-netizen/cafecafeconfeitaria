@@ -2,9 +2,10 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, DollarSign, ShoppingCart, Clock } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, DollarSign, ShoppingCart, Clock, BarChart3, Brain } from 'lucide-react';
 import { usePeriodReport, useProductionVsSales } from '@/hooks/useReports';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import AiReportsPanel from '@/components/smart/AiReportsPanel';
 
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
 const PIE_COLORS = ['hsl(24,60%,23%)', 'hsl(36,70%,50%)', 'hsl(142,60%,40%)', 'hsl(0,72%,51%)', 'hsl(210,60%,50%)'];
@@ -144,8 +145,33 @@ const PeriodTab = ({ days }: { days: number }) => {
   );
 };
 
-const Reports = () => {
+const PerformanceSection = () => {
   const [period, setPeriod] = useState('7');
+  return (
+    <div className="space-y-5">
+      <Tabs value={period} onValueChange={setPeriod}>
+        <TabsList className="bg-transparent border border-border/30 p-1 gap-1">
+          {['7', '15', '30'].map(v => (
+            <TabsTrigger key={v} value={v}
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none relative transition-all"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              {v} dias
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all"
+                style={{ background: period === v ? 'hsl(36 70% 50%)' : 'transparent', boxShadow: period === v ? '0 0 8px hsl(36 70% 50% / 0.3)' : 'none' }} />
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="7"><PeriodTab days={7} /></TabsContent>
+        <TabsContent value="15"><PeriodTab days={15} /></TabsContent>
+        <TabsContent value="30"><PeriodTab days={30} /></TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const Reports = () => {
+  const [mainTab, setMainTab] = useState('performance');
 
   return (
     <AppLayout>
@@ -155,22 +181,36 @@ const Reports = () => {
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">Análise de desempenho</p>
         </div>
 
-        <Tabs value={period} onValueChange={setPeriod}>
-          <TabsList className="bg-transparent border border-border/30 p-1 gap-1">
-            {['7', '15', '30'].map(v => (
-              <TabsTrigger key={v} value={v}
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none relative transition-all"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-4">
+          <TabsList className="flex gap-2 bg-transparent p-0 h-auto overflow-x-auto no-scrollbar mobile-tabs">
+            {[
+              { value: 'performance', label: 'Desempenho', icon: BarChart3 },
+              { value: 'ai-reports', label: 'Relatórios IA', icon: Brain },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-500 gap-1 md:gap-1.5 border-0 ${
+                  mainTab === tab.value
+                    ? 'text-primary-foreground depth-shadow scale-105'
+                    : 'text-muted-foreground hover:bg-muted/60'
+                }`}
+                style={mainTab === tab.value ? {
+                  background: 'linear-gradient(135deg, hsl(24 60% 23%), hsl(36 70% 40%))',
+                } : { background: 'hsl(var(--muted) / 0.5)' }}
               >
-                {v} dias
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all data-[state=active]:bg-accent"
-                  style={{ background: period === v ? 'hsl(36 70% 50%)' : 'transparent', boxShadow: period === v ? '0 0 8px hsl(36 70% 50% / 0.3)' : 'none' }} />
+                <tab.icon className="h-3 w-3 md:h-3.5 md:w-3.5" />{tab.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          <TabsContent value="7"><PeriodTab days={7} /></TabsContent>
-          <TabsContent value="15"><PeriodTab days={15} /></TabsContent>
-          <TabsContent value="30"><PeriodTab days={30} /></TabsContent>
+
+          <TabsContent value="performance">
+            <PerformanceSection />
+          </TabsContent>
+
+          <TabsContent value="ai-reports">
+            <AiReportsPanel />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
