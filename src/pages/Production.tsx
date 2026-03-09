@@ -8,13 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock, Pencil, Trash2, User, Zap, Brain } from 'lucide-react';
+import { Coffee, Loader2, Layers, DollarSign, TrendingUp, Clock, Pencil, Trash2, User, Zap } from 'lucide-react';
 import { useActiveRecipes } from '@/hooks/useRecipes';
 import { useCreateProduction, useTodayProductions, useDeleteProduction, useUpdateProduction, useOperatorProfiles } from '@/hooks/useProductions';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import AutoPromotionsPanel from '@/components/smart/AutoPromotionsPanel';
-import AiReportsPanel from '@/components/smart/AiReportsPanel';
 
 const ProductionContent = ({ recipes, recipesLoading, productions, prodsLoading, selectedRecipeId, setSelectedRecipeId, weightKg, setWeightKg, recipe, slices, totalCost, costPerUnit, salePrice, marginPerSlice, handleSubmit, createProduction, isOwner, operatorIds, operatorNames, filterOperator, setFilterOperator, setEditProd, setEditWeightKg, setDeleteId }: any) => (
   <div className="space-y-8">
