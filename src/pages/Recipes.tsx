@@ -3,9 +3,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useRecipes } from '@/hooks/useRecipes';
 import RecipeForm from '@/components/recipes/RecipeForm';
 import RecipeCard from '@/components/recipes/RecipeCard';
-import { ChefHat, Loader2, Package, TrendingUp, Percent } from 'lucide-react';
+import { ChefHat, Loader2, Package, TrendingUp, Percent, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import type { Recipe } from '@/hooks/useRecipes';
 
 type MarginTab = 'todos' | 'margem_alta' | 'margem_media' | 'margem_baixa' | 'sem_precificacao';
