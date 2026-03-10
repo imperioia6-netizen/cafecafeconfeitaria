@@ -67,8 +67,13 @@ const Crm = () => {
     setSheetOpen(true);
   };
 
+  const fichas = all.filter(c =>
+    c.name && (c.phone || c.email) && c.birthday
+  );
+
   const tabs = [
     { value: 'clientes', label: 'Clientes', icon: Users },
+    { value: 'fichas', label: 'Fichas', icon: ContactRound },
     { value: 'pipeline', label: 'Pipeline', icon: Columns3 },
     { value: 'aniversarios', label: 'Aniversários', icon: Cake },
     { value: 'reativacao', label: 'Reativação', icon: AlertTriangle },
