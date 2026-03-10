@@ -33,6 +33,7 @@ const Recipes = () => {
   const { data: recipes, isLoading } = useRecipes();
   const { isOwner } = useAuth();
   const [tab, setTab] = useState<MarginTab>('todos');
+  const [search, setSearch] = useState('');
 
   const grouped = useMemo(() => {
     if (!recipes) return { todos: [], margem_alta: [], margem_media: [], margem_baixa: [], sem_precificacao: [] };
