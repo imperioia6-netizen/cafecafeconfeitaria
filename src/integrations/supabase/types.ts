@@ -343,6 +343,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          address: string | null
           birthday: string | null
           created_at: string
           email: string | null
@@ -360,6 +361,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           birthday?: string | null
           created_at?: string
           email?: string | null
@@ -377,6 +379,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           birthday?: string | null
           created_at?: string
           email?: string | null

@@ -11,6 +11,7 @@ export interface Customer {
   birthday: string | null;
   family_name: string | null;
   family_birthday: string | null;
+  address: string | null;
   preferred_channel: string | null;
   favorite_recipe_id: string | null;
   last_purchase_at: string | null;

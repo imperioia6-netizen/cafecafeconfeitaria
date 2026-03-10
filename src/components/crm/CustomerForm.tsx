@@ -18,7 +18,7 @@ interface CustomerFormProps {
 
 const emptyForm = {
   name: '', phone: '', email: '',
-  birthday: '', family_name: '', family_birthday: '', preferred_channel: 'balcao',
+  birthday: '', address: '', preferred_channel: 'balcao',
 };
 
 const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, onOpenChange }: CustomerFormProps) => {
@@ -35,8 +35,7 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, on
         phone: customer.phone || '',
         email: customer.email || '',
         birthday: customer.birthday || '',
-        family_name: customer.family_name || '',
-        family_birthday: customer.family_birthday || '',
+        address: (customer as any).address || '',
         preferred_channel: customer.preferred_channel || 'balcao',
       });
     }
@@ -47,10 +46,9 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, on
     const payload = {
       ...form,
       birthday: form.birthday || null,
-      family_birthday: form.family_birthday || null,
       phone: form.phone || null,
       email: form.email || null,
-      family_name: form.family_name || null,
+      address: form.address || null,
     };
     if (mode === 'edit' && customer) {
       await updateCustomer.mutateAsync({ id: customer.id, ...payload } as any);
@@ -142,13 +140,9 @@ const FormFields = ({ form, update }: { form: typeof emptyForm; update: (k: stri
         </SelectContent>
       </Select>
     </div>
-    <div>
-      <Label>Familiar (nome)</Label>
-      <Input value={form.family_name} onChange={e => update('family_name', e.target.value)} className="input-glow" />
-    </div>
-    <div>
-      <Label>Aniversário familiar</Label>
-      <Input type="date" value={form.family_birthday} onChange={e => update('family_birthday', e.target.value)} className="input-glow" />
+    <div className="col-span-2">
+      <Label>Endereço</Label>
+      <Input value={form.address} onChange={e => update('address', e.target.value)} placeholder="Rua, número, bairro..." className="input-glow" />
     </div>
   </div>
 );

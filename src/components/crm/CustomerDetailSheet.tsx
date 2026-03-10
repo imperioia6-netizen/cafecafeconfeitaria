@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Phone, Mail, Instagram, Cake, Send, Edit2, Trash2, MessageSquare, DollarSign } from 'lucide-react';
+import { Phone, Mail, Instagram, Cake, Send, Edit2, Trash2, MessageSquare, DollarSign, MapPin } from 'lucide-react';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import CustomerForm from './CustomerForm';
@@ -135,6 +135,12 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
             <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs">
               <Cake className="h-3.5 w-3.5 text-muted-foreground" />
               <span>{format(parseISO(customer.birthday), "dd 'de' MMMM", { locale: ptBR })}</span>
+            </div>
+          )}
+          {(customer as any).address && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs col-span-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="truncate">{(customer as any).address}</span>
             </div>
           )}
         </div>
