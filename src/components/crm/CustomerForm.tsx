@@ -18,7 +18,7 @@ interface CustomerFormProps {
 
 const emptyForm = {
   name: '', phone: '', email: '',
-  birthday: '', family_name: '', family_birthday: '', preferred_channel: 'balcao',
+  birthday: '', address: '', preferred_channel: 'balcao',
 };
 
 const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, onOpenChange }: CustomerFormProps) => {
