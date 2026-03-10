@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Edit, Power, PowerOff, Trash2 } from 'lucide-react';
+import { Edit, ImageOff, Power, PowerOff, Trash2 } from 'lucide-react';
 import type { Recipe } from '@/hooks/useRecipes';
 import { useUpdateRecipe, useDeleteRecipe } from '@/hooks/useRecipes';
 import RecipeForm from './RecipeForm';
