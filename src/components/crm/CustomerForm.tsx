@@ -46,10 +46,9 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, on
     const payload = {
       ...form,
       birthday: form.birthday || null,
-      family_birthday: form.family_birthday || null,
       phone: form.phone || null,
       email: form.email || null,
-      family_name: form.family_name || null,
+      address: form.address || null,
     };
     if (mode === 'edit' && customer) {
       await updateCustomer.mutateAsync({ id: customer.id, ...payload } as any);
