@@ -71,8 +71,19 @@ export default function RecipeCard({ recipe, index = 0, readOnly = false }: { re
 
   return (
     <>
-      <div className={`card-cinematic shine-effect gradient-border rounded-xl opacity-0 animate-fade-in ${!recipe.active ? 'opacity-50' : ''}`}
+      <div className={`card-cinematic shine-effect gradient-border rounded-xl overflow-hidden opacity-0 animate-fade-in ${!recipe.active ? 'opacity-50' : ''}`}
         style={{ animationDelay: `${index * 60}ms` }}>
+        {/* Product image */}
+        {recipe.photo_url ? (
+          <div className="aspect-video w-full overflow-hidden bg-muted/30">
+            <img src={recipe.photo_url} alt={recipe.name} className="w-full h-full object-cover" loading="lazy" />
+          </div>
+        ) : (
+          <div className="aspect-video w-full overflow-hidden bg-muted/20 flex flex-col items-center justify-center gap-1.5">
+            <ImageOff className="h-8 w-8 text-muted-foreground/30" />
+            <Badge variant="outline" className="text-[10px] text-muted-foreground/50 border-muted-foreground/20">Sem foto</Badge>
+          </div>
+        )}
         <div className="p-5 space-y-4 relative z-10">
           <div className="flex items-start justify-between">
             <div>
