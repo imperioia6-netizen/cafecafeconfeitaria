@@ -257,17 +257,19 @@ async function findOrCreateLead(
 
 const FALLBACK_REPLY = "Obrigado pela mensagem! Em instantes nossa equipe retorna.";
 
-/** Extrai blocos [CRIAR_PEDIDO], [CRIAR_ENCOMENDA] e [QUITAR_ENCOMENDA] da resposta da IA e retorna a mensagem limpa + JSONs. */
+/** Extrai blocos [CRIAR_PEDIDO], [CRIAR_ENCOMENDA], [QUITAR_ENCOMENDA] e [ATUALIZAR_CLIENTE] da resposta da IA. */
 function parseCreateBlocks(reply: string): {
   replyClean: string;
   pedidoJson: Record<string, unknown> | null;
   encomendaJson: Record<string, unknown> | null;
   quitarEncomendaJson: Record<string, unknown> | null;
+  atualizarClienteJson: Record<string, unknown> | null;
 } {
   let replyClean = reply;
   let pedidoJson: Record<string, unknown> | null = null;
   let encomendaJson: Record<string, unknown> | null = null;
   let quitarEncomendaJson: Record<string, unknown> | null = null;
+  let atualizarClienteJson: Record<string, unknown> | null = null;
 
   const pedidoMatch = reply.match(/\[CRIAR_PEDIDO\]([\s\S]*?)\[\/CRIAR_PEDIDO\]/i);
   if (pedidoMatch) {
@@ -299,7 +301,17 @@ function parseCreateBlocks(reply: string): {
     }
   }
 
-  return { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson };
+  const atualizarMatch = reply.match(/\[ATUALIZAR_CLIENTE\]([\s\S]*?)\[\/ATUALIZAR_CLIENTE\]/i);
+  if (atualizarMatch) {
+    replyClean = replyClean.replace(/\s*\[ATUALIZAR_CLIENTE\][\s\S]*?\[\/ATUALIZAR_CLIENTE\]\s*/gi, "").trim();
+    try {
+      atualizarClienteJson = JSON.parse(atualizarMatch[1].trim()) as Record<string, unknown>;
+    } catch {
+      atualizarClienteJson = null;
+    }
+  }
+
+  return { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson };
 }
 
 /** Obtém operator_id para pedidos criados pelo bot: automático (primeiro perfil) ou crm_settings bot_operator_id. */
@@ -858,7 +870,50 @@ serve(async (req) => {
 
         reply = await runAtendente(supabase, fullMessage, pushName || "Cliente", history);
 
-        const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson } = parseCreateBlocks(reply);
+        const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson } = parseCreateBlocks(reply);
+        if (atualizarClienteJson) {
+          const phoneVal = typeof atualizarClienteJson.phone === "string" ? normalizePhone(atualizarClienteJson.phone) : normalizedPhone;
+          const parseBirthday = (v: unknown): string | null => {
+            if (typeof v !== "string" || !v.trim()) return null;
+            const s = v.trim();
+            const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+            if (iso) return iso;
+            const ddmmyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/) || s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+            if (ddmmyy) {
+              const day = ddmmyy[1].padStart(2, "0");
+              const month = ddmmyy[2].padStart(2, "0");
+              const year = ddmmyy[3].length === 4 ? ddmmyy[3] : "20" + ddmmyy[3];
+              return `${year}-${month}-${day}`;
+            }
+            return null;
+          };
+          const birthdayVal = parseBirthday(atualizarClienteJson.birthday);
+          const { data: cust } = await supabase.from("customers").select("id").eq("phone", phoneVal).limit(1).maybeSingle();
+          if (cust?.id) {
+            const updates: { name?: string; email?: string; address?: string; birthday?: string } = {};
+            if (typeof atualizarClienteJson.name === "string" && atualizarClienteJson.name.trim()) updates.name = sanitizeName(atualizarClienteJson.name.trim());
+            if (typeof atualizarClienteJson.email === "string" && atualizarClienteJson.email.trim()) updates.email = atualizarClienteJson.email.trim().slice(0, 255);
+            if (typeof atualizarClienteJson.address === "string" && atualizarClienteJson.address.trim()) updates.address = atualizarClienteJson.address.trim().slice(0, 500);
+            if (birthdayVal) updates.birthday = birthdayVal;
+            if (Object.keys(updates).length > 0) {
+              await supabase.from("customers").update(updates).eq("id", cust.id);
+              console.log("evolution-webhook: cliente atualizado (cadastro)", cust.id);
+            }
+          } else {
+            const name = typeof atualizarClienteJson.name === "string" ? sanitizeName(atualizarClienteJson.name.trim()) || "Cliente" : (pushName || "Cliente");
+            await findOrCreateCustomer(supabase, phoneVal, name);
+            const { data: cust2 } = await supabase.from("customers").select("id").eq("phone", normalizePhone(phoneVal)).limit(1).maybeSingle();
+            if (cust2?.id) {
+              const updates: { name?: string; email?: string; address?: string; birthday?: string } = {};
+              if (typeof atualizarClienteJson.name === "string" && atualizarClienteJson.name.trim()) updates.name = sanitizeName(atualizarClienteJson.name.trim());
+              if (typeof atualizarClienteJson.email === "string" && atualizarClienteJson.email.trim()) updates.email = atualizarClienteJson.email.trim().slice(0, 255);
+              if (typeof atualizarClienteJson.address === "string" && atualizarClienteJson.address.trim()) updates.address = atualizarClienteJson.address.trim().slice(0, 500);
+              if (birthdayVal) updates.birthday = birthdayVal;
+              if (Object.keys(updates).length > 0) await supabase.from("customers").update(updates).eq("id", cust2.id);
+              console.log("evolution-webhook: cliente criado/atualizado (cadastro)", cust2.id);
+            }
+          }
+        }
         if (pedidoJson) {
           const result = await createOrderFromPayload(supabase, pedidoJson, normalizedPhone, pushName || "Cliente", evo, ownerPhonesList);
           if (result.ok) {
