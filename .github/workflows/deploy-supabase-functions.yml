@@ -20,7 +20,7 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy Edge Functions
+      - name: Deploy ONLY evolution-webhook
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase functions deploy --project-ref osewboiklhfiunetoxzo
+        run: supabase functions deploy evolution-webhook --project-ref osewboiklhfiunetoxzo
