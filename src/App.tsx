@@ -12,6 +12,8 @@ import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
 import CashRegister from "./pages/CashRegister";
 import Reports from "./pages/Reports";
+import Alerts from "./pages/Alerts";
+import ConfirmPayments from "./pages/ConfirmPayments";
 
 import Team from "./pages/Team";
 import Profile from "./pages/Profile";
@@ -39,6 +41,8 @@ const App = () => (
             <Route path="/orders" element={<Orders />} />
             <Route path="/cash-register" element={<CashRegister />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/confirm-payments" element={<ConfirmPayments />} />
             
             <Route path="/team" element={<Team />} />
             <Route path="/profile" element={<Profile />} />

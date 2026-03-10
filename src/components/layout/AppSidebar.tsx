@@ -20,6 +20,7 @@ const navGroups = [
       { label: 'Relatórios', icon: BarChart3, path: '/reports', ownerOnly: true },
       { label: 'CRM', icon: Heart, path: '/crm', ownerOnly: true },
       { label: 'Pedidos', icon: ClipboardList, path: '/orders', ownerOnly: false },
+      { label: 'Comprovar', icon: Bot, path: '/confirm-payments', ownerOnly: true },
     ],
   },
   {

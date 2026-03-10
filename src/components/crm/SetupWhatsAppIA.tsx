@@ -49,6 +49,7 @@ export default function SetupWhatsAppIA() {
   const [urlCopied, setUrlCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [iaPaused, setIaPaused] = useState(false);
 
   useEffect(() => {
     if (settings && !loaded) {
@@ -58,6 +59,8 @@ export default function SetupWhatsAppIA() {
         next.owner_phones = getSetting('owner_phone_override') || '';
       }
       setValues(next);
+      const pausedValue = (getSetting('ia_paused') || 'false').toLowerCase();
+      setIaPaused(pausedValue === 'true');
       setLoaded(true);
     }
   }, [settings, getSetting, loaded]);
@@ -90,6 +93,7 @@ export default function SetupWhatsAppIA() {
       const ownerPhonesRaw = (values.owner_phones ?? '').trim();
       const firstOwner = ownerPhonesRaw.split(/[\n,;]+/)[0]?.trim() || '';
       if (firstOwner) payload.push({ key: 'owner_phones' as any, value: firstOwner });
+      payload.push({ key: 'ia_paused' as any, value: iaPaused ? 'true' : 'false' });
       await upsertSettingsBatch.mutateAsync(payload);
     } finally {
       setSaving(false);
@@ -187,6 +191,23 @@ export default function SetupWhatsAppIA() {
             <Button size="icon" variant="outline" onClick={copyUrl} title="Copiar URL">
               {urlCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
+          </div>
+        </div>
+
+        {/* Pausar / ativar IA de atendimento */}
+        <div className="mt-4 space-y-1.5 rounded-lg border border-amber-400/40 bg-amber-50/60 dark:bg-amber-900/10 p-3">
+          <Label className="text-xs font-medium text-amber-800 dark:text-amber-200">Pausar IA do WhatsApp</Label>
+          <div className="flex items-center gap-2 text-xs">
+            <input
+              id="ia-paused-toggle"
+              type="checkbox"
+              className="h-4 w-4"
+              checked={iaPaused}
+              onChange={(e) => setIaPaused(e.target.checked)}
+            />
+            <span>
+              Quando marcado, a IA <strong>não responde clientes</strong>; as mensagens ficam registradas para a equipe humana assumir o atendimento.
+            </span>
           </div>
         </div>
 
