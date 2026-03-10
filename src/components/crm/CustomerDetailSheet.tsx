@@ -137,6 +137,12 @@ const CustomerDetailSheet = ({ customer, open, onOpenChange }: Props) => {
               <span>{format(parseISO(customer.birthday), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
           )}
+          {(customer as any).address && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs col-span-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="truncate">{(customer as any).address}</span>
+            </div>
+          )}
         </div>
 
         {/* Tags */}
