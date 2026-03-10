@@ -74,6 +74,16 @@ const Recipes = () => {
           {isOwner && <RecipeForm />}
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar produto…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         {isOwner && recipes && recipes.length > 0 && (
           <>
             <Tabs value={tab} onValueChange={v => setTab(v as MarginTab)} className="min-w-0 w-full">
