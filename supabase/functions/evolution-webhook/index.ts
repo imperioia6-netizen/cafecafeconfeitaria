@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getOwner, isOwnerPhoneInList, parseOwnerPhonesList, normalizePhone } from "../_shared/getOwner.ts";
 import { runAssistente, runAtendente } from "../_shared/agentLogic.ts";
+import { sendTicketFlowOrder } from "../_shared/ticketflow.ts";
 import {
   sanitizeMessage,
   sanitizePhone,
@@ -501,6 +502,30 @@ async function createOrderFromPayload(
     return { ok: false, error: (siErr as Error)?.message };
   }
 
+  // Envia pedido para a plataforma de notas (TicketFlow) sem bloquear o fluxo principal.
+  try {
+    const itemsForTicket = orderItemsWithInventory.map((i) => {
+      const recipe = (recipes || []).find((r) => (r as { id: string }).id === i.recipe_id) as { name?: string } | undefined;
+      const name = (recipe?.name || "produto").toString();
+      return {
+        name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        subtotal: i.quantity * i.unit_price,
+      };
+    });
+    await sendTicketFlowOrder(supabase as any, customerPhone, {
+      type: "pedido",
+      external_id: orderId,
+      channel: channel === "delivery" ? "delivery" : channel === "balcao" ? "retirada" : "cardapio_digital",
+      total,
+      payment_method,
+      items: itemsForTicket,
+    } as any);
+  } catch (e) {
+    console.error("createOrderFromPayload ticketflow error:", (e as Error).message);
+  }
+
   // Dar baixa no estoque (inventory.stock_grams / slices_available) e, se estiver acabando, avisar donos no WhatsApp.
   for (const i of orderItemsWithInventory) {
     if (!i.inventory_id) continue;
@@ -617,6 +642,27 @@ async function createEncomendaFromPayload(
     }
   } catch (e) {
     console.error("createEncomendaFromPayload sales insert error:", (e as Error).message);
+  }
+
+  // Envia encomenda para a plataforma de notas (TicketFlow) sem bloquear o fluxo principal.
+  try {
+    await sendTicketFlowOrder(supabase as any, (payload.customer_phone as string) || "", {
+      type: "encomenda",
+      external_id: (enc as { id: string }).id,
+      channel: "encomenda",
+      total: total_value,
+      payment_method,
+      items: [
+        {
+          name: product_description,
+          quantity,
+          unit_price: total_value / quantity,
+          subtotal: total_value,
+        },
+      ],
+    } as any);
+  } catch (e) {
+    console.error("createEncomendaFromPayload ticketflow error:", (e as Error).message);
   }
 
   return { ok: true, encomendaId: (enc as { id: string }).id };
