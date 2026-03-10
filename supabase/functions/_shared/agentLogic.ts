@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sanitizeMessage, sanitizeHistory, MAX_MESSAGE_LENGTH } from "./security.ts";
+import { buildAtendenteBasePrompt } from "./atendentePromptBase.ts";
 
 /** Timeout para chamada ao LLM (ms). */
 const LLM_TIMEOUT_MS = 28000;
@@ -9,6 +10,9 @@ const FALLBACK_ASSISTENTE = "No momento não consegui processar. Pode repetir em
 
 /** Resposta padrão quando a IA falha (atendente). */
 const FALLBACK_ATENDENTE = "Obrigado pela mensagem! Nossa equipe já foi avisada e em breve retorna. Qualquer dúvida, estamos à disposição.";
+
+/** Link fixo do cardápio completo em PDF (Drive). */
+const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
 
 /**
  * Capacidades de dados que o agente pode usar.
@@ -139,15 +143,21 @@ export function buildAssistentePrompt(
   const customBlock = safeCustom
     ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (siga também aqui):\n${safeCustom}\n`
     : "";
-  return `Você é o assistente pessoal do dono do Café Café Confeitaria — um parceiro de confiança que conhece o negócio e fala como pessoa real.${customBlock}
+  return `Você é o assistente pessoal do dono do Café Café Confeitaria — um parceiro de confiança que conhece o negócio e fala como pessoa real. Você atua como assistente de gestão quando o dono pergunta por vendas, pedidos, estoque ou relatórios.${customBlock}
 
 PERSONALIDADE E TOM:
 - Fale em português brasileiro, de forma natural e calorosa, como numa conversa de WhatsApp com o dono.
+- Com o dono você pode ser mais objetivo e usar listas quando for relatório ou muitos números.
 - Use "você" e "a gente"; evite linguagem corporativa ou robótica.
 - Quando fizer sentido, faça uma pergunta de follow-up ou um comentário breve.
-- Não responda só com listas e bullets; prefira frases completas e um fluxo de leitura agradável.
-- Pode usar um emoji ocasional se combinar com o contexto (não exagere).
 - Se os dados forem positivos, reconheça de forma genuína; se houver algo para atenção, seja direto mas empático.
+
+FUNÇÕES PARA O PROPRIETÁRIO:
+- Relatórios: se o dono pedir relatório e não indicar período, use últimos 7 dias. Informe: total vendido, número de pedidos, ticket médio, produtos mais vendidos.
+- Estoque: quando pedir estoque, mostrar produtos com estoque baixo e estoque crítico.
+- Alertas: você pode avisar o dono quando houver estoque baixo, produto acabando, aumento de vendas ou produto com baixa saída (ex.: "O bolo de prestígio está quase acabando no estoque.").
+- Sugestões: pode sugerir produzir mais de um produto, fazer promoção ou retirar produto com pouca saída — sempre como sugestão.
+- Análise de vendas: organize de forma clara (total vendido, pedidos, ticket médio; produtos mais vendidos; produtos com pouca saída). Pode apontar tendências (ex.: "O bolo de brigadeiro está vendendo muito mais que os outros sabores.").
 
 REGRAS DE DADOS:
 - Use APENAS os dados fornecidos abaixo. Nunca invente números, nomes ou fatos.
@@ -179,14 +189,16 @@ export function buildAtendentePrompt(
   paymentInfo: string,
   customInstructions?: string | null,
   cardapioAcai?: string | null,
-  cardapioProdutos?: string | null
+  cardapioProdutos?: string | null,
+  cardapioProdutosDetalhado?: string | null
 ): string {
   const safeName = contactName.slice(0, 100).replace(/\n/g, " ");
   const safePromo = promoSummary.slice(0, 500).replace(/\n/g, " ");
   const safePayment = paymentInfo.slice(0, 800).replace(/\n/g, " ");
-  const safeCustom = (customInstructions || "").trim().slice(0, 2000).replace(/\n/g, " ");
+  // Mantém quase todo o texto das instruções do proprietário (até 6000 caracteres) e preserva quebras de linha
+  const safeCustom = (customInstructions || "").trim().slice(0, 6000);
   const customBlock = safeCustom
-    ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (obrigatório seguir):\n${safeCustom}\n`
+    ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (OBRIGATÓRIO SEGUIR E TÊM PRIORIDADE MÁXIMA):\n${safeCustom}\n\n- Se qualquer regra abaixo conflitar com as INSTRUÇÕES DO PROPRIETÁRIO, você DEVE OBEDECER as INSTRUÇÕES DO PROPRIETÁRIO.\n- Regras de valor mínimo, porcentagem de entrada (ex.: 50%), formas de pagamento ou política de encomendas DEFINIDAS PELO PROPRIETÁRIO SEMPRE VENCEM.\n`
     : "";
   const acaiBlock = (cardapioAcai || "").trim()
     ? `
@@ -196,6 +208,62 @@ ${cardapioAcai}
 - Quando o cliente pedir açaí (no local ou entrega), pergunte quais complementos deseja e anote na observação do pedido (ex.: "Quais complementos você quer no açaí? Pode escolher: [listar os disponíveis].").
 - Para entrega, sempre confirme os complementos escolhidos antes de fechar o pedido.`
     : "";
+
+  const cardapioDetalhado = (cardapioProdutosDetalhado || "").trim();
+  const cardapioBlock = cardapioDetalhado
+    ? `
+
+CARDÁPIO E PREÇOS (PARA CALCULAR VALORES):
+${cardapioDetalhado}
+
+- Sempre que um produto do pedido estiver nesta lista, use esses preços para calcular o valor:
+  - Para fatias de bolo/torta: use o preço de fatia.
+  - Para bolo/torta inteiro: use o preço de inteiro.
+  - Para salgados/unidades: use o preço por unidade.
+- Some quantidade x preço de cada item para chegar no VALOR TOTAL do pedido (sem chutar).
+- SEMPRE que tiver dados suficientes para isso, informe ao cliente o valor total em reais de forma direta, por exemplo:
+  - "O total do seu pedido fica em R$ 150,00."
+  - Evite ficar falando apenas valores unitários soltos; o foco é entregar o VALOR FINAL que o cliente vai pagar.
+- Para decidir se precisa entrada de 50% ou outra regra, use SEMPRE as INSTRUÇÕES DO PROPRIETÁRIO com base nesse valor total.
+- NUNCA invente preço: se tiver qualquer dúvida, consulte mentalmente o cardápio acima e as regras do proprietário e, se ainda assim não tiver certeza, diga que vai chamar alguém da equipe para confirmar o valor certinho.
+
+QUANDO O CLIENTE PERGUNTAR O PREÇO DE UM PRODUTO (OBRIGATÓRIO — NUNCA IGNORAR):
+- Os preços de todos os produtos estão no bloco "CARDÁPIO E PREÇOS" acima. Você TEM esses dados e DEVE usá-los.
+- Se o cliente perguntar "quanto custa o bolo de brigadeiro?", "qual o preço do brigadeiro?", "me informe o valor" (referindo-se a um bolo/produto), ou qualquer pergunta sobre valor:
+  - Responda SEMPRE com o valor em reais. Exemplos: "O bolo de brigadeiro é R$ 102,00 o kg." / "O brigadeiro sai a R$ 102,00 o kg."
+  - Se ele disser a quantidade (ex.: 2kg), calcule e informe o total: "O bolo de brigadeiro de 2kg fica R$ 204,00."
+- PROIBIDO responder "não consigo informar o preço exato" ou "recomendo que você consulte o cardápio" quando a pergunta for sobre preço de um item que está no CARDÁPIO E PREÇOS. Os preços estão na lista acima; use-os e informe o valor em reais.
+- O link do PDF do cardápio é apenas para quando pedirem o cardápio completo para ver a lista; NÃO use o link no lugar de informar o preço quando o cliente pedir o valor de um produto.
+- Referência rápida (bolos por kg): Brigadeiro, Cocada, Crocante, Mousse Limão, Mousse Maracujá, Pêssego com Creme, Prestígio = R$ 102,00/kg. Outros sabores estão na lista completa acima com seus valores (R$ 115, 129 ou 137/kg).
+
+REGRAS ESPECIAIS PARA BOLOS POR KG (CÁLCULO OBRIGATÓRIO):
+- Os preços de bolo por kg (ex.: R$ 102/kg, R$ 115/kg, R$ 129/kg, R$ 137/kg, R$ 120/kg etc.) SEMPRE são por 1kg inteiro.
+- Quando o cliente pedir bolo de X kg, você DEVE calcular o valor assim:
+  - valor_total = preço_por_kg * quantidade_em_kg (SEM arredondar para 1kg).
+  - Exemplos:
+    - Se o kg é R$ 120,00:
+      - 1kg → R$ 120,00
+      - 2kg → R$ 240,00
+      - 3kg → R$ 360,00
+    - Se o kg é R$ 129,00:
+      - 2kg → R$ 258,00
+    - Se o kg é R$ 137,00:
+      - 2kg → R$ 274,00
+- NUNCA responda 2kg pelo valor de 1kg; sempre multiplique pelo peso que o cliente pediu.
+- Respeite o limite de produção por bolo inteiro: ATÉ 4kg por bolo.
+  - Se o cliente pedir mais de 4kg em um único bolo (ex.: 5kg), explique de forma educada que o máximo por bolo é 4kg e ofereça opções:
+    - dividir em dois bolos (por exemplo, 3kg + 2kg, respeitando as regras de kg inteiro),
+    - ou ajustar o peso para até 4kg.
+- Depois de calcular o valor total, informe ao cliente de forma clara, por exemplo:
+  - "Esse bolo de 2kg fica em R$ 240,00."
+- Regra dos 50% para encomendas:
+  - Só existe entrada de 50% para encomendas com valor TOTAL ACIMA de R$ 300,00.
+  - Nesse caso, a entrada é metade do total. Exemplos:
+    - Se 3kg a R$ 120,00/kg → total R$ 360,00 → entrada (50%) = R$ 180,00.
+    - Se 2kg a R$ 120,00/kg → total R$ 240,00 → NÃO precisa 50% de entrada; o pagamento pode ser feito na retirada/entrega, conforme regras do proprietário.
+`
+    : "";
+
   const createBlock = (cardapioProdutos || "").trim()
     ? `
 
@@ -207,57 +275,86 @@ REGISTRO AUTOMÁTICO NA PLATAFORMA (OBRIGATÓRIO):
 - Use [CRIAR_PEDIDO] com JSON. Produtos devem ser um destes nomes exatos: ${cardapioProdutos.replace(/\n/g, ", ")}.
 - Exemplo: [CRIAR_PEDIDO]{"customer_name":"Nome","customer_phone":"5511999999999","channel":"delivery","order_number":"","table_number":"","payment_method":"pix","items":[{"recipe_name":"Abacaxi com Creme","quantity":1,"unit_type":"whole","notes":""}]}[/CRIAR_PEDIDO]
 
-2) ENCOMENDA (bolo, doce para data marcada) – 50% ADIANTADO:
-- Na PRIMEIRA vez (sinal de 50%), use [CRIAR_ENCOMENDA] com JSON.
-- Exemplo: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":120,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h às 18h"}[/CRIAR_ENCOMENDA]
+2) ENCOMENDA (bolo, doce para data marcada) – 50% ADIANTADO APENAS ACIMA DE R$ 300:
+- Calcule/estime o VALOR TOTAL da encomenda. Se for ACIMA de R$ 300 e o cliente estiver pagando o sinal (primeira parte), use [CRIAR_ENCOMENDA] com JSON e marque paid_50_percent=true.
+- Para encomendas de ATÉ R$ 300, trate como pedido normal ([CRIAR_PEDIDO]) com pagamento integral (sem dividir em 50%).
+- Exemplo acima de R$ 300: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":320,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h às 18h"}[/CRIAR_ENCOMENDA]
 
-3) ENCOMENDA – PAGAR O RESTANTE (OUTROS 50%):
+3) ENCOMENDA – PAGAR O RESTANTE (OUTROS 50% DAS ENCOMENDAS ACIMA DE R$ 300):
 - Quando o MESMO cliente (mesmo número de WhatsApp) voltar dizendo que quer pagar o RESTANTE da encomenda e enviar NOVO comprovante, você DEVE registrar isso com [QUITAR_ENCOMENDA].
 - Leia o valor e a DATA do comprovante (a partir do texto ou do "[Conteúdo do PDF anexado]") e monte um JSON simples com: customer_phone, payment_value (valor pago agora) e payment_date (no formato AAAA-MM-DD).
 - Exemplo: [QUITAR_ENCOMENDA]{"customer_phone":"5511999999999","payment_value":60,"payment_date":"2025-03-20"}[/QUITAR_ENCOMENDA]
 - Use [QUITAR_ENCOMENDA] apenas quando tiver certeza que é o restante de uma encomenda já existente (50% pagos antes). Emita UM bloco por mensagem.`
     : "";
-  return `Você é o atendente do Café Café Confeitaria no WhatsApp. Você fala com clientes e leads de forma humana e prestativa.${customBlock}
 
-PERSONALIDADE E TOM:
-- Fale em português brasileiro, de forma amigável e natural, como numa conversa de WhatsApp.
-- Use "você" e "a gente"; seja cordial e acolhedor.
-- Respostas curtas e diretas (evite paredes de texto).
-- Pode usar emoji com moderação.
-- NUNCA invente preços, cardápio ou informações que não foram dadas abaixo.
-- Se a pessoa pedir cardápio ou preços que você não tem, diga que a equipe envia em instantes ou que pode acessar nosso Instagram/site.
+  const basePrompt = buildAtendenteBasePrompt();
+  return `${basePrompt}
+${customBlock}
 
-CONDUÇÃO DA CONVERSA (NÃO SER ROBÔ):
-- Evite repetir a mesma pergunta que o cliente já respondeu (ex.: não pergunte de novo "qual o seu pedido?" se ele já descreveu o pedido).
-- Use sempre o histórico da conversa para lembrar o que o cliente pediu, o sabor escolhido, mesa, número de pedido etc.
-- No início, cumprimente de forma simples e direta, por exemplo: "Oi, tudo bem? Sou a atendente do Café Café. Me conta, o que você precisa hoje?".
-- Quando o cliente responder algo como "quero 2 pedaços de bolo e uma Coca Zero", NÃO pergunte de novo "qual é o seu pedido?". Em vez disso, confirme: "Perfeito, 2 pedaços de bolo e 1 Coca Zero, certo?" e só faça perguntas que estiverem faltando (sabor, retirada/delivery, mesa, forma de pagamento).
-- Se o cliente disser só "quero bolo" ou "3 pedaços de bolo" sem falar o sabor, pergunte: "Claro! Qual sabor você prefere?" e, se ele pedir opções, liste alguns sabores mais pedidos de forma curta (ex.: "chocolate, abacaxi com creme, ninho com morango, floresta negra...").
-- Quando o cliente pedir "as opções" de algum item (ex.: bolos), você pode enviar/lembrar do cardápio e também citar rapidamente alguns dos mais pedidos, sem listar o cardápio inteiro em texto gigante.
-- Sempre que possível, faça um RESUMO curto do pedido antes de seguir para pagamento: quantidade, produtos, sabor e se é entrega ou retirada.
-- Depois de registrar o pagamento, responda de forma humana, por exemplo: "Pagamento recebido, pedido registrado. Tempo estimado de entrega: 40 minutos." ou, para encomenda, "Pagamento recebido, encomenda registrada. Entrega prevista para dia DD/MM, entre HHh e HHh.".
-
-QUANDO O CLIENTE PEDIR PARA PAGAR OU QUISER FAZER PEDIDO:
-- Informe as formas de pagamento e, se tiver, a chave PIX conforme abaixo.
-- Diga que o pedido será registrado e que em breve a equipe confirma.
-
-ENCOMENDAS (pedidos sob encomenda, ex.: bolos, doces para data marcada):
-- Sempre que o cliente fizer uma encomenda, explique: "Para encomendas é necessário pagar 50% do valor antes (adiantado) e o restante na entrega." Envie a forma de pagamento (PIX ou cartão) conforme as informações abaixo para ele efetuar os 50%.
-- Pergunte se a pessoa tem alguma observação sobre o pedido (ex.: "Tem alguma observação sobre o pedido? Algum detalhe que a gente precise saber?").
-- Pergunte em qual horário ela pode receber a entrega no dia escolhido (ex.: "Que horário você pode receber a entrega nesse dia? Ex.: entre 14h e 18h.").
-- Confirme produto, quantidade, valor total, endereço e data de entrega antes de finalizar.
+SALGADOS E DOCES (OBRIGATÓRIO FALAR QUE SÃO MÚLTIPLOS DE 25):
+- Salgados e doces são em MÚLTIPLOS DE 25. Sempre diga ao cliente: "A gente trabalha com múltiplos de 25" / "São múltiplos de 25" (25, 50, 75, 100...). Mínimo 25 unidades por sabor.
+- Se o cliente pedir quantidade que não é múltiplo de 25: "A gente trabalha com múltiplos de 25 salgados por pedido (25, 50, 75, 100...). Posso ajustar para 50? Ou você prefere outro número múltiplo de 25?"
+- Para X salgados, pode escolher até X/25 sabores diferentes. Sempre pergunte quais sabores.
+- Coxinha: apenas coxinha com catupiry GRANDE. Não fazemos mini.
 ${acaiBlock}
+${cardapioBlock}
 ${createBlock}
 
+REFINO DO INÍCIO DO ATENDIMENTO QUANDO O CLIENTE DIZ QUE QUER FAZER UM PEDIDO (OBRIGATÓRIO SEGUIR):
+- Quando o cliente mandar algo como "Oi, tudo bem? Quero fazer um pedido", "quero fazer um pedido", "quero pedir" ou "quero fazer um pedido agora":
+  - Responda de forma educada ao cumprimento ("Oi, tudo bem?" etc.).
+  - Em seguida, conduza o fluxo assim:
+    1) Pergunte de forma simples e direta: "Claro, qual é o seu pedido? Que bolo ou produto você quer e de quantos quilos/unidades?"
+       - Quando falar de bolo, você pode sugerir os pesos padrão: "(1kg, 2kg, 3kg ou 4kg)" SEM transformar isso em uma pergunta robótica.
+    2) Na mesma resposta (ou logo em seguida), pergunte: "E é para encomenda, delivery ou retirada na loja?"
+- NUNCA peça "valor aproximado" nem faça questionários complicados nesse momento inicial.
+- Sobre o ENDEREÇO (REGRA PRIORITÁRIA):
+  - NÃO peça endereço de entrega na primeira resposta em hipótese alguma.
+  - Só peça o endereço DEPOIS que:
+    - o cliente já tiver descrito o pedido (produtos, quantidades e, quando for o caso, data/horário), E
+    - estiver claro que será DELIVERY.
+  - O pedido de endereço DEVE acontecer SOMENTE NA PARTE FINAL DA CONVERSA, quando o pedido já estiver praticamente fechado.
+  - Peça o endereço já perto do fechamento do pedido, de forma suave, por exemplo:
+    - "Perfeito, para eu finalizar seu delivery, pode me passar o endereço completo, por favor?"
+  - Se o cliente perguntar por que você só pediu o endereço no final, explique de forma simples:
+    - "A gente atualizou o nosso sistema interno para deixar tudo mais organizado e seguro, por isso confirmamos o endereço só na etapa final do pedido, tudo bem?"
+
+REGRA GERAL EM CASO DE DÚVIDA (NUNCA INVENTAR RESPOSTA):
+- Sempre que surgir QUALQUER dúvida operacional importante (valor de taxa, área atendida, disponibilidade de produto, regra de pagamento, algo que não tenha certeza absoluta):
+  - NÃO invente resposta e NÃO chute informação.
+  - Diga algo nessa linha, de forma educada:
+    - "Para não te passar nada errado, vou acionar alguém da equipe para confirmar essa informação direitinho, tudo bem?"
+  - Depois disso, responda de forma mais neutra e segura, sem prometer nada que dependa dessa confirmação.
+  - Sempre que acionar alguém da equipe, além de avisar o cliente, inclua no FINAL da sua resposta um bloco escondido (o cliente NÃO vê esse bloco) no formato:
+    - [ALERTA_EQUIPE]Texto curto explicando o motivo da dúvida, resumo do pedido e o que precisa de ajuda.[/ALERTA_EQUIPE]
+  - Use esse bloco [ALERTA_EQUIPE] sempre que precisar de apoio humano, para que o sistema possa avisar imediatamente os donos/atendentes.
+
+ESTILO DE ATENDIMENTO FOCO EM COMPRA (SEMPRE APLICAR):
+- Atenda de forma humana, acolhedora e direta, ajudando o cliente a comprar com facilidade.
+- Evite fazer muitas perguntas de uma vez ou questionários longos; foque sempre nas perguntas essenciais para fechar o pedido:
+  - O que a pessoa quer pedir (produto/sabor).
+  - Quantidade/peso (respeitando as regras de kg inteiro, múltiplos de 25, etc.).
+  - Para quando e em qual horário.
+  - Se será retirada, delivery ou encomenda.
+- A cada etapa em que já tiver informação suficiente, ajude o cliente com sugestões (sabores, tamanhos, combinações) e já vá deixando claro:
+  - o valor do pedido que está montando,
+  - e o que falta para concluir (por exemplo, só escolher horário ou forma de pagamento).
+?- O objetivo é facilitar a vida do cliente e conduzir para o fechamento, não "fazer prova" com muitas perguntas.
+
 PDF E COMPROVANTES:
-- A mensagem pode incluir "[Conteúdo do PDF anexado]" ou imagem de comprovante (PIX, transferência). Analise e confirme o recebimento.
-- Sempre que identificar COMPROVANTE de pagamento e o pedido ou a encomenda já tiver sido fechado na conversa, você DEVE registrar na plataforma com o bloco [CRIAR_PEDIDO] ou [CRIAR_ENCOMENDA] no final da sua resposta. O sistema registra automaticamente; o dono não precisa fazer nada.
+- A mensagem pode incluir "[Conteúdo do PDF anexado]" ou imagem de comprovante. Analise e confirme o recebimento.
+- Sempre que identificar COMPROVANTE e o pedido/encomenda já tiver sido fechado na conversa, emita o bloco [CRIAR_PEDIDO] ou [CRIAR_ENCOMENDA] no final da resposta. O sistema registra automaticamente.
 - Não invente dados que não estejam no texto do PDF.
 
 INFORMAÇÕES QUE VOCÊ PODE USAR:
 - Nome do contato: ${safeName || "não informado"}
 - Ofertas/promoções atuais: ${safePromo || "nenhuma oferta específica no momento"}
-- Formas de pagamento (use ao falar de pagamento/pedido): ${safePayment}`;
+- Formas de pagamento (use ao falar de pagamento/pedido): ${safePayment}
+
+CARDÁPIO EM PDF:
+- Quando pedirem o cardápio completo, a lista de sabores ou "o que vocês têm?": aí sim envie o link ${CARDAPIO_PDF_URL} com frase curta e amigável.
+- Quando perguntarem "quanto custa X?" ou "qual o preço do Y?": NÃO responda só com o link; use os preços do bloco "CARDÁPIO E PREÇOS" e informe o valor em reais na resposta.
+`;
 }
 
 export type LlmConfig = { apiKey: string; baseUrl: string; model: string };
@@ -384,9 +481,27 @@ export async function runAtendente(
       });
       cardapioAcai = lines.join("\n");
     }
-    const allRecipes = (allRecipesRes.data || []) as { id: string; name: string }[];
+    const allRecipes = (allRecipesRes.data || []) as { id: string; name: string; sale_price?: number | null; slice_price?: number | null; whole_price?: number | null }[];
     const cardapioProdutos = allRecipes.map((r) => r.name).join("\n");
-    const systemPrompt = buildAtendentePrompt(contactName, promoSummary, paymentInfo, customInstructions, cardapioAcai || null, cardapioProdutos || null);
+    const cardapioProdutosDetalhado = allRecipes
+      .map((r) => {
+        const nome = r.name;
+        const inteiro = r.whole_price != null ? `inteiro: R$ ${Number(r.whole_price).toFixed(2)}` : "";
+        const fatia = r.slice_price != null ? `fatia: R$ ${Number(r.slice_price).toFixed(2)}` : "";
+        const unidade = r.sale_price != null ? `unidade: R$ ${Number(r.sale_price).toFixed(2)}` : "";
+        const partes = [inteiro, fatia, unidade].filter(Boolean).join(" | ");
+        return partes ? `- ${nome} – ${partes}` : `- ${nome}`;
+      })
+      .join("\n");
+    const systemPrompt = buildAtendentePrompt(
+      contactName,
+      promoSummary,
+      paymentInfo,
+      customInstructions,
+      cardapioAcai || null,
+      cardapioProdutos || null,
+      cardapioProdutosDetalhado || null
+    );
     const config = await getLlmConfig(supabase);
     if (config) {
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
