@@ -230,6 +230,29 @@ const Crm = () => {
             )}
           </TabsContent>
 
+          {/* ─── Fichas Tab ─── */}
+          <TabsContent value="fichas" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {fichas.length} ficha{fichas.length !== 1 ? 's' : ''} cadastrada{fichas.length !== 1 ? 's' : ''}
+              </p>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-3.5 w-3.5" />Cadastrar
+              </Button>
+            </div>
+            {fichas.length === 0 ? (
+              <div className="text-center py-16 card-cinematic rounded-xl">
+                <ContactRound className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm font-medium">Nenhuma ficha completa</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">Cadastre clientes com nome, telefone/email e aniversário</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-fit-1 md:grid-cols-fit-2 xl:grid-cols-fit-3 gap-3 min-w-0 w-full">
+                {fichas.map(c => <CustomerFichaCard key={c.id} customer={c} onClick={() => openDetail(c)} />)}
+              </div>
+            )}
+          </TabsContent>
+
           {/* ─── Pipeline Tab ─── */}
           <TabsContent value="pipeline">
             <LeadsKanban />
