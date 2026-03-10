@@ -140,13 +140,9 @@ const FormFields = ({ form, update }: { form: typeof emptyForm; update: (k: stri
         </SelectContent>
       </Select>
     </div>
-    <div>
-      <Label>Familiar (nome)</Label>
-      <Input value={form.family_name} onChange={e => update('family_name', e.target.value)} className="input-glow" />
-    </div>
-    <div>
-      <Label>Aniversário familiar</Label>
-      <Input type="date" value={form.family_birthday} onChange={e => update('family_birthday', e.target.value)} className="input-glow" />
+    <div className="col-span-2">
+      <Label>Endereço</Label>
+      <Input value={form.address} onChange={e => update('address', e.target.value)} placeholder="Rua, número, bairro..." className="input-glow" />
     </div>
   </div>
 );
