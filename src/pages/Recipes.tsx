@@ -42,7 +42,12 @@ const Recipes = () => {
     return g;
   }, [recipes]);
 
-  const filtered = grouped[tab];
+  const filtered = useMemo(() => {
+    const list = grouped[tab];
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter(r => r.name.toLowerCase().includes(q));
+  }, [grouped, tab, search]);
 
   const kpis = useMemo(() => {
     if (!filtered.length) return { count: 0, avgPrice: 0, avgMargin: 0 };
