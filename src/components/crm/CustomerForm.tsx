@@ -35,8 +35,7 @@ const CustomerForm = ({ onSuccess, customer, mode = 'create', open: openProp, on
         phone: customer.phone || '',
         email: customer.email || '',
         birthday: customer.birthday || '',
-        family_name: customer.family_name || '',
-        family_birthday: customer.family_birthday || '',
+        address: (customer as any).address || '',
         preferred_channel: customer.preferred_channel || 'balcao',
       });
     }
