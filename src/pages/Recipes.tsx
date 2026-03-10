@@ -3,9 +3,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useRecipes } from '@/hooks/useRecipes';
 import RecipeForm from '@/components/recipes/RecipeForm';
 import RecipeCard from '@/components/recipes/RecipeCard';
-import { ChefHat, Loader2, Package, TrendingUp, Percent } from 'lucide-react';
+import { ChefHat, Loader2, Package, TrendingUp, Percent, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import type { Recipe } from '@/hooks/useRecipes';
 
 type MarginTab = 'todos' | 'margem_alta' | 'margem_media' | 'margem_baixa' | 'sem_precificacao';
@@ -32,6 +33,7 @@ const Recipes = () => {
   const { data: recipes, isLoading } = useRecipes();
   const { isOwner } = useAuth();
   const [tab, setTab] = useState<MarginTab>('todos');
+  const [search, setSearch] = useState('');
 
   const grouped = useMemo(() => {
     if (!recipes) return { todos: [], margem_alta: [], margem_media: [], margem_baixa: [], sem_precificacao: [] };
@@ -40,7 +42,12 @@ const Recipes = () => {
     return g;
   }, [recipes]);
 
-  const filtered = grouped[tab];
+  const filtered = useMemo(() => {
+    const list = grouped[tab];
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter(r => r.name.toLowerCase().includes(q));
+  }, [grouped, tab, search]);
 
   const kpis = useMemo(() => {
     if (!filtered.length) return { count: 0, avgPrice: 0, avgMargin: 0 };
@@ -65,6 +72,16 @@ const Recipes = () => {
             </p>
           </div>
           {isOwner && <RecipeForm />}
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar produto…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
 
         {isOwner && recipes && recipes.length > 0 && (

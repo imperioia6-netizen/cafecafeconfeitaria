@@ -1,21 +1,38 @@
 
+# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-# Produtos: Barra de pesquisa + Indicação de foto
+## O que muda
 
-## Alterações
+Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
 
-### 1. `src/pages/Recipes.tsx` — Barra de pesquisa
-- Adicionar estado `search` e um `Input` com ícone `Search` entre o header e as tabs.
-- Filtrar `filtered` por nome (case-insensitive) antes de renderizar os cards.
-- Os KPIs refletem a lista já filtrada pela pesquisa.
+## Detalhes Tecnicos
 
-### 2. `src/components/recipes/RecipeCard.tsx` — Exibir foto do produto
-- Adicionar uma seção de imagem no topo do card:
-  - Se `recipe.photo_url` existir: exibir a imagem com `object-cover` em aspecto 16/9.
-  - Se não existir: exibir placeholder com ícone `ImageOff` e badge "Sem foto" para diferenciar visualmente.
-- Mover o conteúdo atual para abaixo da imagem.
+### Arquivo: `src/hooks/useIngredientStock.ts`
+- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
+- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
 
-## Arquivos editados
-- `src/pages/Recipes.tsx`
-- `src/components/recipes/RecipeCard.tsx`
+### Arquivo: `src/components/inventory/EstoqueTab.tsx`
+- Importar icones `Pencil`, `Trash2` do lucide-react
+- Importar `AlertDialog` components para confirmacao de exclusao
+- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
+- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
+- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
+  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
+  - Lixeira (Excluir): abre AlertDialog de confirmacao
+- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
+- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
+- Ambas acoes com try/catch e toast de feedback
 
+### Layout dos botoes no card
+
+Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+
+```text
++----------------------------------+
+| Nome do Ingrediente  [E][X] Baixo|
+| kg                               |
+| ...                              |
++----------------------------------+
+```
+
+Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
