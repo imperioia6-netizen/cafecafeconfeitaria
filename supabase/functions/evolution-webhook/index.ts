@@ -258,19 +258,21 @@ async function findOrCreateLead(
 
 const FALLBACK_REPLY = "Obrigado pela mensagem! Em instantes nossa equipe retorna.";
 
-/** Extrai blocos [CRIAR_PEDIDO], [CRIAR_ENCOMENDA], [QUITAR_ENCOMENDA] e [ATUALIZAR_CLIENTE] da resposta da IA. */
+/** Extrai blocos [CRIAR_PEDIDO], [CRIAR_ENCOMENDA], [QUITAR_ENCOMENDA], [ATUALIZAR_CLIENTE] e [ALERTA_EQUIPE] da resposta da IA. */
 function parseCreateBlocks(reply: string): {
   replyClean: string;
   pedidoJson: Record<string, unknown> | null;
   encomendaJson: Record<string, unknown> | null;
   quitarEncomendaJson: Record<string, unknown> | null;
   atualizarClienteJson: Record<string, unknown> | null;
+  alertaEquipeText: string | null;
 } {
   let replyClean = reply;
   let pedidoJson: Record<string, unknown> | null = null;
   let encomendaJson: Record<string, unknown> | null = null;
   let quitarEncomendaJson: Record<string, unknown> | null = null;
   let atualizarClienteJson: Record<string, unknown> | null = null;
+  let alertaEquipeText: string | null = null;
 
   const pedidoMatch = reply.match(/\[CRIAR_PEDIDO\]([\s\S]*?)\[\/CRIAR_PEDIDO\]/i);
   if (pedidoMatch) {
@@ -312,7 +314,14 @@ function parseCreateBlocks(reply: string): {
     }
   }
 
-  return { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson };
+  // NOVO: Extrair bloco [ALERTA_EQUIPE]
+  const alertaMatch = reply.match(/\[ALERTA_EQUIPE\]([\s\S]*?)\[\/ALERTA_EQUIPE\]/i);
+  if (alertaMatch) {
+    replyClean = replyClean.replace(/\s*\[ALERTA_EQUIPE\][\s\S]*?\[\/ALERTA_EQUIPE\]\s*/gi, "").trim();
+    alertaEquipeText = alertaMatch[1].trim() || null;
+  }
+
+  return { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText };
 }
 
 /** Obtém operator_id para pedidos criados pelo bot: automático (primeiro perfil) ou crm_settings bot_operator_id. */
@@ -814,7 +823,8 @@ serve(async (req) => {
       }
     }
 
-    const { data: settingsRows } = await supabase.from("crm_settings").select("key, value").in("key", [...EVOLUTION_KEYS]);
+    // Fetch settings including ia_paused
+    const { data: settingsRows } = await supabase.from("crm_settings").select("key, value").in("key", [...EVOLUTION_KEYS, "ia_paused"]);
     const evo = getEvolutionConfig(settingsRows || []);
     const headerSecret = req.headers.get("x-webhook-secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || null;
     const querySecret = new URL(req.url || "", "http://x").searchParams.get("secret");
@@ -883,10 +893,42 @@ serve(async (req) => {
 
     const pushName = sanitizeName((data.pushName as string) || "");
 
+    // Check ia_paused setting
+    const allSettingsMap = new Map((settingsRows || []).map((r: { key: string; value: string }) => [r.key, r.value]));
+    const iaPaused = (allSettingsMap.get("ia_paused") || "false").toLowerCase() === "true";
+
     let reply: string;
     try {
       if (isOwner) {
-        reply = await runAssistente(supabase, fullMessage, []);
+        // ===== MELHORIA 2: Buscar histórico do dono de messaages log =====
+        const { data: ownerHistRows } = await supabase
+          .from("messaages log")
+          .select("from_me, text")
+          .eq("remote_jid", remoteJid)
+          .order("id", { ascending: false })
+          .limit(12);
+        const ownerHistory = (ownerHistRows || [])
+          .reverse()
+          .map((m: { from_me: boolean | null; text: string | null }) => ({
+            role: m.from_me ? "assistant" as const : "user" as const,
+            content: (m.text || "").slice(0, 4096),
+          }));
+
+        // Salvar mensagem de entrada do dono
+        await supabase.from("messaages log").insert({
+          remote_jid: remoteJid,
+          from_me: false,
+          text: fullMessage.slice(0, 4096),
+        });
+
+        reply = await runAssistente(supabase, fullMessage, ownerHistory);
+
+        // Salvar resposta de saída para o dono
+        await supabase.from("messaages log").insert({
+          remote_jid: remoteJid,
+          from_me: true,
+          text: reply.slice(0, 4096),
+        });
       } else {
         const customerId = await findOrCreateCustomer(supabase, normalizedPhone, pushName);
         await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessage);
@@ -898,6 +940,22 @@ serve(async (req) => {
           status: "lida",
           sent_at: new Date().toISOString(),
         });
+
+        // ===== MELHORIA 3: Verificar ia_paused =====
+        if (iaPaused) {
+          return new Response(JSON.stringify({ ok: true, paused: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // ===== MELHORIA 1: Carregar sessão de conversa =====
+        const { data: sessionRow } = await supabase
+          .from("sessions")
+          .select("*")
+          .eq("remote_jid", remoteJid)
+          .maybeSingle();
+        const sessionMemory = (sessionRow?.memory as Record<string, unknown>) || {};
 
         const { data: historyRows } = await supabase
           .from("crm_messages")
@@ -914,9 +972,28 @@ serve(async (req) => {
               return { role, content: (m.message_content || "").slice(0, 4096) };
             });
 
-        reply = await runAtendente(supabase, fullMessage, pushName || "Cliente", history);
+        // Injetar contexto da sessão se houver pedido em andamento
+        let enrichedMessage = fullMessage;
+        if (sessionMemory && Object.keys(sessionMemory).length > 0) {
+          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
+        }
 
-        const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson } = parseCreateBlocks(reply);
+        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history);
+
+        const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
+
+        // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
+        if (alertaEquipeText && ownerPhonesList.length > 0) {
+          const alertMsg = `⚠️ Alerta do atendente IA:\n${alertaEquipeText}\n\nCliente: ${pushName || "não identificado"} (${normalizedPhone})`;
+          for (const ownerPhone of ownerPhonesList) {
+            try {
+              await sendEvolutionMessage(evo.baseUrl, evo.apiKey, evo.instance, ownerPhone, alertMsg);
+            } catch (e) {
+              console.error("ALERTA_EQUIPE send error:", (e as Error).message);
+            }
+          }
+        }
+
         if (atualizarClienteJson) {
           const phoneVal = typeof atualizarClienteJson.phone === "string" ? normalizePhone(atualizarClienteJson.phone) : normalizedPhone;
           const parseBirthday = (v: unknown): string | null => {
@@ -960,18 +1037,46 @@ serve(async (req) => {
             }
           }
         }
+
+        // ===== MELHORIA 6: Registrar payment_confirmation antes de criar pedido/encomenda =====
         if (pedidoJson) {
+          await supabase.from("payment_confirmations").insert({
+            customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
+            customer_phone: normalizedPhone,
+            description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
+            type: "pedido",
+            channel: "whatsapp",
+            status: "pending",
+          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
+
           const result = await createOrderFromPayload(supabase, pedidoJson, normalizedPhone, pushName || "Cliente", evo, ownerPhonesList);
           if (result.ok) {
             console.log("evolution-webhook: pedido criado na plataforma", result.orderId);
+            // Limpar sessão após pedido concluído
+            if (sessionRow) {
+              await supabase.from("sessions").update({ memory: {} as any, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
+            }
           } else {
             console.error("evolution-webhook: falha ao criar pedido", result.error);
           }
         }
         if (encomendaJson) {
+          await supabase.from("payment_confirmations").insert({
+            customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
+            customer_phone: normalizedPhone,
+            description: (encomendaJson.product_description as string) || "Encomenda",
+            type: "encomenda",
+            channel: "whatsapp",
+            status: "pending",
+          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
+
           const result = await createEncomendaFromPayload(supabase, encomendaJson);
           if (result.ok) {
             console.log("evolution-webhook: encomenda criada na plataforma", result.encomendaId);
+            // Limpar sessão após encomenda concluída
+            if (sessionRow) {
+              await supabase.from("sessions").update({ memory: {} as any, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
+            }
           } else {
             console.error("evolution-webhook: falha ao criar encomenda", result.error);
           }
@@ -985,6 +1090,22 @@ serve(async (req) => {
           }
         }
         reply = replyClean || reply;
+
+        // ===== MELHORIA 1: Salvar sessão de conversa =====
+        const sessionUpdate: Record<string, unknown> = {
+          memory: {
+            last_message: fullMessage.slice(0, 300),
+            last_reply: reply.slice(0, 300),
+            updated: new Date().toISOString(),
+          },
+          customer_name: pushName || (sessionRow as any)?.customer_name || null,
+          updated_at: new Date().toISOString(),
+        };
+        if (sessionRow) {
+          await supabase.from("sessions").update(sessionUpdate as any).eq("remote_jid", remoteJid);
+        } else {
+          await supabase.from("sessions").insert({ remote_jid: remoteJid, ...sessionUpdate } as Record<string, unknown>).catch(() => {});
+        }
 
         await supabase.from("crm_messages").insert({
           customer_id: customerId,
@@ -1021,4 +1142,3 @@ serve(async (req) => {
     );
   }
 });
-
