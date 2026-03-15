@@ -955,7 +955,21 @@ serve(async (req) => {
           .select("*")
           .eq("remote_jid", remoteJid)
           .maybeSingle();
-        const sessionMemory = (sessionRow?.memory as Record<string, unknown>) || {};
+
+        // Expirar sessões com mais de 24h para evitar contexto obsoleto/antigo
+        let sessionMemory: Record<string, unknown> = {};
+        if (sessionRow) {
+          const updatedAt = sessionRow.updated_at ? new Date(sessionRow.updated_at).getTime() : 0;
+          const now = Date.now();
+          const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+          if (updatedAt > 0 && (now - updatedAt) > TWENTY_FOUR_HOURS) {
+            // Sessão expirada: limpar memory
+            await supabase.from("sessions").update({ memory: {}, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
+            console.log("evolution-webhook: sessão expirada (>24h), memory limpa para", remoteJid);
+          } else {
+            sessionMemory = (sessionRow.memory as Record<string, unknown>) || {};
+          }
+        }
 
         const { data: historyRows } = await supabase
           .from("crm_messages")
