@@ -1,38 +1,75 @@
 
-# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-## O que muda
+# Plano de Melhorias: Agente Conversacional e Automações WhatsApp
 
-Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
+## Análise do Estado Atual
 
-## Detalhes Tecnicos
+O sistema atual tem uma arquitetura funcional mas com vários pontos que podem ser melhorados significativamente:
 
-### Arquivo: `src/hooks/useIngredientStock.ts`
-- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
-- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
+### Problemas Identificados
 
-### Arquivo: `src/components/inventory/EstoqueTab.tsx`
-- Importar icones `Pencil`, `Trash2` do lucide-react
-- Importar `AlertDialog` components para confirmacao de exclusao
-- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
-- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
-- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
-  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
-  - Lixeira (Excluir): abre AlertDialog de confirmacao
-- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
-- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
-- Ambas acoes com try/catch e toast de feedback
+1. **Sem memória de sessão**: O atendente não mantém contexto entre mensagens do mesmo cliente de forma estruturada. O histórico vem de `crm_messages` mas não há "sessão" com estado do pedido em andamento.
 
-### Layout dos botoes no card
+2. **Tabela `sessions` existe mas não é usada**: Há uma tabela `sessions` no banco com campos `memory`, `status`, `type`, `remote_jid`, `total`, `address`, `payment_method` -- mas o `evolution-webhook` ignora completamente essa tabela.
 
-Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+3. **Histórico do dono é vazio**: Quando o dono manda mensagem pelo WhatsApp, `runAssistente` recebe `history: []` (linha 889), perdendo todo o contexto da conversa anterior.
 
-```text
-+----------------------------------+
-| Nome do Ingrediente  [E][X] Baixo|
-| kg                               |
-| ...                              |
-+----------------------------------+
-```
+4. **Sem verificação de IA pausada**: O campo `ia_paused` em `crm_settings` é configurável na UI (`SetupWhatsAppIA.tsx`) mas o webhook não verifica esse flag antes de responder.
 
-Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
+5. **Bloco [ALERTA_EQUIPE] não é processado**: O prompt instrui a IA a emitir `[ALERTA_EQUIPE]`, mas `parseCreateBlocks` não extrai nem processa esse bloco -- nenhum alerta chega aos donos.
+
+6. **Sem confirmação de pagamento pendente**: Pedidos são criados diretamente. A tabela `payment_confirmations` existe mas não é usada pelo fluxo do webhook.
+
+7. **Prompt muito longo**: O prompt do atendente pode ultrapassar 15k tokens com cardápio + regras + instruções, desperdiçando tokens e aumentando latência.
+
+---
+
+## Correções e Melhorias Propostas
+
+### 1. Ativar sessões de conversa (tabela `sessions`)
+- No `evolution-webhook`, antes de chamar `runAtendente`, buscar/criar sessão na tabela `sessions` pelo `remote_jid`
+- Salvar o estado do pedido em andamento (itens, endereço, método de pagamento) no campo `memory` (jsonb)
+- Incluir o resumo da sessão no contexto enviado ao LLM para que ele "lembre" o que já foi combinado
+- Após processar blocos `[CRIAR_PEDIDO]` / `[CRIAR_ENCOMENDA]`, marcar sessão como `concluida`
+
+### 2. Corrigir histórico do dono no WhatsApp
+- Buscar últimas mensagens trocadas entre o dono e o bot (usando `crm_messages` ou `messaages log`) antes de chamar `runAssistente`
+- Passar como `history` para manter continuidade na conversa
+
+### 3. Implementar verificação de `ia_paused`
+- No webhook, antes de gerar resposta da IA, verificar `crm_settings` key `ia_paused`
+- Se pausada: salvar mensagem no `crm_messages` mas NÃO enviar resposta automática
+- Retornar `{ ok: true, paused: true }` sem chamar Evolution API
+
+### 4. Processar bloco [ALERTA_EQUIPE]
+- Adicionar extração de `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]` em `parseCreateBlocks`
+- Quando presente, enviar mensagem via Evolution para todos os números em `ownerPhones` com o conteúdo do alerta
+- Remover o bloco da resposta enviada ao cliente
+
+### 5. Otimizar tamanho do prompt
+- Mover a referência rápida de preços (que está duplicada no prompt E no cardápio detalhado) para usar apenas o cardápio detalhado
+- Truncar o cardápio detalhado se ultrapassar 4000 caracteres
+- Remover regras redundantes entre `atendentePromptBase.ts` e `agentLogic.ts`
+
+### 6. Integrar `payment_confirmations`
+- Quando a IA emitir `[CRIAR_PEDIDO]` ou `[CRIAR_ENCOMENDA]`, antes de criar diretamente, inserir em `payment_confirmations` com status `pending`
+- Isso permite que o dono confirme pagamentos pelo painel antes de finalizar
+
+---
+
+## Arquivos Editados
+
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Otimizar prompt, remover duplicatas |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Remover regras duplicadas com agentLogic |
+
+## Impacto
+
+- Melhora significativa na continuidade das conversas (sessões)
+- Donos recebem alertas quando a IA precisa de ajuda humana
+- Possibilidade de pausar IA sem editar código
+- Redução de custo de tokens (~30% menos no prompt)
+- Zero breaking change para o cliente final
+
