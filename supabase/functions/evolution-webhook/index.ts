@@ -326,7 +326,7 @@ async function getBotOperatorId(supabase: any): Promise<string | null> {
 
 /** Cria pedido + itens + venda na plataforma a partir do JSON emitido pela IA (após comprovante). */
 async function createOrderFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>,
   customerPhone: string,
   customerName: string,
