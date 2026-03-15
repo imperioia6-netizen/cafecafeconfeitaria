@@ -775,6 +775,8 @@ export type Database = {
           decided_by: string | null
           description: string
           id: string
+          order_payload: Json | null
+          remote_jid: string | null
           status: string
           type: string
         }
@@ -788,6 +790,8 @@ export type Database = {
           decided_by?: string | null
           description: string
           id?: string
+          order_payload?: Json | null
+          remote_jid?: string | null
           status?: string
           type?: string
         }
@@ -801,6 +805,8 @@ export type Database = {
           decided_by?: string | null
           description?: string
           id?: string
+          order_payload?: Json | null
+          remote_jid?: string | null
           status?: string
           type?: string
         }
