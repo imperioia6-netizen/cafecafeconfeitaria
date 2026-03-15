@@ -1,39 +1,29 @@
 
-# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-## Melhorias Aplicadas
+# Plano: Bot só responde mensagens da instância configurada
 
-### 1. ✅ Sessões de Conversa (tabela `sessions`)
-- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
-- Contexto da sessão anterior é injetado na mensagem para o LLM
-- Sessão é limpa após criação de pedido/encomenda
+## Problema
+O webhook recebe mensagens de qualquer instância Evolution que aponte para a URL. Quando o usuário trocou o número de atendimento, a instância antiga continuou enviando webhooks e o bot respondeu por ela. Não há validação de qual instância/número enviou o webhook.
 
-### 2. ✅ Histórico do Dono no WhatsApp
-- Mensagens do dono são salvas em `messaages log` (entrada e saída)
-- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
+## Solução
+A Evolution API envia no payload um campo `instance` (ou `instanceName`) identificando qual instância disparou o webhook. Vamos comparar esse campo com o `evolution_instance` configurado em `crm_settings`. Se não bater, ignoramos a mensagem.
 
-### 3. ✅ Verificação de `ia_paused`
-- Webhook verifica `crm_settings.ia_paused` antes de responder
-- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
+## Mudança
 
-### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
-- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
-- Envia alerta via Evolution para todos os números em `ownerPhones`
-- Remove o bloco da resposta enviada ao cliente
+### `supabase/functions/evolution-webhook/index.ts`
+Após extrair `evo` das settings (linha ~828), extrair o nome da instância do payload (`payload.instance`, `payload.instanceName`, ou `payload.server_url`) e comparar com `evo.instance`. Se o nome da instância estiver configurado e o payload vier de outra instância, retornar `{ ok: true, ignored: "wrong_instance" }` sem processar.
 
-### 5. ✅ Otimização de Prompt
-- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
-- Cardápio detalhado truncado se > 4000 caracteres
-- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
+Lógica:
+```
+const payloadInstance = payload.instance || payload.instanceName || "";
+if (evo.instance && evo.instance !== "default" && payloadInstance && payloadInstance !== evo.instance) {
+  return ignore("wrong_instance");
+}
+```
 
-### 6. ✅ Integração `payment_confirmations`
-- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
-- Permite que o dono confirme pagamentos pelo painel
-
-## Arquivos Editados
+Isso garante que o bot só processa mensagens da instância configurada, ignorando webhooks de instâncias antigas ou de teste.
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
-| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
-| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
+| `supabase/functions/evolution-webhook/index.ts` | Validar instância do payload contra a configurada |
+
