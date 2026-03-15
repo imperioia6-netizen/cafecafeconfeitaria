@@ -137,7 +137,7 @@ async function sendEvolutionMessage(
 }
 
 async function findOrCreateCustomer(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   phone: string,
   name: string
 ): Promise<string> {

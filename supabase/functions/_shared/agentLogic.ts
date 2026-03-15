@@ -265,7 +265,7 @@ REGISTRO AUTOMÁTICO NA PLATAFORMA (OBRIGATÓRIO):
 - Quando a mensagem do cliente contiver comprovante (ou "[Conteúdo do PDF anexado]" com valor/transferência) e o pedido/encomenda já tiver sido combinado na conversa, emita SEMPRE o bloco correspondente. Não peça confirmação ao dono; o registro é automático.
 
 1) PEDIDO NORMAL (delivery, balcão, cardápio) – REGISTRO COMPLETO:
-- Use [CRIAR_PEDIDO] com JSON. Produtos devem ser um destes nomes exatos: ${cardapioProdutos.replace(/\n/g, ", ")}.
+- Use [CRIAR_PEDIDO] com JSON. Produtos devem ser um destes nomes exatos: ${(cardapioProdutos ?? "").replace(/\n/g, ", ")}.
 - Exemplo: [CRIAR_PEDIDO]{"customer_name":"Nome","customer_phone":"5511999999999","channel":"delivery","order_number":"","table_number":"","payment_method":"pix","items":[{"recipe_name":"Abacaxi com Creme","quantity":1,"unit_type":"whole","notes":""}]}[/CRIAR_PEDIDO]
 
 2) ENCOMENDA (bolo, doce para data marcada) – 50% ADIANTADO APENAS ACIMA DE R$ 300:
