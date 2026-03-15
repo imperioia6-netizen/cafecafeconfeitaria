@@ -1038,48 +1038,32 @@ serve(async (req) => {
           }
         }
 
-        // ===== MELHORIA 6: Registrar payment_confirmation antes de criar pedido/encomenda =====
+        // ===== MELHORIA 6: Salvar payment_confirmation COM payload (sem criar pedido ainda) =====
         if (pedidoJson) {
           await supabase.from("payment_confirmations").insert({
             customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
             customer_phone: normalizedPhone,
+            remote_jid: remoteJid,
             description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
             type: "pedido",
             channel: "whatsapp",
             status: "pending",
+            order_payload: pedidoJson,
           } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
-
-          const result = await createOrderFromPayload(supabase, pedidoJson, normalizedPhone, pushName || "Cliente", evo, ownerPhonesList);
-          if (result.ok) {
-            console.log("evolution-webhook: pedido criado na plataforma", result.orderId);
-            // Limpar sessão após pedido concluído
-            if (sessionRow) {
-              await supabase.from("sessions").update({ memory: {} as any, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
-            }
-          } else {
-            console.error("evolution-webhook: falha ao criar pedido", result.error);
-          }
+          console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
         }
         if (encomendaJson) {
           await supabase.from("payment_confirmations").insert({
             customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
             customer_phone: normalizedPhone,
+            remote_jid: remoteJid,
             description: (encomendaJson.product_description as string) || "Encomenda",
             type: "encomenda",
             channel: "whatsapp",
             status: "pending",
+            order_payload: encomendaJson,
           } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
-
-          const result = await createEncomendaFromPayload(supabase, encomendaJson);
-          if (result.ok) {
-            console.log("evolution-webhook: encomenda criada na plataforma", result.encomendaId);
-            // Limpar sessão após encomenda concluída
-            if (sessionRow) {
-              await supabase.from("sessions").update({ memory: {} as any, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
-            }
-          } else {
-            console.error("evolution-webhook: falha ao criar encomenda", result.error);
-          }
+          console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
         }
         if (quitarEncomendaJson) {
           const result = await settleEncomendaFromPayload(supabase, quitarEncomendaJson, normalizedPhone);

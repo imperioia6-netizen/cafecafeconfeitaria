@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.public-order]
 verify_jwt = false
+
+[functions.confirm-payment]
+verify_jwt = false
