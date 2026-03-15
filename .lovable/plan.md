@@ -1,25 +1,38 @@
 
+# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
 
-# Corrigir erros de build nas Edge Functions
+## O que muda
 
-## Problema
-Todos os erros de `'never'` acontecem porque `createClient()` sem tipo genérico faz o TypeScript inferir tipos vazios para as tabelas. O erro em `agentLogic.ts` é um null check simples.
+Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
 
-## Correções
+## Detalhes Tecnicos
 
-### 1. `supabase/functions/evolution-webhook/index.ts`
-- Linha 140: Alterar tipo do parâmetro `supabase` de `ReturnType<typeof createClient>` para `any`
-- Todas as outras funções que recebem `supabase` como parâmetro: mesmo tratamento
-- Isso elimina todos os ~20 erros de `'never'` neste arquivo de uma só vez
+### Arquivo: `src/hooks/useIngredientStock.ts`
+- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
+- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
 
-### 2. `supabase/functions/_shared/agentLogic.ts` (linha 268)
-- Alterar `${cardapioProdutos.replace(...)}` para `${(cardapioProdutos ?? "").replace(...)}`
+### Arquivo: `src/components/inventory/EstoqueTab.tsx`
+- Importar icones `Pencil`, `Trash2` do lucide-react
+- Importar `AlertDialog` components para confirmacao de exclusao
+- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
+- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
+- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
+  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
+  - Lixeira (Excluir): abre AlertDialog de confirmacao
+- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
+- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
+- Ambas acoes com try/catch e toast de feedback
 
-### 3. `supabase/functions/agent-chat/index.ts` (linha 23)
-- Alterar `createClient(supabaseUrl, serviceKey)` para `createClient<any>(supabaseUrl, serviceKey)` para consistência
+### Layout dos botoes no card
 
-## Impacto
-- Zero mudança de comportamento em runtime
-- Elimina todos os erros de build listados
-- Arquivos editados: 3
+Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
 
+```text
++----------------------------------+
+| Nome do Ingrediente  [E][X] Baixo|
+| kg                               |
+| ...                              |
++----------------------------------+
+```
+
+Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.

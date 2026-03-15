@@ -137,7 +137,7 @@ async function sendEvolutionMessage(
 }
 
 async function findOrCreateCustomer(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   phone: string,
   name: string
 ): Promise<string> {
@@ -211,7 +211,7 @@ function getSuggestedLeadStatus(currentStatus: string | null, message: string): 
 }
 
 async function findOrCreateLead(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   phone: string,
   name: string,
   message: string
@@ -316,7 +316,7 @@ function parseCreateBlocks(reply: string): {
 }
 
 /** Obtém operator_id para pedidos criados pelo bot: automático (primeiro perfil) ou crm_settings bot_operator_id. */
-async function getBotOperatorId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+async function getBotOperatorId(supabase: any): Promise<string | null> {
   const { data: settings } = await supabase.from("crm_settings").select("value").eq("key", "bot_operator_id").maybeSingle();
   const uid = (settings as { value?: string } | null)?.value?.trim();
   if (uid) return uid;
@@ -326,7 +326,7 @@ async function getBotOperatorId(supabase: ReturnType<typeof createClient>): Prom
 
 /** Cria pedido + itens + venda na plataforma a partir do JSON emitido pela IA (após comprovante). */
 async function createOrderFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>,
   customerPhone: string,
   customerName: string,
@@ -586,7 +586,7 @@ async function createOrderFromPayload(
 
 /** Cria encomenda na plataforma a partir do JSON emitido pela IA (após comprovante 50%). */
 async function createEncomendaFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>
 ): Promise<{ ok: boolean; encomendaId?: string; error?: string }> {
   const customer_name = (payload.customer_name as string)?.trim() || "Cliente WhatsApp";
@@ -670,7 +670,7 @@ async function createEncomendaFromPayload(
 
 /** Quita o restante de uma encomenda (outros 50%), localizando pela combinação telefone + encomenda anterior. */
 async function settleEncomendaFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>,
   customerPhone: string
 ): Promise<{ ok: boolean; encomendaId?: string; error?: string }> {
@@ -769,7 +769,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, serviceKey);
+  const supabase = createClient<any>(supabaseUrl, serviceKey);
 
   try {
     const rawBody = await req.json().catch(() => ({}));
