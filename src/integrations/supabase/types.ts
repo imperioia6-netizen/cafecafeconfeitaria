@@ -350,6 +350,8 @@ export type Database = {
           family_birthday: string | null
           family_name: string | null
           favorite_recipe_id: string | null
+          ia_lock_at: string | null
+          ia_lock_reason: string | null
           id: string
           last_purchase_at: string | null
           name: string
@@ -368,6 +370,8 @@ export type Database = {
           family_birthday?: string | null
           family_name?: string | null
           favorite_recipe_id?: string | null
+          ia_lock_at?: string | null
+          ia_lock_reason?: string | null
           id?: string
           last_purchase_at?: string | null
           name: string
@@ -386,6 +390,8 @@ export type Database = {
           family_birthday?: string | null
           family_name?: string | null
           favorite_recipe_id?: string | null
+          ia_lock_at?: string | null
+          ia_lock_reason?: string | null
           id?: string
           last_purchase_at?: string | null
           name?: string
@@ -757,6 +763,63 @@ export type Database = {
           table_number?: string | null
         }
         Relationships: []
+      }
+      payment_confirmations: {
+        Row: {
+          channel: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string
+          decided_at: string | null
+          decided_by: string | null
+          description: string
+          id: string
+          status: string
+          type: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name: string
+          customer_phone: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description: string
+          id?: string
+          status?: string
+          type?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description?: string
+          id?: string
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_confirmations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_confirmations_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       productions: {
         Row: {
