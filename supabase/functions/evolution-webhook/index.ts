@@ -670,7 +670,7 @@ async function createEncomendaFromPayload(
 
 /** Quita o restante de uma encomenda (outros 50%), localizando pela combinação telefone + encomenda anterior. */
 async function settleEncomendaFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>,
   customerPhone: string
 ): Promise<{ ok: boolean; encomendaId?: string; error?: string }> {
