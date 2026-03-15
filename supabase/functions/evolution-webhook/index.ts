@@ -316,7 +316,7 @@ function parseCreateBlocks(reply: string): {
 }
 
 /** Obtém operator_id para pedidos criados pelo bot: automático (primeiro perfil) ou crm_settings bot_operator_id. */
-async function getBotOperatorId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+async function getBotOperatorId(supabase: any): Promise<string | null> {
   const { data: settings } = await supabase.from("crm_settings").select("value").eq("key", "bot_operator_id").maybeSingle();
   const uid = (settings as { value?: string } | null)?.value?.trim();
   if (uid) return uid;
