@@ -826,6 +826,27 @@ serve(async (req) => {
     // Fetch settings including ia_paused
     const { data: settingsRows } = await supabase.from("crm_settings").select("key, value").in("key", [...EVOLUTION_KEYS, "ia_paused"]);
     const evo = getEvolutionConfig(settingsRows || []);
+
+    // ── Validar instância: só responder se o payload vier da instância configurada ──
+    const payloadInstance = (
+      (data as Record<string, unknown>).instance ||
+      (data as Record<string, unknown>).instanceName ||
+      (payload as Record<string, unknown>).instance ||
+      (payload as Record<string, unknown>).instanceName ||
+      ""
+    ) as string;
+    if (
+      evo.instance &&
+      evo.instance !== "default" &&
+      payloadInstance &&
+      payloadInstance !== evo.instance
+    ) {
+      console.log(`[webhook] Ignorando: instância do payload "${payloadInstance}" ≠ configurada "${evo.instance}"`);
+      return new Response(JSON.stringify({ ok: true, ignored: "wrong_instance" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const headerSecret = req.headers.get("x-webhook-secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || null;
     const querySecret = new URL(req.url || "", "http://x").searchParams.get("secret");
     if (!verifyWebhookSecret(evo.webhookSecret, headerSecret, querySecret)) {
