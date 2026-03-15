@@ -1,38 +1,39 @@
 
-# Adicionar Botoes de Editar e Excluir nos Cards de Ingredientes
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-## O que muda
+## Melhorias Aplicadas
 
-Cada card de ingrediente no painel de Estoque ganha dois botoes no canto superior direito: **Editar** (icone de lapis) e **Excluir** (icone de lixeira). O botao de editar abre um dialog pre-preenchido com os dados do ingrediente para alteracao. O botao de excluir pede confirmacao antes de remover.
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-## Detalhes Tecnicos
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-### Arquivo: `src/hooks/useIngredientStock.ts`
-- Adicionar hook `useUpdateIngredient` que permite atualizar todos os campos do ingrediente (name, unit, price_per_unit, stock_quantity, min_stock, expiry_date)
-- Adicionar hook `useDeleteIngredient` que deleta o ingrediente pelo id
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-### Arquivo: `src/components/inventory/EstoqueTab.tsx`
-- Importar icones `Pencil`, `Trash2` do lucide-react
-- Importar `AlertDialog` components para confirmacao de exclusao
-- Adicionar estado `editingItem` (IngredientStock | null) para controlar o dialog de edicao
-- Adicionar estado `deletingId` (string | null) para controlar o alert de exclusao
-- No header de cada card (ao lado dos badges), adicionar dois botoes pequenos com icones:
-  - Lapis (Editar): abre o dialog de edicao com os dados pre-preenchidos
-  - Lixeira (Excluir): abre AlertDialog de confirmacao
-- Reutilizar o mesmo layout do dialog de criacao para o dialog de edicao, com titulo "Editar Ingrediente" e botao "Salvar Alteracoes"
-- O AlertDialog de exclusao mostra mensagem "Tem certeza que deseja excluir {nome}?" com botoes "Cancelar" e "Excluir"
-- Ambas acoes com try/catch e toast de feedback
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-### Layout dos botoes no card
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-Os botoes de editar e excluir ficam discretos no canto superior direito do card, entre o nome e os badges de status. Sao botoes ghost/outline pequenos (size="icon", variante "ghost") para nao poluir visualmente, mas ficam acessiveis.
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
-```text
-+----------------------------------+
-| Nome do Ingrediente  [E][X] Baixo|
-| kg                               |
-| ...                              |
-+----------------------------------+
-```
+## Arquivos Editados
 
-Onde [E] = icone lapis, [X] = icone lixeira, ambos com hover sutil.
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
