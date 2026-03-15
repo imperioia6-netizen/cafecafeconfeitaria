@@ -482,7 +482,7 @@ export async function runAtendente(
     }
     const allRecipes = (allRecipesRes.data || []) as { id: string; name: string; sale_price?: number | null; slice_price?: number | null; whole_price?: number | null }[];
     const cardapioProdutos = allRecipes.map((r) => r.name).join("\n");
-    const cardapioProdutosDetalhado = allRecipes
+    let cardapioProdutosDetalhado = allRecipes
       .map((r) => {
         const nome = r.name;
         const inteiro = r.whole_price != null ? `inteiro: R$ ${Number(r.whole_price).toFixed(2)}` : "";
@@ -492,6 +492,10 @@ export async function runAtendente(
         return partes ? `- ${nome} – ${partes}` : `- ${nome}`;
       })
       .join("\n");
+    // Truncar cardápio se ultrapassar 4000 caracteres para economizar tokens
+    if (cardapioProdutosDetalhado.length > 4000) {
+      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardápio truncado)";
+    }
     const systemPrompt = buildAtendentePrompt(
       contactName,
       promoSummary,
