@@ -211,7 +211,7 @@ function getSuggestedLeadStatus(currentStatus: string | null, message: string): 
 }
 
 async function findOrCreateLead(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   phone: string,
   name: string,
   message: string
