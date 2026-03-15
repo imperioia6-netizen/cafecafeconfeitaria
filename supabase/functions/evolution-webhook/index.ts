@@ -586,7 +586,7 @@ async function createOrderFromPayload(
 
 /** Cria encomenda na plataforma a partir do JSON emitido pela IA (após comprovante 50%). */
 async function createEncomendaFromPayload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   payload: Record<string, unknown>
 ): Promise<{ ok: boolean; encomendaId?: string; error?: string }> {
   const customer_name = (payload.customer_name as string)?.trim() || "Cliente WhatsApp";
