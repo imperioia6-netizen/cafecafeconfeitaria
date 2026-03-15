@@ -3,7 +3,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Phone, User } from "lucide-react";
 import { toast } from "sonner";
 
 type PaymentStatus = "pending" | "confirmed" | "rejected";
@@ -40,20 +40,33 @@ const ConfirmPayments = () => {
 
   useEffect(() => {
     load();
+
+    // Realtime: escuta novos comprovantes pendentes
+    const channel = supabase
+      .channel("payment_confirmations_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payment_confirmations" },
+        () => { load(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const updateStatus = async (id: string, status: PaymentStatus) => {
+  const handleAction = async (id: string, action: "confirmed" | "rejected") => {
     setUpdatingId(id);
     try {
-      const { error } = await supabase
-        .from("payment_confirmations")
-        .update({ status, decided_at: new Date().toISOString() })
-        .eq("id", id);
+      const { data, error } = await supabase.functions.invoke("confirm-payment", {
+        body: { id, action },
+      });
       if (error) throw error;
-      toast.success(status === "confirmed" ? "Pagamento confirmado" : "Pagamento recusado");
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) throw new Error(result.error || "Erro desconhecido");
+      toast.success(action === "confirmed" ? "Pagamento confirmado e pedido criado!" : "Comprovante recusado. Mensagem enviada ao cliente.");
       await load();
-    } catch {
-      toast.error("Erro ao atualizar status");
+    } catch (e) {
+      toast.error("Erro ao processar: " + (e as Error).message);
     } finally {
       setUpdatingId(null);
     }
@@ -65,7 +78,7 @@ const ConfirmPayments = () => {
         <div>
           <h1 className="page-title">Comprovar Pagamentos</h1>
           <p className="text-muted-foreground/70 mt-1 tracking-wide text-sm">
-            Confirme ou recuse comprovantes enviados pelo WhatsApp. Ao confirmar/recusar, o agente envia a mensagem apropriada para o cliente.
+            Confirme ou recuse comprovantes enviados pelo WhatsApp. Ao confirmar, o pedido é criado e o cliente recebe confirmação. Ao recusar, o cliente recebe aviso para reenviar.
           </p>
         </div>
 
@@ -84,15 +97,22 @@ const ConfirmPayments = () => {
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border rounded-lg px-4 py-3 bg-background/60"
+                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border rounded-lg px-5 py-4 bg-background/60"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary" className="text-[11px]">
                           {item.type === "encomenda" ? "Encomenda" : "Pedido"}
                         </Badge>
-                        <span className="font-medium text-sm">
-                          Confirmar comprovante de pagamento de {item.customer_name} ({item.customer_phone})
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="flex items-center gap-1.5 font-semibold text-sm">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {item.customer_name}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Phone className="h-3.5 w-3.5" />
+                          {item.customer_phone}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{item.description}</p>
@@ -100,13 +120,13 @@ const ConfirmPayments = () => {
                         Recebido em {new Date(item.created_at).toLocaleString("pt-BR")}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                       <Button
                         size="sm"
                         variant="outline"
                         className="border-emerald-500/50 text-emerald-700 dark:text-emerald-300"
                         disabled={updatingId === item.id}
-                        onClick={() => updateStatus(item.id, "confirmed")}
+                        onClick={() => handleAction(item.id, "confirmed")}
                       >
                         {updatingId === item.id ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -120,7 +140,7 @@ const ConfirmPayments = () => {
                         variant="outline"
                         className="border-destructive/40 text-destructive"
                         disabled={updatingId === item.id}
-                        onClick={() => updateStatus(item.id, "rejected")}
+                        onClick={() => handleAction(item.id, "rejected")}
                       >
                         {updatingId === item.id ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -142,4 +162,3 @@ const ConfirmPayments = () => {
 };
 
 export default ConfirmPayments;
-
