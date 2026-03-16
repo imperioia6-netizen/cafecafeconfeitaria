@@ -230,6 +230,19 @@ export function useFinalizeOrder() {
         }
       }
 
+      // Fire-and-forget: encaminha venda finalizada para plataforma externa
+      fireForwardOrder({
+        customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        items: items.map((i: any) => ({
+          product_name: i.recipes?.name || 'Produto',
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        payment_method,
+        channel: order.channel || 'balcao',
+      });
+
       return sale;
     },
     onSuccess: () => {
