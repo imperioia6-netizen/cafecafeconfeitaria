@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+/** Fire-and-forget: encaminha encomenda para a plataforma externa */
+function fireForwardOrder(payload: Record<string, unknown>) {
+  supabase.functions.invoke('forward-order', { body: payload }).catch((e) => {
+    console.error('forward-order invoke error', e);
+  });
+}
+
 export type EncomendaStatus = 'pendente' | 'confirmado' | '50_pago' | 'em_preparo' | 'entregue' | 'cancelado';
 export type EncomendaPaymentMethod = 'pix' | 'credito' | 'debito' | 'dinheiro';
 
