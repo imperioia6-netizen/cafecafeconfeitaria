@@ -84,6 +84,18 @@ export function useCreateOrder() {
         );
         if (itemsErr) throw itemsErr;
       }
+      // Fire-and-forget: encaminha para plataforma externa
+      fireForwardOrder({
+        customer_name: input.customer_name,
+        items: input.items.map(i => ({
+          product_name: 'Produto', // nome será resolvido na edge function se necessário
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        payment_method: 'cash',
+        channel: input.channel || 'balcao',
+      });
+
       return order;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
