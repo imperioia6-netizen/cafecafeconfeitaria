@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+/** Fire-and-forget: encaminha encomenda para a plataforma externa */
+function fireForwardOrder(payload: Record<string, unknown>) {
+  supabase.functions.invoke('forward-order', { body: payload }).catch((e) => {
+    console.error('forward-order invoke error', e);
+  });
+}
+
 export type EncomendaStatus = 'pendente' | 'confirmado' | '50_pago' | 'em_preparo' | 'entregue' | 'cancelado';
 export type EncomendaPaymentMethod = 'pix' | 'credito' | 'debito' | 'dinheiro';
 
@@ -85,6 +92,23 @@ export function useCreateEncomenda() {
         .select()
         .single();
       if (error) throw error;
+
+      // Fire-and-forget: encaminha encomenda para plataforma externa
+      fireForwardOrder({
+        customer_name: input.customer_name,
+        customer_phone: input.customer_phone,
+        items: [{
+          product_name: input.product_description,
+          quantity: input.quantity ?? 1,
+          unit_price: input.total_value / (input.quantity ?? 1),
+        }],
+        payment_method: input.payment_method,
+        delivery_date: input.delivery_date,
+        delivery_time: input.delivery_time_slot,
+        delivery_type: 'delivery',
+        address: input.address,
+      });
+
       return data as Encomenda;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['encomendas'] }),
