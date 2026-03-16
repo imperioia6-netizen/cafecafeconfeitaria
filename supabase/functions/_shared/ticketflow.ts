@@ -78,6 +78,26 @@ export async function sendTicketFlowOrder(
     attendant: "IA WhatsApp",
   };
 
+  // Sync customer to external platform
+  const syncCustomersUrl = "https://dlugexjpftqwkfawlnov.supabase.co/functions/v1/sync-customers";
+  try {
+    await fetch(syncCustomersUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{
+        name: customerName,
+        phone: customerPhone,
+        street,
+        number,
+        neighborhood,
+        city,
+      }]),
+    });
+  } catch (e) {
+    console.error("sync-customers exception", (e as Error).message);
+  }
+
+  // Send order to external platform
   try {
     const res = await fetch(endpoint, {
       method: "POST",

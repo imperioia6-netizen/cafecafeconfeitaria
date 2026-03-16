@@ -129,6 +129,50 @@ Deno.serve(async (req) => {
 
     const total = orderItems.reduce((s, i) => s + i.subtotal, 0);
 
+    // Forward to external platform (fire-and-forget)
+    try {
+      const receiveOrdersUrl = "https://dlugexjpftqwkfawlnov.supabase.co/functions/v1/receive-orders";
+      const syncCustomersUrl = "https://dlugexjpftqwkfawlnov.supabase.co/functions/v1/sync-customers";
+
+      // Sync customer
+      fetch(syncCustomersUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([{
+          name: customer_name.trim(),
+          phone: customer_phone?.trim() || "",
+          street: "", number: "", neighborhood: "", city: "Osasco",
+        }]),
+      }).catch(() => {});
+
+      // Forward order
+      fetch(receiveOrdersUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: {
+            name: customer_name.trim(),
+            phone: customer_phone?.trim() || "",
+            street: "", number: "", neighborhood: "", city: "Osasco",
+          },
+          items: orderItems.map((oi) => {
+            const recipe = recipeMap.get(oi.recipe_id);
+            return {
+              productName: recipe?.name || "Produto",
+              quantity: oi.quantity,
+              unitPrice: oi.unit_price,
+              category: "CAKES",
+              unit: oi.unit_type === "whole" ? "KG" : "UN",
+            };
+          }),
+          paymentMethod: "cash",
+          deliveryType: "pickup",
+        }),
+      }).catch(() => {});
+    } catch (e) {
+      console.error("forward to external platform error:", e);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
