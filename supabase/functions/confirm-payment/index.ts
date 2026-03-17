@@ -364,5 +364,26 @@ async function createEncomendaFromPayload(
     console.error("createEncomendaFromPayload sales insert error:", (e as Error).message);
   }
 
+  // Encaminhar para plataforma externa
+  try {
+    await sendTicketFlowOrder(supabase, (payload.customer_phone as string) || "", {
+      type: "encomenda",
+      channel: "delivery",
+      total: total_value,
+      payment_method,
+      items: [{
+        name: product_description,
+        quantity,
+        unit_price: total_value / quantity,
+        category: null,
+        unit: "UN",
+      }],
+      deliveryDate: (payload.delivery_date as string) || null,
+      deliveryTime: (payload.delivery_time_slot as string) || null,
+    });
+  } catch (e) {
+    console.error("confirm-payment: erro ao encaminhar encomenda para plataforma externa", (e as Error).message);
+  }
+
   return { ok: true, encomendaId: (enc as any).id };
 }
