@@ -1,39 +1,32 @@
 
-# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-## Melhorias Aplicadas
+# Plano: Corrigir 9 erros de build TypeScript nas Edge Functions
 
-### 1. ✅ Sessões de Conversa (tabela `sessions`)
-- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
-- Contexto da sessão anterior é injetado na mensagem para o LLM
-- Sessão é limpa após criação de pedido/encomenda
+Os erros foram introduzidos pelo rebase do Cursor. São todos erros de tipagem simples.
 
-### 2. ✅ Histórico do Dono no WhatsApp
-- Mensagens do dono são salvas em `messaages log` (entrada e saída)
-- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
+## Arquivo 1: `supabase/functions/evolution-webhook/index.ts` (7 erros)
 
-### 3. ✅ Verificação de `ia_paused`
-- Webhook verifica `crm_settings.ia_paused` antes de responder
-- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
+| Linha | Erro | Correção |
+|---|---|---|
+| 517 | `r` implicitly `any` | Adicionar tipo `(r: any)` |
+| 570 | `r` implicitly `any` | Adicionar tipo `(r: any)` |
+| 901 | `.catch` não existe em `PromiseLike` | Trocar por `try { await ... } catch (_) {}` |
+| 1016 | `history` tipo incompatível com `runAtendente` | Cast: `history as { role: "user" \| "assistant"; content: string }[]` |
+| 1087 | `.catch` não existe em `PostgrestFilterBuilder` | Remover `.catch(...)`, usar try/catch ou ignorar |
+| 1100 | `.catch` não existe em `PostgrestFilterBuilder` | Remover `.catch(...)`, usar try/catch ou ignorar |
+| 1126 | `.catch` não existe em `PostgrestFilterBuilder` | Trocar por `try { await ... } catch (_) {}` |
 
-### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
-- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
-- Envia alerta via Evolution para todos os números em `ownerPhones`
-- Remove o bloco da resposta enviada ao cliente
+## Arquivo 2: `supabase/functions/inventory-alert/index.ts` (1 erro)
 
-### 5. ✅ Otimização de Prompt
-- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
-- Cardápio detalhado truncado se > 4000 caracteres
-- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
+| Linha | Erro | Correção |
+|---|---|---|
+| 117 | Cast direto falha (recipes é array vs objeto) | Usar `as unknown as { ... }` (double cast) |
 
-### 6. ✅ Integração `payment_confirmations`
-- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
-- Permite que o dono confirme pagamentos pelo painel
+## Arquivo 3: `supabase/functions/public-order/index.ts` (1 erro)
 
-## Arquivos Editados
+| Linha | Erro | Correção |
+|---|---|---|
+| 187 | `err` is `unknown` | Trocar `err.message` por `(err as Error).message` |
 
-| Arquivo | Mudança |
-|---|---|
-| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
-| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
-| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
+Nenhuma mudança de lógica -- apenas ajustes de tipagem para o build passar.
+
