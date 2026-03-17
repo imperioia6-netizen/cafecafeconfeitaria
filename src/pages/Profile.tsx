@@ -29,6 +29,7 @@ const Profile = () => {
       .then(({ data }) => {
         if (data) {
           setProfileId(data.id);
+          setPhotoUrl(data.photo_url || null);
           setForm({ name: data.name || '', phone: data.phone || '', birthday: data.birthday || '', family_name: data.family_name || '', family_birthday: data.family_birthday || '' });
         }
         setLoading(false);
