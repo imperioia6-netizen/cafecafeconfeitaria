@@ -514,7 +514,7 @@ async function createOrderFromPayload(
   // Envia pedido para a plataforma de notas (TicketFlow) sem bloquear o fluxo principal.
   try {
     const itemsForTicket = orderItemsWithInventory.map((i) => {
-      const recipe = (recipes || []).find((r) => (r as { id: string }).id === i.recipe_id) as { name?: string } | undefined;
+      const recipe = (recipes || []).find((r: any) => (r as { id: string }).id === i.recipe_id) as { name?: string } | undefined;
       const name = (recipe?.name || "produto").toString();
       return {
         name,
