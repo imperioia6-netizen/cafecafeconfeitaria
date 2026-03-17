@@ -304,23 +304,40 @@ export async function callLlm(
     { role: "user", content: safeMessage },
   ];
   const url = `${config.baseUrl}/chat/completions`;
-  const res = await fetch(url, {
-    method: "POST",
-    signal,
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: config.model, messages, temperature: 0.3, max_tokens: 1024 }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM error: ${res.status} ${text.slice(0, 200)}`);
+  const candidates = new Set<string>([config.model]);
+  if (config.baseUrl.includes("lovable.dev")) {
+    // Gateway pode exigir provider/model. Mantemos fallback para evitar indisponibilidade total.
+    candidates.add("openai/gpt-4o");
+    candidates.add("gpt-4o");
+    candidates.add("google/gemini-3-flash-preview");
   }
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (typeof content !== "string") return "Desculpe, não consegui processar sua mensagem.";
-  return content.slice(0, 4096).trim();
+
+  let lastErr = "";
+  for (const model of candidates) {
+    const res = await fetch(url, {
+      method: "POST",
+      signal,
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, messages, temperature: 0.3, max_tokens: 1024 }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      lastErr = `model=${model} status=${res.status} ${text.slice(0, 200)}`;
+      continue;
+    }
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || !content.trim()) {
+      lastErr = `model=${model} resposta vazia`;
+      continue;
+    }
+    return content.slice(0, 4096).trim();
+  }
+
+  throw new Error(`LLM error: ${lastErr || "sem resposta válida dos modelos"}`);
 }
 
 export async function runAssistente(
