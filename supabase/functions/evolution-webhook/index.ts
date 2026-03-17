@@ -116,6 +116,72 @@ function buildRecentHistoryHint(history: { role: "user" | "assistant"; content: 
   return lines.join("\n");
 }
 
+function buildPreviousQuestionHint(
+  history: { role: "user" | "assistant"; content: string }[],
+  currentMessage: string
+): string {
+  const recentAssistant = [...history].reverse().find((h) => h.role === "assistant" && !!h.content?.trim());
+  if (!recentAssistant) return "";
+  const msg = (currentMessage || "").trim();
+  if (!msg || msg.length > 80) return "";
+  if (!recentAssistant.content.includes("?")) return "";
+  return `A mensagem atual parece resposta da pergunta anterior do atendente.\nPergunta anterior: ${recentAssistant.content.slice(0, 220)}\nResposta atual do cliente: ${msg}`;
+}
+
+function splitAboveFourKg(totalKg: number): number[] {
+  const parts: number[] = [];
+  let rem = totalKg;
+  while (rem > 4) {
+    parts.push(4);
+    rem -= 4;
+  }
+  if (rem > 0) parts.push(rem);
+  return parts;
+}
+
+function detectCakePriceIntent(
+  fullMessage: string,
+  recipes: { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]
+): string | null {
+  const msgNorm = normalizeForCompare(fullMessage);
+  const asksPrice = msgNorm.includes("preco") || msgNorm.includes("valor") || msgNorm.includes("quanto");
+  const talksCake = msgNorm.includes("bolo");
+  if (!asksPrice || !talksCake || recipes.length === 0) return null;
+
+  const byName = recipes
+    .map((r) => ({
+      name: r.name,
+      norm: normalizeForCompare(r.name),
+      price: Number(r.whole_price ?? r.sale_price ?? r.slice_price ?? 0),
+    }))
+    .filter((r) => r.price > 0)
+    .sort((a, b) => b.norm.length - a.norm.length);
+
+  const matched = byName.find((r) => msgNorm.includes(r.norm));
+  if (!matched) return null;
+
+  const kgMatch = fullMessage.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+  if (!kgMatch) {
+    return `O bolo de ${matched.name} está R$ ${matched.price.toFixed(2)} por kg 😊`;
+  }
+
+  const kg = Number((kgMatch[1] || "").replace(",", "."));
+  if (!Number.isFinite(kg) || kg <= 0) return null;
+  if (!Number.isInteger(kg)) {
+    return `Para bolo por kg a gente trabalha com peso inteiro (1kg, 2kg, 3kg ou 4kg por bolo) 😊`;
+  }
+
+  if (kg > 4) {
+    const parts = splitAboveFourKg(kg);
+    const total = kg * matched.price;
+    const splitText = parts.map((p) => `${p}kg`).join(" + ");
+    return `Para ${kg}kg, dividimos em mais de um bolo por causa do limite da forma: ${splitText}. O valor total fica R$ ${total.toFixed(2)} (R$ ${matched.price.toFixed(2)}/kg).`;
+  }
+
+  const total = kg * matched.price;
+  return `O bolo de ${matched.name} com ${kg}kg fica R$ ${total.toFixed(2)} (R$ ${matched.price.toFixed(2)}/kg).`;
+}
+
 function extractBoloRecommendations(text: string): string[] {
   const out: string[] = [];
   const matches = text.match(/bolo\s+de\s+[a-zA-ZÀ-ÿ0-9\s]+/gi) || [];
@@ -152,10 +218,13 @@ function enforceReplyGuardrails(
     msg.includes("sugere") ||
     msg.includes("sugestao") ||
     msg.includes("sugestão") ||
-    msg.includes("qual bolo");
+    msg.includes("qual bolo") ||
+    msg.includes("qual outro") ||
+    msg.includes("teria outro");
   if (!askedRecommendation) return replyText;
   if (!hasInvalidRecommendation(replyText, recipeNames)) return replyText;
-  return `Claro! Para te recomendar certinho, eu sigo apenas os sabores que estão no nosso cardápio oficial 😊\n\nSe quiser, te envio agora os sabores disponíveis e te indico os mais pedidos de hoje: ${CARDAPIO_PDF_URL}`;
+  const top = recipeNames.slice(0, 4).join(", ");
+  return `Claro! Para te recomendar certinho, eu sigo apenas os sabores do cardápio oficial 😊\n\nAlgumas opções que temos aqui: ${top}.\nSe quiser, te envio o cardápio completo: ${CARDAPIO_PDF_URL}`;
 }
 
 async function sendEvolutionMessage(
@@ -1015,9 +1084,11 @@ serve(async (req) => {
         await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessage);
         const { data: recipeRows } = await supabase
           .from("recipes")
-          .select("name")
+          .select("name, whole_price, sale_price, slice_price")
           .eq("active", true);
-        const recipeNames = ((recipeRows || []) as { name?: string }[])
+        const recipeRowsTyped = ((recipeRows || []) as { name?: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[])
+          .filter((r) => !!r.name);
+        const recipeNames = recipeRowsTyped
           .map((r) => (r.name || "").trim())
           .filter((n) => n.length > 0);
 
@@ -1064,7 +1135,7 @@ serve(async (req) => {
           .select("message_type, message_content")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: false })
-          .limit(20);
+          .limit(30);
 
         let history =
           (historyRows || [])
@@ -1086,11 +1157,20 @@ serve(async (req) => {
           enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
         }
         const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
+        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
         if (recentHistoryHint) {
           enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
         }
+        if (previousQuestionHint) {
+          enrichedMessage = `[CONTINUIDADE DE CONTEXTO]\n${previousQuestionHint}\n\n${enrichedMessage}`;
+        }
 
-        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
+        const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
+        if (deterministicPriceReply) {
+          reply = deterministicPriceReply;
+        } else {
+          reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
+        }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
         const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
