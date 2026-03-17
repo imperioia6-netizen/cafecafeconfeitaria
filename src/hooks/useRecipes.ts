@@ -94,10 +94,36 @@ export function useDeleteRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('recipes').delete().eq('id', id);
-      if (error) throw error;
+      // Tenta exclusão física primeiro.
+      const { data, error } = await supabase
+        .from('recipes')
+        .delete()
+        .eq('id', id)
+        .select('id');
+
+      if (!error && (data?.length || 0) > 0) {
+        return { mode: 'deleted' as const };
+      }
+
+      // Se não excluiu (RLS/relacionamentos), tenta desativação segura.
+      const { data: updated, error: updErr } = await supabase
+        .from('recipes')
+        .update({ active: false })
+        .eq('id', id)
+        .select('id')
+        .single();
+
+      if (updErr || !updated?.id) {
+        const msg = error?.message || updErr?.message || 'Não foi possível excluir nem desativar o produto.';
+        throw new Error(msg);
+      }
+
+      return { mode: 'deactivated' as const };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recipes'] });
+      qc.invalidateQueries({ queryKey: ['recipes', 'active'] });
+    },
   });
 }
 

@@ -116,6 +116,53 @@ function buildRecentHistoryHint(history: { role: "user" | "assistant"; content: 
   return lines.join("\n");
 }
 
+function extractOrderMemory(history: { role: "user" | "assistant"; content: string }[]): {
+  hasCake: boolean;
+  items: string[];
+} {
+  const text = history.map((h) => h.content || "").join("\n");
+  const items: string[] = [];
+  const cakeMatches = text.match(/bolo[^\n]*\d+\s*kg[^\n]*/gi) || [];
+  const miniMatches = text.match(/\d+\s*mini[^\n]*/gi) || [];
+  for (const m of [...cakeMatches, ...miniMatches]) {
+    const cleaned = m.replace(/\s+/g, " ").trim().slice(0, 160);
+    if (cleaned.length >= 6) items.push(cleaned);
+  }
+  const dedup = [...new Set(items)];
+  const hasCake = dedup.some((i) => normalizeForCompare(i).includes("bolo"));
+  return { hasCake, items: dedup.slice(-8) };
+}
+
+function buildOrderMemoryHint(history: { role: "user" | "assistant"; content: string }[]): string {
+  const mem = extractOrderMemory(history);
+  if (mem.items.length === 0) return "";
+  return `[MEMORIA_DO_PEDIDO_EM_ANDAMENTO]
+Itens já citados/confirmados na conversa:
+${mem.items.map((i) => `- ${i}`).join("\n")}
+Regra: não perder itens já confirmados. Se cliente perguntar "e meu bolo?", retome o bolo já citado.
+[/MEMORIA_DO_PEDIDO_EM_ANDAMENTO]`;
+}
+
+function enforceCakeContinuity(
+  replyText: string,
+  fullMessage: string,
+  history: { role: "user" | "assistant"; content: string }[]
+): string {
+  const msg = normalizeForCompare(fullMessage);
+  const asksCakeFollowup =
+    msg.includes("meu bolo") ||
+    msg.includes("e o bolo") ||
+    msg.includes("e meu bolo") ||
+    msg.includes("cadê o bolo");
+  if (!asksCakeFollowup) return replyText;
+  const mem = extractOrderMemory(history);
+  if (!mem.hasCake) return replyText;
+  const rep = normalizeForCompare(replyText);
+  if (rep.includes("bolo")) return replyText;
+  const rememberedCake = mem.items.find((i) => normalizeForCompare(i).includes("bolo")) || "bolo já combinado";
+  return `Perfeito, não esqueci do seu bolo 😊\n\nAté agora está combinado: ${rememberedCake}.\nSe quiser, eu já te passo o resumo completo com bolo + salgados e o valor final certinho.`;
+}
+
 function buildPreviousQuestionHint(
   history: { role: "user" | "assistant"; content: string }[],
   currentMessage: string
@@ -1277,6 +1324,7 @@ serve(async (req) => {
           enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
         }
         const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
+        const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[]);
         const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
         const intent = detectIntent(fullMessage);
         const stage = deriveStage(sessionMemory, intent, fullMessage);
@@ -1286,6 +1334,9 @@ serve(async (req) => {
         }
         if (previousQuestionHint) {
           enrichedMessage = `[CONTINUIDADE DE CONTEXTO]\n${previousQuestionHint}\n\n${enrichedMessage}`;
+        }
+        if (orderMemoryHint) {
+          enrichedMessage = `${orderMemoryHint}\n\n${enrichedMessage}`;
         }
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
         const timeHint = `[HORA_ATUAL_SP]\nAgora em São Paulo: ${nowSp}\nUse essa referência para decidir regras de horário e prazo do mesmo dia.\n[/HORA_ATUAL_SP]`;
@@ -1401,6 +1452,7 @@ serve(async (req) => {
         }
         reply = guardedReplyClean || replyClean || reply;
         reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessage);
+        reply = enforceCakeContinuity(reply, fullMessage, history as { role: "user" | "assistant"; content: string }[]);
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         const sessionUpdate: Record<string, unknown> = {
