@@ -898,7 +898,7 @@ serve(async (req) => {
     }
 
     if (messageId) {
-      await supabase.from("webhook_processed_events").insert({ id: messageId }).then(() => {}).catch(() => {});
+      try { await supabase.from("webhook_processed_events").insert({ id: messageId }); } catch (_) {}
     }
 
     const owner = await getOwner(supabase);
