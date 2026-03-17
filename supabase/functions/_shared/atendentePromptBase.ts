@@ -67,7 +67,9 @@ BOLOS DO DIA (R$25,00 A FATIA):
 - Se o cliente quiser o bolo inteiro ou por kg, aplique as regras normais de preço por kg do cardápio.
 
 DECORAÇÃO DE BOLO:
-- Taxa de decoração: R$30,00. Sempre informar e somar ao valor total.
+- Taxa de decoração: R$30,00.
+- Só informar e somar a taxa se o cliente pedir decoração.
+- Quando o cliente pedir decoração, anote exatamente a descrição da decoração nas observações do produto (sem resumir e sem inventar). Use o texto do cliente.
 
 SALGADOS E DOCES:
 - Mínimo 25 unidades por sabor. Pedidos em múltiplos de 25.

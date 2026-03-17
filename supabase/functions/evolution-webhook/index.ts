@@ -139,6 +139,48 @@ function splitAboveFourKg(totalKg: number): number[] {
   return parts;
 }
 
+function extractDecorationRequestFromMessage(fullMessage: string): string | null {
+  const text = (fullMessage || "").trim();
+  if (!text) return null;
+  const norm = normalizeForCompare(text);
+  const askedDecoration =
+    norm.includes("decoracao") ||
+    norm.includes("decorar") ||
+    norm.includes("decorado") ||
+    norm.includes("topo") ||
+    norm.includes("chantininho") ||
+    norm.includes("pasta americana");
+  if (!askedDecoration) return null;
+  return text.slice(0, 300);
+}
+
+function applyDecorationToPedidoPayload(
+  pedidoJson: Record<string, unknown> | null,
+  decorationText: string | null
+): Record<string, unknown> | null {
+  if (!pedidoJson || !decorationText) return pedidoJson;
+  const items = (pedidoJson.items as Array<Record<string, unknown>> | undefined) || [];
+  if (items.length === 0) return pedidoJson;
+  const mapped = items.map((it) => {
+    const note = (typeof it.notes === "string" ? it.notes.trim() : "");
+    const line = `Decoração solicitada (mensagem do cliente): "${decorationText}"`;
+    if (note) return { ...it, notes: `${note} | ${line}`.slice(0, 500) };
+    return { ...it, notes: line.slice(0, 500) };
+  });
+  return { ...pedidoJson, items: mapped };
+}
+
+function applyDecorationToEncomendaPayload(
+  encomendaJson: Record<string, unknown> | null,
+  decorationText: string | null
+): Record<string, unknown> | null {
+  if (!encomendaJson || !decorationText) return encomendaJson;
+  const obs = typeof encomendaJson.observations === "string" ? encomendaJson.observations.trim() : "";
+  const line = `Decoração solicitada (mensagem do cliente): "${decorationText}"`;
+  const merged = obs ? `${obs} | ${line}` : line;
+  return { ...encomendaJson, observations: merged.slice(0, 500) };
+}
+
 function detectCakePriceIntent(
   fullMessage: string,
   recipes: { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]
@@ -1173,6 +1215,9 @@ serve(async (req) => {
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
+        const decorationText = extractDecorationRequestFromMessage(fullMessage);
+        const pedidoJsonWithDecoration = applyDecorationToPedidoPayload(pedidoJson, decorationText);
+        const encomendaJsonWithDecoration = applyDecorationToEncomendaPayload(encomendaJson, decorationText);
         const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
@@ -1232,32 +1277,32 @@ serve(async (req) => {
         }
 
         // ===== MELHORIA 6: Salvar payment_confirmation COM payload (sem criar pedido ainda) =====
-        if (pedidoJson) {
+        if (pedidoJsonWithDecoration) {
           try {
             await supabase.from("payment_confirmations").insert({
-              customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
+              customer_name: (pedidoJsonWithDecoration.customer_name as string) || pushName || "Cliente",
               customer_phone: normalizedPhone,
               remote_jid: remoteJid,
-              description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
+              description: JSON.stringify(pedidoJsonWithDecoration.items || []).slice(0, 500),
               type: "pedido",
               channel: "whatsapp",
               status: "pending",
-              order_payload: pedidoJson,
+              order_payload: pedidoJsonWithDecoration,
             } as Record<string, unknown>);
             console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
           } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
         }
-        if (encomendaJson) {
+        if (encomendaJsonWithDecoration) {
           try {
             await supabase.from("payment_confirmations").insert({
-              customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
+              customer_name: (encomendaJsonWithDecoration.customer_name as string) || pushName || "Cliente",
               customer_phone: normalizedPhone,
               remote_jid: remoteJid,
-              description: (encomendaJson.product_description as string) || "Encomenda",
+              description: (encomendaJsonWithDecoration.product_description as string) || "Encomenda",
               type: "encomenda",
               channel: "whatsapp",
               status: "pending",
-              order_payload: encomendaJson,
+              order_payload: encomendaJsonWithDecoration,
             } as Record<string, unknown>);
             console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
           } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }

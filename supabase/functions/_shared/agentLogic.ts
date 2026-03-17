@@ -230,9 +230,11 @@ REGISTRO AUTOMÁTICO NA PLATAFORMA:
 
 1) PEDIDO NORMAL: [CRIAR_PEDIDO] com JSON. Nomes exatos: ${(cardapioProdutos ?? "").replace(/\n/g, ", ")}.
 Exemplo: [CRIAR_PEDIDO]{"customer_name":"Nome","customer_phone":"5511999999999","channel":"delivery","order_number":"","table_number":"","payment_method":"pix","items":[{"recipe_name":"Abacaxi com Creme","quantity":1,"unit_type":"whole","notes":""}]}[/CRIAR_PEDIDO]
+- Se o cliente pedir decoração, escreva no campo "notes" do item a descrição EXATA que o cliente falou.
 
 2) ENCOMENDA acima de R$300 (50% entrada): [CRIAR_ENCOMENDA] com paid_50_percent=true.
 Exemplo: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":320,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h às 18h"}[/CRIAR_ENCOMENDA]
+- Se houver decoração, coloque a descrição EXATA do cliente no campo "observations".
 
 3) QUITAR ENCOMENDA (restante dos 50%): [QUITAR_ENCOMENDA] com customer_phone, payment_value, payment_date.
 Exemplo: [QUITAR_ENCOMENDA]{"customer_phone":"5511999999999","payment_value":60,"payment_date":"2025-03-20"}[/QUITAR_ENCOMENDA]
