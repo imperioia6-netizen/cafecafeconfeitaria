@@ -1084,11 +1084,11 @@ serve(async (req) => {
             channel: "whatsapp",
             status: "pending",
             order_payload: pedidoJson,
-          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
+          } as Record<string, unknown>);
           console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
-        }
+        } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
         if (encomendaJson) {
-          await supabase.from("payment_confirmations").insert({
+          try { await supabase.from("payment_confirmations").insert({
             customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
             customer_phone: normalizedPhone,
             remote_jid: remoteJid,
@@ -1097,7 +1097,8 @@ serve(async (req) => {
             channel: "whatsapp",
             status: "pending",
             order_payload: encomendaJson,
-          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
+          } as Record<string, unknown>);
+          } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
           console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
         }
         if (quitarEncomendaJson) {
