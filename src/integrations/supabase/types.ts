@@ -412,6 +412,54 @@ export type Database = {
           },
         ]
       }
+      delivery_zones: {
+        Row: {
+          ativo: boolean
+          bairro: string
+          cidade: string
+          created_at: string
+          distancia_km: number | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          max_pedidos_dia: number
+          taxa: number
+          taxa_max: number | null
+          tempo_estimado: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          bairro: string
+          cidade?: string
+          created_at?: string
+          distancia_km?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          max_pedidos_dia?: number
+          taxa?: number
+          taxa_max?: number | null
+          tempo_estimado?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          bairro?: string
+          cidade?: string
+          created_at?: string
+          distancia_km?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          max_pedidos_dia?: number
+          taxa?: number
+          taxa_max?: number | null
+          tempo_estimado?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       encomendas: {
         Row: {
           address: string | null
@@ -420,6 +468,7 @@ export type Database = {
           customer_phone: string | null
           delivery_date: string | null
           delivery_time_slot: string | null
+          delivery_zone_id: string | null
           id: string
           observations: string | null
           paid_50_percent: boolean
@@ -438,6 +487,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_date?: string | null
           delivery_time_slot?: string | null
+          delivery_zone_id?: string | null
           id?: string
           observations?: string | null
           paid_50_percent?: boolean
@@ -456,6 +506,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_date?: string | null
           delivery_time_slot?: string | null
+          delivery_zone_id?: string | null
           id?: string
           observations?: string | null
           paid_50_percent?: boolean
@@ -467,7 +518,22 @@ export type Database = {
           total_value?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "encomendas_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encomendas_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones_disponibilidade"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       influence_discounts: {
         Row: {
@@ -722,6 +788,7 @@ export type Database = {
           customer_phone: string | null
           delivery_started_at: string | null
           delivery_status: string | null
+          delivery_zone_id: string | null
           estimated_delivery_minutes: number | null
           id: string
           notes: string | null
@@ -738,6 +805,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_started_at?: string | null
           delivery_status?: string | null
+          delivery_zone_id?: string | null
           estimated_delivery_minutes?: number | null
           id?: string
           notes?: string | null
@@ -754,6 +822,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_started_at?: string | null
           delivery_status?: string | null
+          delivery_zone_id?: string | null
           estimated_delivery_minutes?: number | null
           id?: string
           notes?: string | null
@@ -762,7 +831,22 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           table_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones_disponibilidade"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_confirmations: {
         Row: {
@@ -1287,7 +1371,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      delivery_zones_disponibilidade: {
+        Row: {
+          bairro: string | null
+          cidade: string | null
+          disponivel: boolean | null
+          distancia_km: number | null
+          id: string | null
+          max_pedidos_dia: number | null
+          pedidos_hoje: number | null
+          taxa: number | null
+          taxa_max: number | null
+          vagas_restantes: number | null
+        }
+        Insert: {
+          bairro?: string | null
+          cidade?: string | null
+          disponivel?: never
+          distancia_km?: number | null
+          id?: string | null
+          max_pedidos_dia?: number | null
+          pedidos_hoje?: never
+          taxa?: number | null
+          taxa_max?: number | null
+          vagas_restantes?: never
+        }
+        Update: {
+          bairro?: string | null
+          cidade?: string | null
+          disponivel?: never
+          distancia_km?: number | null
+          id?: string | null
+          max_pedidos_dia?: number | null
+          pedidos_hoje?: never
+          taxa?: number | null
+          taxa_max?: number | null
+          vagas_restantes?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       crm_auto_return: { Args: never; Returns: undefined }
@@ -1298,8 +1420,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      haversine_km: {
+        Args: { lat1: number; lat2: number; lon1: number; lon2: number }
+        Returns: number
+      }
       is_employee: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      pedidos_dia_por_zona: { Args: { zone_id: string }; Returns: number }
     }
     Enums: {
       alert_type: "estoque_baixo" | "validade_12h" | "desperdicio" | "outro"

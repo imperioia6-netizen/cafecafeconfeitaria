@@ -1,40 +1,39 @@
 
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-# Diagnóstico das alterações feitas pelo Claude Code
+## Melhorias Aplicadas
 
-## Erro de Build (e Runtime)
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-**Arquivo:** `supabase/functions/_shared/agentLogic.ts`, linha 404
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-**Problema:** Foi adicionado `.catch(() => ({ data: [] }))` na query da view `delivery_zones_disponibilidade`. O query builder do Supabase (PostgREST) **não é uma Promise nativa** — ele não tem método `.catch()`. Isso causa:
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-1. **Erro de build (TypeScript):** `Property 'catch' does not exist on type 'PostgrestFilterBuilder'`
-2. **Erro de runtime (logs):** `supabase.from(...).select(...).order(...).catch is not a function` — este erro está quebrando o agente do WhatsApp inteiro (aparece dezenas de vezes nos logs)
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-## O que foi adicionado
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-A query na linha 404 busca dados de `delivery_zones_disponibilidade` (uma view que mostra bairros, taxas, vagas restantes para delivery). A intenção do `.catch()` era evitar falha caso a view não exista, mas a sintaxe está errada.
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
-Também foram adicionadas (linhas 441-460) a montagem de texto das zonas de delivery para injetar no prompt do atendente — isso está correto, só a query que está com erro.
+## Arquivos Editados
 
-## Correção
-
-**Linha 404** — Substituir a query com `.catch()` por uma chamada wrapped em `Promise.resolve().then()` para ter um `.catch()` válido:
-
-```typescript
-// De:
-supabase.from("delivery_zones_disponibilidade").select("...").order("bairro").catch(() => ({ data: [] })),
-
-// Para:
-supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro").then(res => res, () => ({ data: [] })),
-```
-
-Alternativa mais limpa — usar `await` separado com try/catch em vez de colocar dentro do `Promise.all`. Mas a correção mínima é trocar `.catch()` por `.then(res => res, () => ({ data: [] }))` que funciona no PostgREST builder (o `.then()` **é** suportado).
-
-## Impacto
-
-Esta é a causa do agente WhatsApp não responder — **todo** request ao atendente falha nessa linha e cai no catch genérico retornando a mensagem de fallback, mas o erro ocorre antes do envio da resposta, quebrando o fluxo.
-
-### Arquivo alterado
-- `supabase/functions/_shared/agentLogic.ts`: corrigir linha 404
-
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
