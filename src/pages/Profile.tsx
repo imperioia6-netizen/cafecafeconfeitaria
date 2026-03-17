@@ -86,19 +86,27 @@ const Profile = () => {
                 <div className="absolute bottom-4 right-1/4 w-16 h-16 rounded-full animate-float" style={{ background: 'radial-gradient(circle, hsl(36 70% 50% / 0.08), transparent)', animationDelay: '2s' }} />
               </div>
 
-              <div className="relative inline-block">
+              <div className="relative inline-block group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <Avatar className="h-20 w-20 mx-auto shadow-xl animate-scale-in ring-4 ring-background">
+                  {photoUrl && <AvatarImage src={photoUrl} alt={form.name} />}
                   <AvatarFallback className="bg-accent text-accent-foreground text-2xl font-bold">
                     {initials || '?'}
                   </AvatarFallback>
                 </Avatar>
+                {/* Camera overlay */}
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mx-auto h-20 w-20"
+                  style={{ left: '50%', transform: 'translateX(-50%)' }}>
+                  {uploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                </div>
                 {/* Animated ring */}
                 <div className="absolute inset-[-4px] rounded-full animate-ring-rotate"
                   style={{
                     border: '2px solid transparent',
                     borderTopColor: 'hsl(36 70% 50% / 0.5)',
                     borderRightColor: 'hsl(36 70% 50% / 0.2)',
+                    left: '50%', transform: 'translateX(-50%)', width: 'calc(5rem + 8px)', height: 'calc(5rem + 8px)',
                   }} />
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
               <h2 className="text-xl font-bold mt-4" style={{ color: 'hsl(36 40% 95%)' }}>{form.name || 'Sem nome'}</h2>
               <div className="flex justify-center gap-2 mt-2">
