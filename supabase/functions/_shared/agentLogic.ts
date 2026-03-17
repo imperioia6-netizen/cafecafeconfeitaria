@@ -301,7 +301,13 @@ REGISTRO AUTOMÁTICO NA PLATAFORMA (OBRIGATÓRIO):
     : "";
 
   const basePrompt = buildAtendenteBasePrompt();
-  return `${basePrompt}
+  return `REGRA #1 (PRIORIDADE MÁXIMA — NUNCA IGNORAR):
+Você SÓ pode citar, recomendar, sugerir ou mencionar produtos/sabores que estejam na lista "CARDÁPIO E PREÇOS" deste prompt. Se um produto NÃO está nessa lista, ele NÃO EXISTE no nosso cardápio. NUNCA invente sabores como "bolo de cenoura", "torta de limão", "bolo de chocolate com recheio de morango" etc. se eles não estiverem EXATAMENTE na lista. Antes de citar QUALQUER produto, confira mentalmente se ele aparece na lista.
+
+REGRA #2 (CONVERSA CONTÍNUA — NUNCA IGNORAR):
+Você está em uma CONVERSA CONTÍNUA com o cliente pelo WhatsApp. As mensagens anteriores (histórico) são da MESMA conversa e do MESMO cliente. SEMPRE leia o histórico inteiro antes de responder. Mantenha coerência com o que já foi dito, não repita perguntas já respondidas, e conecte suas respostas ao contexto da conversa. Se o cliente já disse o que quer, não pergunte de novo.
+
+${basePrompt}
 ${customBlock}
 
 SALGADOS E DOCES (OBRIGATÓRIO FALAR QUE SÃO MÚLTIPLOS DE 25):
@@ -373,6 +379,11 @@ INFORMAÇÕES QUE VOCÊ PODE USAR:
 CARDÁPIO EM PDF:
 - Quando pedirem o cardápio completo, a lista de sabores ou "o que vocês têm?": aí sim envie o link ${CARDAPIO_PDF_URL} com frase curta e amigável.
 - Quando perguntarem "quanto custa X?" ou "qual o preço do Y?": NÃO responda só com o link; use os preços do bloco "CARDÁPIO E PREÇOS" e informe o valor em reais na resposta.
+
+LEMBRETE FINAL (RELEIA ANTES DE CADA RESPOSTA):
+- PRODUTOS: Antes de citar QUALQUER produto ou sabor, confira se ele está na lista "CARDÁPIO E PREÇOS" acima. Se NÃO estiver, NÃO cite, NÃO recomende, NÃO sugira. Isso inclui recomendações. Nunca invente produtos.
+- CONTEXTO: Releia o histórico da conversa. Não repita perguntas já respondidas. Mantenha o fluxo natural.
+- VALORES: Calcule (quantidade × preço do cardápio) antes de informar qualquer valor. Nunca chute.
 `;
 }
 
@@ -408,7 +419,7 @@ export async function callLlm(
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
-    ...history.slice(-12).map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, MAX_MESSAGE_LENGTH) })),
+    ...history.slice(-20).map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, MAX_MESSAGE_LENGTH) })),
     { role: "user", content: safeMessage },
   ];
   const url = `${config.baseUrl}/chat/completions`;

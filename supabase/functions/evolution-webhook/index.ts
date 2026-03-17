@@ -997,7 +997,7 @@ serve(async (req) => {
           .select("message_type, message_content")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: false })
-          .limit(12);
+          .limit(20);
 
         const history =
           (historyRows || [])
