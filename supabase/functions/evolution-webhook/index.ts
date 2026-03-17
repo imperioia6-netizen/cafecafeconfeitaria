@@ -1287,7 +1287,9 @@ serve(async (req) => {
         if (previousQuestionHint) {
           enrichedMessage = `[CONTINUIDADE DE CONTEXTO]\n${previousQuestionHint}\n\n${enrichedMessage}`;
         }
-        enrichedMessage = `${controlHint}\n\n${enrichedMessage}`;
+        const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+        const timeHint = `[HORA_ATUAL_SP]\nAgora em São Paulo: ${nowSp}\nUse essa referência para decidir regras de horário e prazo do mesmo dia.\n[/HORA_ATUAL_SP]`;
+        enrichedMessage = `${timeHint}\n\n${controlHint}\n\n${enrichedMessage}`;
 
         const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
