@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getOwner, isOwnerPhoneInList, parseOwnerPhonesList, normalizePhone } from "../_shared/getOwner.ts";
 import { runAssistente, runAtendente } from "../_shared/agentLogic.ts";
+import type { PromptIntent, PromptStage } from "../_shared/atendentePromptModules.ts";
 import { sendTicketFlowOrder } from "../_shared/ticketflow.ts";
 import {
   sanitizeMessage,
@@ -118,19 +119,45 @@ function buildRecentHistoryHint(history: { role: "user" | "assistant"; content: 
 
 function extractOrderMemory(history: { role: "user" | "assistant"; content: string }[]): {
   hasCake: boolean;
+  hasSalgados: boolean;
   items: string[];
 } {
   const text = history.map((h) => h.content || "").join("\n");
   const items: string[] = [];
+
+  // Bolos com kg
   const cakeMatches = text.match(/bolo[^\n]*\d+\s*kg[^\n]*/gi) || [];
+  // Bolos por sabor (ex: "Bolo Ninho com Morango de 4kg")
+  const cakeNameMatches = text.match(/bolo\s+(?:de\s+)?[a-záàâãéèêíïóôõúüç\s]+(?:\d+\s*kg)?/gi) || [];
+  // Mini salgados
   const miniMatches = text.match(/\d+\s*mini[^\n]*/gi) || [];
-  for (const m of [...cakeMatches, ...miniMatches]) {
-    const cleaned = m.replace(/\s+/g, " ").trim().slice(0, 160);
-    if (cleaned.length >= 6) items.push(cleaned);
+  // Salgados por nome (25 coxinhas, 25 quibes, etc.)
+  const salgadoMatches = text.match(/\d+\s*(?:mini\s+)?(?:coxinha|quibe|bolinha|risole|empada|esfiha|enrolado|kibe)[^\n]*/gi) || [];
+  // Quantidades genéricas com "salgados"
+  const salgadoGenMatches = text.match(/\d+\s*(?:mini\s+)?salgados?[^\n]*/gi) || [];
+  // Açaí
+  const acaiMatches = text.match(/acai[^\n]*/gi) || text.match(/açaí[^\n]*/gi) || [];
+  // Docinhos
+  const docinhoMatches = text.match(/\d+\s*(?:brigadeiro|beijinho|cajuzinho|docinho)[^\n]*/gi) || [];
+  // Fatias
+  const fatiaMatches = text.match(/\d+\s*fatia[^\n]*/gi) || [];
+  // Preços mencionados pelo atendente (ex: "R$548", "Total: R$723")
+  const totalMatches = text.match(/total[:\s]*r\$\s*[\d.,]+/gi) || [];
+
+  const allMatches = [
+    ...cakeMatches, ...cakeNameMatches, ...miniMatches, ...salgadoMatches,
+    ...salgadoGenMatches, ...acaiMatches, ...docinhoMatches, ...fatiaMatches, ...totalMatches
+  ];
+
+  for (const m of allMatches) {
+    const cleaned = m.replace(/\s+/g, " ").trim().slice(0, 200);
+    if (cleaned.length >= 5) items.push(cleaned);
   }
   const dedup = [...new Set(items)];
-  const hasCake = dedup.some((i) => normalizeForCompare(i).includes("bolo"));
-  return { hasCake, items: dedup.slice(-8) };
+  const norm = dedup.map(i => normalizeForCompare(i));
+  const hasCake = norm.some(i => i.includes("bolo"));
+  const hasSalgados = norm.some(i => i.includes("salgado") || i.includes("mini") || i.includes("coxinha") || i.includes("quibe") || i.includes("risole"));
+  return { hasCake, hasSalgados, items: dedup.slice(-12) };
 }
 
 function buildOrderMemoryHint(history: { role: "user" | "assistant"; content: string }[]): string {
@@ -149,18 +176,39 @@ function enforceCakeContinuity(
   history: { role: "user" | "assistant"; content: string }[]
 ): string {
   const msg = normalizeForCompare(fullMessage);
+
+  // Detectar se o cliente está perguntando sobre item do pedido
   const asksCakeFollowup =
-    msg.includes("meu bolo") ||
-    msg.includes("e o bolo") ||
-    msg.includes("e meu bolo") ||
-    msg.includes("cadê o bolo");
-  if (!asksCakeFollowup) return replyText;
+    msg.includes("meu bolo") || msg.includes("e o bolo") || msg.includes("e meu bolo") ||
+    msg.includes("cade o bolo") || msg.includes("cadê o bolo") || msg.includes("esqueceu o bolo") ||
+    msg.includes("e o pedido") || msg.includes("meu pedido");
+  const asksSalgadoFollowup =
+    msg.includes("meus salgados") || msg.includes("e os salgados") || msg.includes("e meus salgados");
+
+  if (!asksCakeFollowup && !asksSalgadoFollowup) return replyText;
+
   const mem = extractOrderMemory(history);
-  if (!mem.hasCake) return replyText;
+  if (mem.items.length === 0) return replyText;
+
   const rep = normalizeForCompare(replyText);
-  if (rep.includes("bolo")) return replyText;
-  const rememberedCake = mem.items.find((i) => normalizeForCompare(i).includes("bolo")) || "bolo já combinado";
-  return `Perfeito, não esqueci do seu bolo 😊\n\nAté agora está combinado: ${rememberedCake}.\nSe quiser, eu já te passo o resumo completo com bolo + salgados e o valor final certinho.`;
+
+  // Se perguntou do bolo e a resposta já menciona bolo, ok
+  if (asksCakeFollowup && rep.includes("bolo") && mem.hasCake) return replyText;
+  // Se perguntou de salgados e a resposta já menciona, ok
+  if (asksSalgadoFollowup && (rep.includes("salgado") || rep.includes("mini")) && mem.hasSalgados) return replyText;
+
+  // Montar resumo com todos os itens do pedido
+  const itemsList = mem.items
+    .filter(i => {
+      const n = normalizeForCompare(i);
+      return n.includes("bolo") || n.includes("mini") || n.includes("salgado") || n.includes("coxinha") || n.includes("quibe");
+    })
+    .map(i => `• ${i}`)
+    .join("\n");
+
+  if (!itemsList) return replyText;
+
+  return `Não esqueci! 😊 Seu pedido até agora:\n${itemsList}\n\nQuer confirmar tudo ou mudar alguma coisa?`;
 }
 
 function buildPreviousQuestionHint(
@@ -175,31 +223,65 @@ function buildPreviousQuestionHint(
   return `A mensagem atual parece resposta da pergunta anterior do atendente.\nPergunta anterior: ${recentAssistant.content.slice(0, 220)}\nResposta atual do cliente: ${msg}`;
 }
 
-type ConversationIntent =
-  | "greeting"
-  | "start_order"
-  | "ask_price"
-  | "ask_recommendation"
-  | "delivery_urgency"
-  | "payment_proof"
-  | "other";
-
-type ConversationStage =
-  | "start"
-  | "collecting_items"
-  | "awaiting_order_type"
-  | "confirming_order"
-  | "awaiting_payment"
-  | "post_payment";
+// Reusar tipos do módulo de prompts para garantir consistência
+type ConversationIntent = PromptIntent;
+type ConversationStage = PromptStage;
 
 function detectIntent(fullMessage: string): ConversationIntent {
   const msg = normalizeForCompare(fullMessage);
-  if (/^(oi|ola|olá|boa noite|bom dia|boa tarde)\b/.test(msg)) return "greeting";
-  if (msg.includes("comprovante") || msg.includes("pix") || msg.includes("paguei") || msg.includes("pago")) return "payment_proof";
-  if (msg.includes("preco") || msg.includes("valor") || msg.includes("quanto")) return "ask_price";
-  if (msg.includes("recomenda") || msg.includes("sugere") || msg.includes("qual bolo")) return "ask_recommendation";
-  if ((msg.includes("entregar") || msg.includes("delivery")) && (msg.includes("agora") || msg.includes("hoje"))) return "delivery_urgency";
-  if (msg.includes("quero pedir") || msg.includes("fazer um pedido") || msg.includes("gostaria de pedir") || msg.includes("encomenda")) return "start_order";
+
+  // ── Saudações puras (só saudação, sem pedido ou pergunta) ──
+  if (/^(oi+|ola|bom dia|boa tarde|boa noite|hey|eai|e ai|fala|opa|salve)\s*[!.,?😊🙂👋]*\s*$/i.test(msg)) return "greeting";
+  // Saudação com "tudo bem?" no máximo
+  if (/^(oi+|ola|bom dia|boa tarde|boa noite)\s*(tudo\s*(bem|bom|certo|joia))?\s*[!.,?😊]*\s*$/i.test(msg)) return "greeting";
+
+  // ── Comprovante / confirmação de pagamento ──
+  if (msg.includes("comprovante") || msg.includes("paguei") || msg.includes("ja paguei") ||
+      msg.includes("fiz o pix") || msg.includes("transferi") || msg.includes("depositei") ||
+      msg.includes("fiz a transferencia") || msg.includes("enviei o pix") ||
+      msg.includes("ta pago") || msg.includes("tá pago") || msg.includes("pagamento feito") ||
+      msg.includes("pago")) return "payment_proof";
+  // "pix" com ação de envio
+  if (msg.includes("pix") && (msg.includes("fiz") || msg.includes("enviei") || msg.includes("mandei") || msg.includes("pronto") || msg.includes("feito"))) return "payment_proof";
+  // Mensagem curta de confirmação após pedido de PIX (contexto-dependent)
+  if (/^(pronto|feito|enviado|mandei|enviei|ja fiz|já fiz)\s*[!.]*\s*$/i.test(msg)) return "payment_proof";
+
+  // ── Urgência de delivery ──
+  if ((msg.includes("entregar") || msg.includes("delivery") || msg.includes("entrega")) &&
+      (msg.includes("agora") || msg.includes("hoje") || msg.includes("urgente") || msg.includes("rapido") || msg.includes("ja"))) return "delivery_urgency";
+  // "pra agora", "pra hoje"
+  if ((msg.includes("pra agora") || msg.includes("para agora") || msg.includes("pra hoje") || msg.includes("para hoje")) &&
+      (msg.includes("pedido") || msg.includes("pedir") || msg.includes("encomenda"))) return "delivery_urgency";
+
+  // ── Início de pedido (antes de preço) ──
+  if (msg.includes("quero pedir") || msg.includes("fazer um pedido") || msg.includes("gostaria de pedir") ||
+      msg.includes("fazer pedido") || msg.includes("quero fazer") || msg.includes("vou querer") ||
+      msg.includes("me vê") || msg.includes("me ve") || msg.includes("me manda") ||
+      msg.includes("preciso de") || msg.includes("precisando de")) return "start_order";
+  // "Quero [produto]" = pedido
+  if (msg.includes("quero") && (msg.includes("bolo") || msg.includes("salgado") || msg.includes("mini") ||
+      msg.includes("acai") || msg.includes("açaí") || msg.includes("docinho") || msg.includes("torta") ||
+      msg.includes("fatia") || msg.includes("unidade"))) return "start_order";
+  // "Quero o de [sabor]" — padrão muito comum
+  if (/quero\s+(o\s+de|a\s+de|o|um|uma)\s+/i.test(msg)) return "start_order";
+  // Encomenda sem pergunta de preço
+  if (msg.includes("encomenda") && !msg.includes("preco") && !msg.includes("valor") && !msg.includes("quanto")) return "start_order";
+  // Quantidades diretas: "100 mini salgados", "2kg de brigadeiro"
+  if (/\d+\s*(kg|mini|unidade|fatia|cento)/.test(msg) && !msg.includes("quanto") && !msg.includes("preco") && !msg.includes("valor")) return "start_order";
+
+  // ── Perguntas de preço ──
+  if (msg.includes("preco") || msg.includes("valor") || msg.includes("quanto custa") ||
+      msg.includes("quanto fica") || msg.includes("quanto e") || msg.includes("quanto sai") ||
+      msg.includes("qual o preco") || msg.includes("qual o valor") || msg.includes("quanto ta") ||
+      msg.includes("quanto tá") || msg.includes("tabela") || msg.includes("preço")) return "ask_price";
+
+  // ── Recomendações ──
+  if (msg.includes("recomenda") || msg.includes("sugere") || msg.includes("qual bolo") ||
+      msg.includes("sugestao") || msg.includes("sugestão") || msg.includes("qual outro") ||
+      msg.includes("teria outro") || msg.includes("o que voce indica") || msg.includes("o que tem") ||
+      msg.includes("quais sabores") || msg.includes("quais os sabores") || msg.includes("que sabores") ||
+      msg.includes("cardapio") || msg.includes("cardápio") || msg.includes("catalogo")) return "ask_recommendation";
+
   return "other";
 }
 
@@ -211,11 +293,33 @@ function deriveStage(
   const msg = normalizeForCompare(fullMessage);
   const oldStage = (memory.stage as ConversationStage | undefined) || "start";
   const mentionsOrderType = msg.includes("delivery") || msg.includes("retirada") || msg.includes("encomenda");
+
+  // Pagamento/comprovante → pós-pagamento
   if (intent === "payment_proof") return "post_payment";
+
+  // Início de pedido
   if (intent === "start_order" && !mentionsOrderType) return "awaiting_order_type";
   if (intent === "start_order" && mentionsOrderType) return "collecting_items";
-  if (oldStage === "awaiting_payment" && intent === "other") return "awaiting_payment";
-  if (intent === "ask_price" || intent === "ask_recommendation") return "collecting_items";
+
+  // Se está aguardando tipo de pedido e o cliente respondeu com o tipo
+  if (oldStage === "awaiting_order_type" && mentionsOrderType) return "collecting_items";
+
+  // Se está coletando itens e o cliente confirma → confirming
+  const confirmsOrder = msg.includes("isso") || msg.includes("correto") || msg.includes("confirmo") || msg.includes("ta certo") || msg.includes("está certo");
+  if (oldStage === "collecting_items" && confirmsOrder) return "confirming_order";
+
+  // Se está confirmando e menciona pagamento → awaiting_payment
+  if (oldStage === "confirming_order" && (msg.includes("pix") || msg.includes("pagar") || msg.includes("pagamento"))) return "awaiting_payment";
+
+  // Manter etapas estáveis
+  if (oldStage === "awaiting_payment" && intent !== "start_order") return "awaiting_payment";
+  if (oldStage === "confirming_order" && intent === "other") return "confirming_order";
+
+  // Perguntas de preço ou recomendação durante qualquer etapa → collecting_items
+  if (intent === "ask_price" || intent === "ask_recommendation") {
+    return oldStage === "start" ? "collecting_items" : oldStage;
+  }
+
   return oldStage;
 }
 
@@ -379,19 +483,48 @@ function enforceReplyGuardrails(
   fullMessage: string
 ): string {
   if (!replyText || recipeNames.length === 0) return replyText;
-  const msg = normalizeForCompare(fullMessage);
-  const askedRecommendation =
-    msg.includes("recomenda") ||
-    msg.includes("sugere") ||
-    msg.includes("sugestao") ||
-    msg.includes("sugestão") ||
-    msg.includes("qual bolo") ||
-    msg.includes("qual outro") ||
-    msg.includes("teria outro");
-  if (!askedRecommendation) return replyText;
-  if (!hasInvalidRecommendation(replyText, recipeNames)) return replyText;
-  const top = recipeNames.slice(0, 4).join(", ");
-  return `Claro! Para te recomendar certinho, eu sigo apenas os sabores do cardápio oficial 😊\n\nAlgumas opções que temos aqui: ${top}.\nSe quiser, te envio o cardápio completo: ${CARDAPIO_PDF_URL}`;
+
+  // Verificar QUALQUER menção a "bolo de X" que não existe no cardápio
+  // (não só quando pede recomendação — a IA pode alucinar a qualquer momento)
+  if (hasInvalidRecommendation(replyText, recipeNames)) {
+    const msg = normalizeForCompare(fullMessage);
+    const askedRecommendation =
+      msg.includes("recomenda") || msg.includes("sugere") || msg.includes("sugestao") ||
+      msg.includes("sugestão") || msg.includes("qual bolo") || msg.includes("qual outro") ||
+      msg.includes("teria outro") || msg.includes("o que tem");
+
+    if (askedRecommendation) {
+      // Era recomendação → resposta focada em sugestões reais
+      const top = recipeNames.slice(0, 5).join(", ");
+      return `Os mais pedidos aqui são: ${top} 😊\nQuer saber o preço de algum? Ou posso te enviar o cardápio completo: ${CARDAPIO_PDF_URL}`;
+    } else {
+      // IA inventou sabor numa resposta normal → tentar limpar
+      // Substituir a parte inventada por uma versão segura
+      const invalidCakes = extractBoloRecommendations(replyText)
+        .filter(c => {
+          const norm = normalizeForCompare(c);
+          return !recipeNames.some(r => {
+            const rn = normalizeForCompare(r);
+            return rn === norm || rn.includes(norm) || norm.includes(rn);
+          });
+        });
+
+      let cleaned = replyText;
+      for (const inv of invalidCakes) {
+        // Remove menções ao bolo inventado
+        cleaned = cleaned.replace(new RegExp(inv.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[produto do cardápio]');
+      }
+
+      // Se ficou muito alterado, adicionar aviso
+      if (invalidCakes.length > 0) {
+        const top = recipeNames.slice(0, 4).join(", ");
+        cleaned += `\n\nNossos sabores disponíveis incluem: ${top}. Quer ver o cardápio completo?`;
+      }
+      return cleaned;
+    }
+  }
+
+  return replyText;
 }
 
 async function sendEvolutionMessage(
@@ -694,6 +827,20 @@ async function createOrderFromPayload(
   if (orderItems.length === 0) return { ok: false, error: "nenhum item válido" };
 
   const channel = (payload.channel as string) || "cardapio_digital";
+  // Resolver delivery_zone_id a partir do bairro informado pela IA
+  let deliveryZoneId: string | null = null;
+  const bairroPayload = ((payload.bairro as string) || "").trim();
+  if (bairroPayload && channel === "delivery") {
+    const { data: zoneMatch } = await supabase
+      .from("delivery_zones")
+      .select("id")
+      .ilike("bairro", bairroPayload)
+      .eq("ativo", true)
+      .limit(1)
+      .maybeSingle();
+    deliveryZoneId = (zoneMatch as { id?: string } | null)?.id ?? null;
+  }
+
   const { data: order, error: orderErr } = await supabase
     .from("orders")
     .insert({
@@ -705,6 +852,7 @@ async function createOrderFromPayload(
       channel: channel === "delivery" ? "delivery" : channel === "balcao" ? "balcao" : "cardapio_digital",
       status: "aberto",
       delivery_status: channel === "delivery" ? "recebido" : null,
+      delivery_zone_id: deliveryZoneId,
     } as Record<string, unknown>)
     .select("id")
     .single();
@@ -901,6 +1049,19 @@ async function createEncomendaFromPayload(
   const payment_method = (payload.payment_method as string)?.toLowerCase() === "credito" ? "credito" : "pix";
   const paid_50_percent = !!payload.paid_50_percent;
 
+  // Resolver delivery_zone_id a partir do endereço (bairro)
+  let encZoneId: string | null = null;
+  const encAddress = ((payload.address as string) || "").trim();
+  if (encAddress) {
+    // Tenta encontrar o bairro no endereço
+    const { data: zones } = await supabase.from("delivery_zones").select("id, bairro").eq("ativo", true);
+    if (zones) {
+      const addrLower = encAddress.toLowerCase();
+      const match = (zones as { id: string; bairro: string }[]).find((z) => addrLower.includes(z.bairro.toLowerCase()));
+      encZoneId = match?.id ?? null;
+    }
+  }
+
   const { data: enc, error } = await supabase
     .from("encomendas")
     .insert({
@@ -909,7 +1070,7 @@ async function createEncomendaFromPayload(
       product_description,
       quantity,
       total_value,
-      address: (payload.address as string) || null,
+      address: encAddress || null,
       payment_method,
       paid_50_percent,
       observations: (payload.observations as string) || null,
@@ -917,6 +1078,7 @@ async function createEncomendaFromPayload(
       delivery_time_slot: (payload.delivery_time_slot as string) || null,
       status: paid_50_percent ? "50_pago" : "pendente",
       source: "whatsapp",
+      delivery_zone_id: encZoneId,
     } as Record<string, unknown>)
     .select("id")
     .single();
@@ -1318,35 +1480,48 @@ serve(async (req) => {
           }
         }
 
-        // Injetar contexto da sessão se houver pedido em andamento
-        let enrichedMessage = fullMessage;
-        if (sessionMemory && Object.keys(sessionMemory).length > 0) {
-          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
-        }
-        const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
-        const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[]);
-        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
+        // ── Contexto enriquecido: limpo e focado ──
         const intent = detectIntent(fullMessage);
         const stage = deriveStage(sessionMemory, intent, fullMessage);
-        const controlHint = buildControlHint(intent, stage, sessionMemory);
-        if (recentHistoryHint) {
-          enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
-        }
-        if (previousQuestionHint) {
-          enrichedMessage = `[CONTINUIDADE DE CONTEXTO]\n${previousQuestionHint}\n\n${enrichedMessage}`;
-        }
-        if (orderMemoryHint) {
-          enrichedMessage = `${orderMemoryHint}\n\n${enrichedMessage}`;
-        }
+        const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[]);
+        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        const timeHint = `[HORA_ATUAL_SP]\nAgora em São Paulo: ${nowSp}\nUse essa referência para decidir regras de horário e prazo do mesmo dia.\n[/HORA_ATUAL_SP]`;
-        enrichedMessage = `${timeHint}\n\n${controlHint}\n\n${enrichedMessage}`;
+
+        // Construir contexto de forma limpa — só o essencial, sem ruído
+        const contextParts: string[] = [];
+
+        // Horário (sempre útil para regras de prazo)
+        contextParts.push(`[HORA_ATUAL: ${nowSp}]`);
+
+        // Memória de pedido em andamento (crucial para não perder itens)
+        if (orderMemoryHint) {
+          contextParts.push(orderMemoryHint);
+        }
+
+        // Continuidade: se a mensagem parece resposta a uma pergunta anterior
+        if (previousQuestionHint) {
+          contextParts.push(`[CONTINUIDADE]\n${previousQuestionHint}`);
+        }
+
+        // Mensagem atual sempre por último e bem separada
+        const enrichedMessage = contextParts.length > 0
+          ? `${contextParts.join("\n\n")}\n\n[MENSAGEM DO CLIENTE]\n${fullMessage}`
+          : fullMessage;
 
         const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
           reply = deterministicPriceReply;
         } else {
-          reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
+          // ── Sistema Modular: passar intent/stage/hasOrder para prompt focado ──
+          const orderMem = extractOrderMemory(history as { role: "user" | "assistant"; content: string }[]);
+          const hasOrderInProgress = orderMem.items.length > 0;
+          reply = await runAtendente(
+            supabase,
+            enrichedMessage,
+            pushName || "Cliente",
+            history as { role: "user" | "assistant"; content: string }[],
+            { intent, stage, hasOrderInProgress }
+          );
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);

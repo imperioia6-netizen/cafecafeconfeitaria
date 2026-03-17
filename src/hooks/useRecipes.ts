@@ -94,6 +94,11 @@ export function useDeleteRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Delete safe dependencies first
+      await supabase.from('recipe_ingredients').delete().eq('recipe_id', id);
+      await supabase.from('auto_promotions').delete().eq('recipe_id', id);
+      await supabase.from('alerts').delete().eq('recipe_id', id);
+
       // Tenta exclusão física primeiro.
       const { data, error } = await supabase
         .from('recipes')

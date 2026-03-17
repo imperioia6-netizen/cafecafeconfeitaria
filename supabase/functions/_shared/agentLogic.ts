@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sanitizeMessage, sanitizeHistory, MAX_MESSAGE_LENGTH } from "./security.ts";
 import { buildAtendenteBasePrompt } from "./atendentePromptBase.ts";
+import {
+  buildModularAtendentePrompt,
+  type PromptIntent,
+  type PromptStage,
+} from "./atendentePromptModules.ts";
 
 /** Timeout para chamada ao LLM (ms). */
 const LLM_TIMEOUT_MS = 28000;
@@ -321,7 +326,7 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0.3, max_tokens: 1024 }),
+      body: JSON.stringify({ model, messages, temperature: 0.15, max_tokens: 1500 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -377,7 +382,13 @@ export async function runAtendente(
   supabase: SupabaseClient,
   message: string,
   contactName: string,
-  history: { role: "user" | "assistant"; content: string }[]
+  history: { role: "user" | "assistant"; content: string }[],
+  /** Novos parâmetros opcionais para o sistema modular */
+  modularOpts?: {
+    intent: PromptIntent;
+    stage: PromptStage;
+    hasOrderInProgress: boolean;
+  }
 ): Promise<string> {
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) return FALLBACK_ATENDENTE;
@@ -385,11 +396,12 @@ export async function runAtendente(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const [promosRes, settingsRes, acaiRes, allRecipesRes] = await Promise.all([
+    const [promosRes, settingsRes, acaiRes, allRecipesRes, deliveryZonesRes] = await Promise.all([
       supabase.from("auto_promotions").select("discount_percent, promo_price, status").eq("status", "ativa").limit(5),
       supabase.from("crm_settings").select("key, value").in("key", ["payment_pix_key", "payment_instructions", "atendente_instructions"]),
       supabase.from("recipes").select("id, name, sale_price, slice_price, complementos").eq("active", true).eq("category", "acai"),
       supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price").eq("active", true).order("name"),
+      supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro").catch(() => ({ data: [] })),
     ]);
     const promos = (promosRes.data || []) as { discount_percent?: number; promo_price?: number }[];
     const promoSummary = promos.length
@@ -425,15 +437,57 @@ export async function runAtendente(
     if (cardapioProdutosDetalhado.length > 4000) {
       cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardápio truncado)";
     }
-    const systemPrompt = buildAtendentePrompt(
-      contactName,
-      promoSummary,
-      paymentInfo,
-      customInstructions,
-      cardapioAcai || null,
-      cardapioProdutos || null,
-      cardapioProdutosDetalhado || null
-    );
+
+    // ── Montar tabela de zonas de delivery com disponibilidade ──
+    interface DeliveryZoneDisp {
+      bairro: string; cidade: string; taxa: number; taxa_max?: number | null;
+      distancia_km?: number | null; max_pedidos_dia?: number;
+      pedidos_hoje?: number; vagas_restantes?: number; disponivel?: boolean;
+    }
+    const deliveryZones = ((deliveryZonesRes as any)?.data || []) as DeliveryZoneDisp[];
+    let deliveryZonesText = "";
+    if (deliveryZones.length > 0) {
+      const lines = deliveryZones.map((z) => {
+        const taxaMin = Number(z.taxa).toFixed(2);
+        const taxaStr = z.taxa_max ? `R$ ${taxaMin} a R$ ${Number(z.taxa_max).toFixed(2)}` : `R$ ${taxaMin}`;
+        const dist = z.distancia_km != null ? `${z.distancia_km}km` : "";
+        const limite = z.max_pedidos_dia ?? 20;
+        const vagas = z.vagas_restantes ?? limite;
+        const status = vagas <= 0 ? " ⛔ ESGOTADO HOJE" : vagas <= 3 ? ` ⚠️ ${vagas} vagas` : "";
+        return `- ${z.bairro} (${z.cidade}): ${taxaStr} | ${dist} | máx ${limite}/dia${status}`;
+      });
+      deliveryZonesText = lines.join("\n");
+    }
+
+    // ── Sistema Modular: se recebemos intent/stage, usar prompt modular ──
+    let systemPrompt: string;
+    if (modularOpts) {
+      systemPrompt = buildModularAtendentePrompt({
+        intent: modularOpts.intent,
+        stage: modularOpts.stage,
+        hasOrderInProgress: modularOpts.hasOrderInProgress,
+        contactName,
+        promoSummary,
+        paymentInfo,
+        customInstructions,
+        cardapioAcai: cardapioAcai || null,
+        cardapioProdutos: cardapioProdutos || null,
+        cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
+        deliveryZonesText: deliveryZonesText || null,
+      });
+    } else {
+      // Fallback: prompt monolítico original (para chamadas sem contexto modular)
+      systemPrompt = buildAtendentePrompt(
+        contactName,
+        promoSummary,
+        paymentInfo,
+        customInstructions,
+        cardapioAcai || null,
+        cardapioProdutos || null,
+        cardapioProdutosDetalhado || null
+      );
+    }
+
     const config = await getLlmConfig(supabase);
     if (config) {
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
