@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: push-deploy
     content: Commit + push para disparar deploy via GitHub Actions
-    status: in_progress
+    status: completed
 isProject: false
 ---
 

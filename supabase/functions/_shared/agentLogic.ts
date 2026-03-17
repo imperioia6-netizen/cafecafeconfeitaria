@@ -282,7 +282,7 @@ export async function getLlmConfig(supabase: SupabaseClient): Promise<LlmConfig 
     return {
       apiKey: lovableKey,
       baseUrl: "https://ai.gateway.lovable.dev/v1",
-      model: "google/gemini-3-flash-preview",
+      model: "gpt-4o",
     };
   }
   return null;
@@ -309,7 +309,7 @@ export async function callLlm(
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: config.model, messages, temperature: 0 }),
+    body: JSON.stringify({ model: config.model, messages, temperature: 0.3, max_tokens: 1024 }),
   });
   if (!res.ok) {
     const text = await res.text();
