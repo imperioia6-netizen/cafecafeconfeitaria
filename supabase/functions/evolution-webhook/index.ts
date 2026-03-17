@@ -1075,31 +1075,34 @@ serve(async (req) => {
 
         // ===== MELHORIA 6: Salvar payment_confirmation COM payload (sem criar pedido ainda) =====
         if (pedidoJson) {
-          await supabase.from("payment_confirmations").insert({
-            customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
-            customer_phone: normalizedPhone,
-            remote_jid: remoteJid,
-            description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
-            type: "pedido",
-            channel: "whatsapp",
-            status: "pending",
-            order_payload: pedidoJson,
-          } as Record<string, unknown>);
-          console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
-        } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
-        if (encomendaJson) {
-          try { await supabase.from("payment_confirmations").insert({
-            customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
-            customer_phone: normalizedPhone,
-            remote_jid: remoteJid,
-            description: (encomendaJson.product_description as string) || "Encomenda",
-            type: "encomenda",
-            channel: "whatsapp",
-            status: "pending",
-            order_payload: encomendaJson,
-          } as Record<string, unknown>);
+          try {
+            await supabase.from("payment_confirmations").insert({
+              customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
+              customer_phone: normalizedPhone,
+              remote_jid: remoteJid,
+              description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
+              type: "pedido",
+              channel: "whatsapp",
+              status: "pending",
+              order_payload: pedidoJson,
+            } as Record<string, unknown>);
+            console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
           } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
-          console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
+        }
+        if (encomendaJson) {
+          try {
+            await supabase.from("payment_confirmations").insert({
+              customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
+              customer_phone: normalizedPhone,
+              remote_jid: remoteJid,
+              description: (encomendaJson.product_description as string) || "Encomenda",
+              type: "encomenda",
+              channel: "whatsapp",
+              status: "pending",
+              order_payload: encomendaJson,
+            } as Record<string, unknown>);
+            console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
+          } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
         }
         if (quitarEncomendaJson) {
           const result = await settleEncomendaFromPayload(supabase, quitarEncomendaJson, normalizedPhone);
