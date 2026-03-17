@@ -1013,7 +1013,7 @@ serve(async (req) => {
           enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
         }
 
-        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history);
+        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
 
