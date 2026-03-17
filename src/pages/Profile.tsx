@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Save, Loader2, Phone, Cake, Heart, Check } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Save, Loader2, Phone, Cake, Heart, Check, Camera } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,6 +19,9 @@ const Profile = () => {
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', birthday: '', family_name: '', family_birthday: '' });
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -26,6 +29,7 @@ const Profile = () => {
       .then(({ data }) => {
         if (data) {
           setProfileId(data.id);
+          setPhotoUrl(data.photo_url || null);
           setForm({ name: data.name || '', phone: data.phone || '', birthday: data.birthday || '', family_name: data.family_name || '', family_birthday: data.family_birthday || '' });
         }
         setLoading(false);
@@ -42,6 +46,26 @@ const Profile = () => {
     if (error) { toast.error('Erro ao salvar'); }
     else { toast.success('Perfil atualizado!'); setSaved(true); setTimeout(() => setSaved(false), 2000); }
     setSaving(false);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !profileId) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Imagem muito grande (máx 5MB)'); return; }
+
+    setUploading(true);
+    const path = `${user.id}/avatar.${file.name.split('.').pop() || 'jpg'}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (uploadError) { toast.error('Erro no upload'); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+    const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase.from('profiles').update({ photo_url: newUrl }).eq('id', profileId);
+    if (updateError) { toast.error('Erro ao salvar foto'); }
+    else { setPhotoUrl(newUrl); toast.success('Foto atualizada!'); }
+    setUploading(false);
   };
 
   const initials = form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -62,19 +86,27 @@ const Profile = () => {
                 <div className="absolute bottom-4 right-1/4 w-16 h-16 rounded-full animate-float" style={{ background: 'radial-gradient(circle, hsl(36 70% 50% / 0.08), transparent)', animationDelay: '2s' }} />
               </div>
 
-              <div className="relative inline-block">
+              <div className="relative inline-block group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <Avatar className="h-20 w-20 mx-auto shadow-xl animate-scale-in ring-4 ring-background">
+                  {photoUrl && <AvatarImage src={photoUrl} alt={form.name} />}
                   <AvatarFallback className="bg-accent text-accent-foreground text-2xl font-bold">
                     {initials || '?'}
                   </AvatarFallback>
                 </Avatar>
+                {/* Camera overlay */}
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mx-auto h-20 w-20"
+                  style={{ left: '50%', transform: 'translateX(-50%)' }}>
+                  {uploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                </div>
                 {/* Animated ring */}
                 <div className="absolute inset-[-4px] rounded-full animate-ring-rotate"
                   style={{
                     border: '2px solid transparent',
                     borderTopColor: 'hsl(36 70% 50% / 0.5)',
                     borderRightColor: 'hsl(36 70% 50% / 0.2)',
+                    left: '50%', transform: 'translateX(-50%)', width: 'calc(5rem + 8px)', height: 'calc(5rem + 8px)',
                   }} />
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
               <h2 className="text-xl font-bold mt-4" style={{ color: 'hsl(36 40% 95%)' }}>{form.name || 'Sem nome'}</h2>
               <div className="flex justify-center gap-2 mt-2">

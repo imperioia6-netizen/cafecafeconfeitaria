@@ -1,28 +1,39 @@
 
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-# Plano: Foto de Perfil para Todos os Usuários
+## Melhorias Aplicadas
 
-## O que será feito
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-1. **Criar bucket `avatars`** no Supabase Storage (público) com RLS permitindo que cada usuário faça upload da própria foto e proprietários possam ver todas.
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-2. **Atualizar a página de Perfil (`Profile.tsx`)** para:
-   - Exibir a foto atual (usando `AvatarImage`) em vez de só iniciais
-   - Adicionar um botão de câmera/editar sobre o avatar
-   - Ao clicar, abrir um input de arquivo (imagem)
-   - Fazer upload para `avatars/{user_id}.jpg`, salvar a URL pública em `profiles.photo_url`
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-3. **Atualizar o `EmployeeSheet.tsx`** — já usa `member.photo_url` com `AvatarImage`, então funcionará automaticamente quando a foto existir no perfil.
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-## Detalhes Técnicos
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-### Migration SQL
-- Criar bucket `avatars` (público)
-- RLS: qualquer autenticado pode fazer SELECT; INSERT/UPDATE apenas onde `(storage.foldername(name))[1] = auth.uid()::text`
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
-### Profile.tsx
-- Adicionar estado `photoUrl` carregado do perfil
-- Adicionar `<input type="file" accept="image/*">` oculto + botão de overlay no avatar
-- No upload: `supabase.storage.from('avatars').upload(path, file, { upsert: true })` → pegar URL pública → `supabase.from('profiles').update({ photo_url })` → atualizar estado
-- Mostrar `AvatarImage` quando `photoUrl` existir
+## Arquivos Editados
 
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
