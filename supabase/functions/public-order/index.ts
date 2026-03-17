@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("public-order error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Erro ao processar pedido" }), {
+    return new Response(JSON.stringify({ error: (err as Error).message || "Erro ao processar pedido" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

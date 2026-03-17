@@ -514,7 +514,7 @@ async function createOrderFromPayload(
   // Envia pedido para a plataforma de notas (TicketFlow) sem bloquear o fluxo principal.
   try {
     const itemsForTicket = orderItemsWithInventory.map((i) => {
-      const recipe = (recipes || []).find((r) => (r as { id: string }).id === i.recipe_id) as { name?: string } | undefined;
+      const recipe = (recipes || []).find((r: any) => (r as { id: string }).id === i.recipe_id) as { name?: string } | undefined;
       const name = (recipe?.name || "produto").toString();
       return {
         name,
@@ -567,7 +567,7 @@ async function createOrderFromPayload(
     if (ownerPhones.length > 0 && newSlices <= 3 && currentSlices > newSlices) {
       const recipeNameKey = [...recipeMap.entries()].find(([, v]) => v.id === i.recipe_id)?.[0] ?? "";
       const recipeName =
-        (recipes || []).find((r) => (r as { name: string; id: string }).id === i.recipe_id)?.name ||
+        (recipes || []).find((r: any) => (r as { name: string; id: string }).id === i.recipe_id)?.name ||
         recipeNameKey ||
         "produto";
       const alertText = `Alerta de estoque: o produto \"${recipeName}\" está acabando. Restam aproximadamente ${newSlices} fatia(s).`;
@@ -898,7 +898,7 @@ serve(async (req) => {
     }
 
     if (messageId) {
-      await supabase.from("webhook_processed_events").insert({ id: messageId }).then(() => {}).catch(() => {});
+      try { await supabase.from("webhook_processed_events").insert({ id: messageId }); } catch (_) {}
     }
 
     const owner = await getOwner(supabase);
@@ -1013,7 +1013,7 @@ serve(async (req) => {
           enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
         }
 
-        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history);
+        reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
 
@@ -1075,30 +1075,34 @@ serve(async (req) => {
 
         // ===== MELHORIA 6: Salvar payment_confirmation COM payload (sem criar pedido ainda) =====
         if (pedidoJson) {
-          await supabase.from("payment_confirmations").insert({
-            customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
-            customer_phone: normalizedPhone,
-            remote_jid: remoteJid,
-            description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
-            type: "pedido",
-            channel: "whatsapp",
-            status: "pending",
-            order_payload: pedidoJson,
-          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
-          console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
+          try {
+            await supabase.from("payment_confirmations").insert({
+              customer_name: (pedidoJson.customer_name as string) || pushName || "Cliente",
+              customer_phone: normalizedPhone,
+              remote_jid: remoteJid,
+              description: JSON.stringify(pedidoJson.items || []).slice(0, 500),
+              type: "pedido",
+              channel: "whatsapp",
+              status: "pending",
+              order_payload: pedidoJson,
+            } as Record<string, unknown>);
+            console.log("evolution-webhook: comprovante de pedido salvo para aprovação manual");
+          } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
         }
         if (encomendaJson) {
-          await supabase.from("payment_confirmations").insert({
-            customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
-            customer_phone: normalizedPhone,
-            remote_jid: remoteJid,
-            description: (encomendaJson.product_description as string) || "Encomenda",
-            type: "encomenda",
-            channel: "whatsapp",
-            status: "pending",
-            order_payload: encomendaJson,
-          } as Record<string, unknown>).catch((e: Error) => console.error("payment_confirmation insert:", e.message));
-          console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
+          try {
+            await supabase.from("payment_confirmations").insert({
+              customer_name: (encomendaJson.customer_name as string) || pushName || "Cliente",
+              customer_phone: normalizedPhone,
+              remote_jid: remoteJid,
+              description: (encomendaJson.product_description as string) || "Encomenda",
+              type: "encomenda",
+              channel: "whatsapp",
+              status: "pending",
+              order_payload: encomendaJson,
+            } as Record<string, unknown>);
+            console.log("evolution-webhook: comprovante de encomenda salvo para aprovação manual");
+          } catch (e) { console.error("payment_confirmation insert:", (e as Error).message); }
         }
         if (quitarEncomendaJson) {
           const result = await settleEncomendaFromPayload(supabase, quitarEncomendaJson, normalizedPhone);
@@ -1123,7 +1127,7 @@ serve(async (req) => {
         if (sessionRow) {
           await supabase.from("sessions").update(sessionUpdate as any).eq("remote_jid", remoteJid);
         } else {
-          await supabase.from("sessions").insert({ remote_jid: remoteJid, ...sessionUpdate } as Record<string, unknown>).catch(() => {});
+          try { await supabase.from("sessions").insert({ remote_jid: remoteJid, ...sessionUpdate } as Record<string, unknown>); } catch (_) {}
         }
 
         await supabase.from("crm_messages").insert({
