@@ -19,6 +19,9 @@ const Profile = () => {
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', birthday: '', family_name: '', family_birthday: '' });
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
