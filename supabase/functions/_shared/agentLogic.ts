@@ -216,6 +216,13 @@ ${cardapioAcai}
 CARDÁPIO E PREÇOS (PARA CALCULAR VALORES):
 ${cardapioDetalhado}
 
+RECOMENDAÇÕES E SUGESTÕES DE PRODUTOS (REGRA ABSOLUTA — NUNCA IGNORAR):
+- A lista "CARDÁPIO E PREÇOS" acima é a ÚNICA fonte de verdade sobre quais produtos e sabores existem.
+- Ao recomendar, sugerir, indicar ou dizer "temos X": use SOMENTE nomes que aparecem na lista acima.
+- É PROIBIDO citar, recomendar ou sugerir qualquer produto ou sabor que NÃO esteja na lista acima. Exemplos de erro que você NÃO pode cometer: recomendar "bolo de cenoura", "bolo de chocolate", "bolo de morango com ninho" se esses nomes não existem EXATAMENTE na lista. Só recomende nomes EXATOS da lista.
+- Se o cliente pedir recomendação: escolha entre os itens da lista e sugira. Ex.: "Uma das nossas opções mais pedidas é o bolo de brigadeiro! Temos também o de prestígio que faz muito sucesso." — mas SOMENTE se "brigadeiro" e "prestígio" estiverem na lista.
+- Se o cliente perguntar por um produto que NÃO está na lista: diga que não temos esse item no cardápio e envie o link (${CARDAPIO_PDF_URL}).
+
 - Sempre que um produto do pedido estiver nesta lista, use esses preços para calcular o valor (fatia, inteiro, unidade conforme o caso).
 - Some quantidade x preço de cada item para chegar no VALOR TOTAL do pedido (sem chutar).
 - QUANDO INFORMAR VALORES: informe o valor quando o cliente PERGUNTAR. Ao montar um pedido com vários itens (ex.: bolo + refrigerante), some tudo e passe o total NO FINAL, ao fechar o pedido — não fique repetindo o valor em toda mensagem.
@@ -254,6 +261,19 @@ REGRAS ESPECIAIS PARA BOLOS POR KG (CÁLCULO OBRIGATÓRIO):
   - Nesse caso, a entrada é metade do total. Exemplos:
     - Se 3kg a R$ 120,00/kg → total R$ 360,00 → entrada (50%) = R$ 180,00.
     - Se 2kg a R$ 120,00/kg → total R$ 240,00 → NÃO precisa 50% de entrada; o pagamento pode ser feito na retirada/entrega, conforme regras do proprietário.
+
+CÁLCULO DE VALOR TOTAL DO PEDIDO (REGRA ABSOLUTA — APLICAR SEMPRE):
+- ANTES de informar qualquer valor ao cliente, você DEVE calcular mentalmente assim:
+  - Para CADA item: quantidade × preço_unitário (do bloco CARDÁPIO E PREÇOS acima) = subtotal do item.
+  - Somar todos os subtotais: subtotal_item1 + subtotal_item2 + ... = VALOR TOTAL.
+- Exemplo completo: cliente pediu 2kg bolo brigadeiro (R$ 102/kg) + 1 Coca 600ml (R$ 8,00):
+  - Bolo: 2 × R$ 102,00 = R$ 204,00
+  - Coca: 1 × R$ 8,00 = R$ 8,00
+  - Total: R$ 204,00 + R$ 8,00 = R$ 212,00
+- A lista detalhada no bloco "CARDÁPIO E PREÇOS" é a fonte de verdade; a "referência rápida" é só auxiliar.
+- Se tiver decoração, some R$ 30,00 ao total.
+- Se tiver taxa de entrega, some ao total e informe ao cliente.
+- NUNCA chute ou arredonde valores; calcule exatamente.
 `
     : "";
 
