@@ -288,6 +288,28 @@ async function createOrderFromPayload(
   // Finalizar pedido
   await supabase.from("orders").update({ status: "finalizado" as any, closed_at: new Date().toISOString() }).eq("id", orderId);
 
+  // Encaminhar para plataforma externa
+  try {
+    await sendTicketFlowOrder(supabase, customerPhone, {
+      type: "pedido",
+      channel: channel === "delivery" ? "delivery" : "balcao",
+      total,
+      payment_method: payment_method,
+      items: orderItems.map((i: any) => {
+        const recipe = (recipes || []).find((r: any) => r.id === i.recipe_id);
+        return {
+          name: recipe?.name || "Item",
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          category: null,
+          unit: i.unit_type === "whole" ? "UN" : "FATIA",
+        };
+      }),
+    });
+  } catch (e) {
+    console.error("confirm-payment: erro ao encaminhar pedido para plataforma externa", (e as Error).message);
+  }
+
   return { ok: true, orderId };
 }
 
