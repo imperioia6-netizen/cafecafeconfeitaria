@@ -567,7 +567,7 @@ async function createOrderFromPayload(
     if (ownerPhones.length > 0 && newSlices <= 3 && currentSlices > newSlices) {
       const recipeNameKey = [...recipeMap.entries()].find(([, v]) => v.id === i.recipe_id)?.[0] ?? "";
       const recipeName =
-        (recipes || []).find((r) => (r as { name: string; id: string }).id === i.recipe_id)?.name ||
+        (recipes || []).find((r: any) => (r as { name: string; id: string }).id === i.recipe_id)?.name ||
         recipeNameKey ||
         "produto";
       const alertText = `Alerta de estoque: o produto \"${recipeName}\" está acabando. Restam aproximadamente ${newSlices} fatia(s).`;
