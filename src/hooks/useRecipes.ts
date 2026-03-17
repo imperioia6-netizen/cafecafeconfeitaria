@@ -94,8 +94,18 @@ export function useDeleteRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Delete safe dependencies first
+      await supabase.from('recipe_ingredients').delete().eq('recipe_id', id);
+      await supabase.from('auto_promotions').delete().eq('recipe_id', id);
+      await supabase.from('alerts').delete().eq('recipe_id', id);
+
       const { error } = await supabase.from('recipes').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23503') {
+          throw new Error('Este produto possui vendas ou pedidos associados e não pode ser excluído. Use o botão de desativar.');
+        }
+        throw error;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
   });
