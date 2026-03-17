@@ -1,31 +1,39 @@
 
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-# Plano: Corrigir exclusao de produtos
+## Melhorias Aplicadas
 
-## Problema
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-A exclusao de produtos falha porque a tabela `recipes` tem chaves estrangeiras em outras tabelas (`order_items`, `sale_items`, `productions`, `inventory`, `recipe_ingredients`, `auto_promotions`, `alerts`). Quando existem registros relacionados, o banco rejeita o `DELETE` por violacao de foreign key.
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-## Solucao
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-Alterar `useDeleteRecipe` em `src/hooks/useRecipes.ts` para deletar registros dependentes antes de excluir o produto, e melhorar o feedback de erro.
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-### Ordem de exclusao:
-1. `recipe_ingredients` onde `recipe_id = id`
-2. `auto_promotions` onde `recipe_id = id`
-3. `alerts` onde `recipe_id = id`
-4. `inventory` onde `recipe_id = id` (precisa deletar `order_items`/`sale_items` que referenciam esses inventory_ids primeiro, se houver)
-5. `productions` onde `recipe_id = id`
-6. `recipes` onde `id = id`
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-### Alternativa mais segura
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
-Como pedidos e vendas historicas referenciam `recipe_id` via `order_items` e `sale_items`, excluir tudo pode corromper o historico. A abordagem recomendada:
+## Arquivos Editados
 
-- Tentar o delete simples primeiro
-- Se falhar com erro de FK, informar ao usuario que o produto tem pedidos/vendas associados e sugerir **desativar** em vez de excluir
-- Deletar apenas dependencias "seguras" (recipe_ingredients, auto_promotions, alerts) antes do delete
-
-### Arquivo alterado
-- `src/hooks/useRecipes.ts`: atualizar `useDeleteRecipe` para limpar dependencias seguras e dar feedback claro ao usuario
-
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
