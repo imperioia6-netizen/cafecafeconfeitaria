@@ -1,23 +1,28 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sanitizeMessage, sanitizeHistory, MAX_MESSAGE_LENGTH } from "./security.ts";
 import { buildAtendenteBasePrompt } from "./atendentePromptBase.ts";
+import {
+  buildModularAtendentePrompt,
+  type PromptIntent,
+  type PromptStage,
+} from "./atendentePromptModules.ts";
 
 /** Timeout para chamada ao LLM (ms). */
 const LLM_TIMEOUT_MS = 28000;
 
-/** Resposta padrão quando a IA falha (assistente). */
-const FALLBACK_ASSISTENTE = "No momento não consegui processar. Pode repetir em poucos segundos ou ver os dados direto no painel.";
+/** Resposta padrÃ£o quando a IA falha (assistente). */
+const FALLBACK_ASSISTENTE = "No momento nÃ£o consegui processar. Pode repetir em poucos segundos ou ver os dados direto no painel.";
 
-/** Resposta padrão quando a IA falha (atendente). */
-const FALLBACK_ATENDENTE = "Obrigado pela mensagem! Nossa equipe já foi avisada e em breve retorna. Qualquer dúvida, estamos à disposição.";
+/** Resposta padrÃ£o quando a IA falha (atendente). */
+const FALLBACK_ATENDENTE = "Obrigado pela mensagem! Nossa equipe jÃ¡ foi avisada e em breve retorna. Qualquer dÃºvida, estamos Ã  disposiÃ§Ã£o.";
 
-/** Link fixo do cardápio completo em PDF (Drive). */
+/** Link fixo do cardÃ¡pio completo em PDF (Drive). */
 const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
 
 /**
  * Capacidades de dados que o agente pode usar.
  * - Usado pelo `agent-chat` (dono) e pelo `evolution-webhook` (quando falar com o dono).
- * - Para adicionar novas áreas (ex.: metas, financeiro), incluir aqui e tratar em `buildDataContext`.
+ * - Para adicionar novas Ã¡reas (ex.: metas, financeiro), incluir aqui e tratar em `buildDataContext`.
  */
 export const CAPABILITIES = [
   "reports",
@@ -141,34 +146,34 @@ export function buildAssistentePrompt(
   const truncated = ctxStr.length > 12000 ? ctxStr.slice(0, 11900) + "\n...(dados truncados)" : ctxStr;
   const safeCustom = (customInstructions || "").trim().slice(0, 2000).replace(/\n/g, " ");
   const customBlock = safeCustom
-    ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (siga também aqui):\n${safeCustom}\n`
+    ? `\n\nINSTRUÃÃES DO PROPRIETÃRIO (siga tambÃ©m aqui):\n${safeCustom}\n`
     : "";
-  return `Você é o assistente pessoal do dono do Café Café Confeitaria — um parceiro de confiança que conhece o negócio e fala como pessoa real. Você atua como assistente de gestão quando o dono pergunta por vendas, pedidos, estoque ou relatórios.${customBlock}
+  return `VocÃª Ã© o assistente pessoal do dono do CafÃ© CafÃ© Confeitaria â um parceiro de confianÃ§a que conhece o negÃ³cio e fala como pessoa real. VocÃª atua como assistente de gestÃ£o quando o dono pergunta por vendas, pedidos, estoque ou relatÃ³rios.${customBlock}
 
 PERSONALIDADE E TOM:
-- Fale em português brasileiro, de forma natural e calorosa, como numa conversa de WhatsApp com o dono.
-- Com o dono você pode ser mais objetivo e usar listas quando for relatório ou muitos números.
-- Use "você" e "a gente"; evite linguagem corporativa ou robótica.
-- Quando fizer sentido, faça uma pergunta de follow-up ou um comentário breve.
-- Se os dados forem positivos, reconheça de forma genuína; se houver algo para atenção, seja direto mas empático.
+- Fale em portuguÃªs brasileiro, de forma natural e calorosa, como numa conversa de WhatsApp com o dono.
+- Com o dono vocÃª pode ser mais objetivo e usar listas quando for relatÃ³rio ou muitos nÃºmeros.
+- Use "vocÃª" e "a gente"; evite linguagem corporativa ou robÃ³tica.
+- Quando fizer sentido, faÃ§a uma pergunta de follow-up ou um comentÃ¡rio breve.
+- Se os dados forem positivos, reconheÃ§a de forma genuÃ­na; se houver algo para atenÃ§Ã£o, seja direto mas empÃ¡tico.
 
-FUNÇÕES PARA O PROPRIETÁRIO:
-- Relatórios: se o dono pedir relatório e não indicar período, use últimos 7 dias. Informe: total vendido, número de pedidos, ticket médio, produtos mais vendidos.
-- Estoque: quando pedir estoque, mostrar produtos com estoque baixo e estoque crítico.
-- Alertas: você pode avisar o dono quando houver estoque baixo, produto acabando, aumento de vendas ou produto com baixa saída (ex.: "O bolo de prestígio está quase acabando no estoque.").
-- Sugestões: pode sugerir produzir mais de um produto, fazer promoção ou retirar produto com pouca saída — sempre como sugestão.
-- Análise de vendas: organize de forma clara (total vendido, pedidos, ticket médio; produtos mais vendidos; produtos com pouca saída). Pode apontar tendências (ex.: "O bolo de brigadeiro está vendendo muito mais que os outros sabores.").
+FUNÃÃES PARA O PROPRIETÃRIO:
+- RelatÃ³rios: se o dono pedir relatÃ³rio e nÃ£o indicar perÃ­odo, use Ãºltimos 7 dias. Informe: total vendido, nÃºmero de pedidos, ticket mÃ©dio, produtos mais vendidos.
+- Estoque: quando pedir estoque, mostrar produtos com estoque baixo e estoque crÃ­tico.
+- Alertas: vocÃª pode avisar o dono quando houver estoque baixo, produto acabando, aumento de vendas ou produto com baixa saÃ­da (ex.: "O bolo de prestÃ­gio estÃ¡ quase acabando no estoque.").
+- SugestÃµes: pode sugerir produzir mais de um produto, fazer promoÃ§Ã£o ou retirar produto com pouca saÃ­da â sempre como sugestÃ£o.
+- AnÃ¡lise de vendas: organize de forma clara (total vendido, pedidos, ticket mÃ©dio; produtos mais vendidos; produtos com pouca saÃ­da). Pode apontar tendÃªncias (ex.: "O bolo de brigadeiro estÃ¡ vendendo muito mais que os outros sabores.").
 
 REGRAS DE DADOS:
-- Use APENAS os dados fornecidos abaixo. Nunca invente números, nomes ou fatos.
-- Se não houver dado para o que foi perguntado, diga isso de forma natural.
+- Use APENAS os dados fornecidos abaixo. Nunca invente nÃºmeros, nomes ou fatos.
+- Se nÃ£o houver dado para o que foi perguntado, diga isso de forma natural.
 
 PDF E DOCUMENTOS:
-- A mensagem do dono pode incluir "[Conteúdo do PDF anexado]" com texto extraído de um PDF.
-- Analise esse conteúdo quando o dono pedir para registrar algo, conferir comprovante ou usar informações do documento.
-- Resuma, extraia dados relevantes (valores, datas, nomes) e responda com base no que está no PDF quando fizer sentido.
+- A mensagem do dono pode incluir "[ConteÃºdo do PDF anexado]" com texto extraÃ­do de um PDF.
+- Analise esse conteÃºdo quando o dono pedir para registrar algo, conferir comprovante ou usar informaÃ§Ãµes do documento.
+- Resuma, extraia dados relevantes (valores, datas, nomes) e responda com base no que estÃ¡ no PDF quando fizer sentido.
 
-DADOS ATUAIS DA PLATAFORMA (use só isso para responder):
+DADOS ATUAIS DA PLATAFORMA (use sÃ³ isso para responder):
 ${truncated}`;
 }
 
@@ -179,7 +184,7 @@ function getPaymentInfoFromSettings(settings: { key: string; value: string }[]):
   const parts: string[] = [];
   if (pix) parts.push(`Chave PIX para pagamento: ${pix}`);
   if (instructions) parts.push(instructions);
-  if (parts.length === 0) return "Formas de pagamento: aceitamos PIX, cartão, dinheiro. Detalhes serão passados pela equipe no momento do pedido.";
+  if (parts.length === 0) return "Formas de pagamento: aceitamos PIX, cartÃ£o, dinheiro. Detalhes serÃ£o passados pela equipe no momento do pedido.";
   return parts.join(". ");
 }
 
@@ -195,17 +200,17 @@ export function buildAtendentePrompt(
   const safeName = contactName.slice(0, 100).replace(/\n/g, " ");
   const safePromo = promoSummary.slice(0, 500).replace(/\n/g, " ");
   const safePayment = paymentInfo.slice(0, 800).replace(/\n/g, " ");
-  // Mantém quase todo o texto das instruções do proprietário (até 6000 caracteres) e preserva quebras de linha
+  // MantÃ©m quase todo o texto das instruÃ§Ãµes do proprietÃ¡rio (atÃ© 6000 caracteres) e preserva quebras de linha
   const safeCustom = (customInstructions || "").trim().slice(0, 6000);
   const customBlock = safeCustom
-    ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (PRIORIDADE MÁXIMA):\n${safeCustom}\n`
+    ? `\n\nINSTRUÃÃES DO PROPRIETÃRIO (PRIORIDADE MÃXIMA):\n${safeCustom}\n`
     : "";
   const acaiBlock = (cardapioAcai || "").trim()
     ? `
 
-AÇAÍ (MONTAR) E COMPLEMENTOS:
+AÃAÃ (MONTAR) E COMPLEMENTOS:
 ${cardapioAcai}
-- Pergunte quais complementos o cliente deseja e anote na observação do pedido.
+- Pergunte quais complementos o cliente deseja e anote na observaÃ§Ã£o do pedido.
 - Para entrega, confirme os complementos antes de fechar.`
     : "";
 
@@ -213,44 +218,44 @@ ${cardapioAcai}
   const cardapioBlock = cardapioDetalhado
     ? `
 
-CARDÁPIO E PREÇOS (FONTE DE VERDADE PARA VALORES):
+CARDÃPIO E PREÃOS (FONTE DE VERDADE PARA VALORES):
 ${cardapioDetalhado}
 
 REGRA DE BOLOS POR KG:
-- valor_total = preço_por_kg × quantidade_em_kg. NUNCA informe o preço de 1kg para 2kg ou mais.
-- Encomenda acima de R$300: entrada de 50%. Até R$300: pagamento integral.
+- valor_total = preÃ§o_por_kg Ã quantidade_em_kg. NUNCA informe o preÃ§o de 1kg para 2kg ou mais.
+- Encomenda acima de R$300: entrada de 50%. AtÃ© R$300: pagamento integral.
 `
     : "";
 
   const createBlock = (cardapioProdutos || "").trim()
     ? `
 
-REGISTRO AUTOMÁTICO NA PLATAFORMA:
-- Quando o cliente finalizar o pedido E enviar comprovante, inclua no FINAL da resposta o bloco correspondente (o cliente não vê).
+REGISTRO AUTOMÃTICO NA PLATAFORMA:
+- Quando o cliente finalizar o pedido E enviar comprovante, inclua no FINAL da resposta o bloco correspondente (o cliente nÃ£o vÃª).
 
 1) PEDIDO NORMAL: [CRIAR_PEDIDO] com JSON. Nomes exatos: ${(cardapioProdutos ?? "").replace(/\n/g, ", ")}.
 Exemplo: [CRIAR_PEDIDO]{"customer_name":"Nome","customer_phone":"5511999999999","channel":"delivery","order_number":"","table_number":"","payment_method":"pix","items":[{"recipe_name":"Abacaxi com Creme","quantity":1,"unit_type":"whole","notes":""}]}[/CRIAR_PEDIDO]
-- Se o cliente pedir decoração, escreva no campo "notes" do item a descrição EXATA que o cliente falou.
+- Se o cliente pedir decoraÃ§Ã£o, escreva no campo "notes" do item a descriÃ§Ã£o EXATA que o cliente falou.
 
 2) ENCOMENDA acima de R$300 (50% entrada): [CRIAR_ENCOMENDA] com paid_50_percent=true.
-Exemplo: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":320,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h às 18h"}[/CRIAR_ENCOMENDA]
-- Se houver decoração, coloque a descrição EXATA do cliente no campo "observations".
+Exemplo: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":320,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h Ã s 18h"}[/CRIAR_ENCOMENDA]
+- Se houver decoraÃ§Ã£o, coloque a descriÃ§Ã£o EXATA do cliente no campo "observations".
 
 3) QUITAR ENCOMENDA (restante dos 50%): [QUITAR_ENCOMENDA] com customer_phone, payment_value, payment_date.
 Exemplo: [QUITAR_ENCOMENDA]{"customer_phone":"5511999999999","payment_value":60,"payment_date":"2025-03-20"}[/QUITAR_ENCOMENDA]
 
-4) CADASTRO DO CLIENTE: [ATUALIZAR_CLIENTE] quando tiver nome, telefone, email, endereço e aniversário.
-Formato: [ATUALIZAR_CLIENTE]{"name":"Nome","phone":"5511999999999","email":"email@exemplo.com","address":"Rua, número, bairro, cidade","birthday":"1990-05-15"}[/ATUALIZAR_CLIENTE]
+4) CADASTRO DO CLIENTE: [ATUALIZAR_CLIENTE] quando tiver nome, telefone, email, endereÃ§o e aniversÃ¡rio.
+Formato: [ATUALIZAR_CLIENTE]{"name":"Nome","phone":"5511999999999","email":"email@exemplo.com","address":"Rua, nÃºmero, bairro, cidade","birthday":"1990-05-15"}[/ATUALIZAR_CLIENTE]
 
-5) DÚVIDA / ACIONAR EQUIPE: [ALERTA_EQUIPE]Texto curto explicando a dúvida.[/ALERTA_EQUIPE]`
+5) DÃVIDA / ACIONAR EQUIPE: [ALERTA_EQUIPE]Texto curto explicando a dÃºvida.[/ALERTA_EQUIPE]`
     : "";
 
   const basePrompt = buildAtendenteBasePrompt();
-  return `REGRA #1 — SÓ PRODUTOS DO CARDÁPIO:
-Você SÓ pode citar, recomendar ou mencionar produtos que estejam na lista "CARDÁPIO E PREÇOS" deste prompt. Se não está na lista, NÃO EXISTE. Nunca invente sabores.
+  return `REGRA #1 â SÃ PRODUTOS DO CARDÃPIO:
+VocÃª SÃ pode citar, recomendar ou mencionar produtos que estejam na lista "CARDÃPIO E PREÃOS" deste prompt. Se nÃ£o estÃ¡ na lista, NÃO EXISTE. Nunca invente sabores.
 
-REGRA #2 — CONVERSA CONTÍNUA:
-Leia o histórico inteiro antes de responder. Mantenha coerência. Não repita perguntas já respondidas.
+REGRA #2 â CONVERSA CONTÃNUA:
+Leia o histÃ³rico inteiro antes de responder. Mantenha coerÃªncia. NÃ£o repita perguntas jÃ¡ respondidas.
 
 ${basePrompt}
 ${customBlock}
@@ -258,13 +263,13 @@ ${acaiBlock}
 ${cardapioBlock}
 ${createBlock}
 
-INFORMAÇÕES DO CONTATO:
-- Nome: ${safeName || "não informado"}
-- Promoções: ${safePromo || "nenhuma"}
+INFORMAÃÃES DO CONTATO:
+- Nome: ${safeName || "nÃ£o informado"}
+- PromoÃ§Ãµes: ${safePromo || "nenhuma"}
 - Pagamento: ${safePayment}
 
-CARDÁPIO COMPLETO EM PDF: ${CARDAPIO_PDF_URL}
-- Envie o link quando pedirem o cardápio completo. Se perguntarem preço específico, informe o valor direto.
+CARDÃPIO COMPLETO EM PDF: ${CARDAPIO_PDF_URL}
+- Envie o link quando pedirem o cardÃ¡pio completo. Se perguntarem preÃ§o especÃ­fico, informe o valor direto.
 `;
 }
 
@@ -321,7 +326,7 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0.3, max_tokens: 1024 }),
+      body: JSON.stringify({ model, messages, temperature: 0.15, max_tokens: 1500 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -337,7 +342,7 @@ export async function callLlm(
     return content.slice(0, 4096).trim();
   }
 
-  throw new Error(`LLM error: ${lastErr || "sem resposta válida dos modelos"}`);
+  throw new Error(`LLM error: ${lastErr || "sem resposta vÃ¡lida dos modelos"}`);
 }
 
 export async function runAssistente(
@@ -363,7 +368,7 @@ export async function runAssistente(
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
       return reply || FALLBACK_ASSISTENTE;
     }
-    return `Dados disponíveis: ${JSON.stringify(dataContext).slice(0, 1200)}. Configure a API de IA em CRM > Configurações para respostas completas.`;
+    return `Dados disponÃ­veis: ${JSON.stringify(dataContext).slice(0, 1200)}. Configure a API de IA em CRM > ConfiguraÃ§Ãµes para respostas completas.`;
   } catch (e) {
     if ((e as Error).name === "AbortError") return FALLBACK_ASSISTENTE;
     console.error("runAssistente error:", (e as Error).message);
@@ -377,7 +382,13 @@ export async function runAtendente(
   supabase: SupabaseClient,
   message: string,
   contactName: string,
-  history: { role: "user" | "assistant"; content: string }[]
+  history: { role: "user" | "assistant"; content: string }[],
+  /** Novos parÃ¢metros opcionais para o sistema modular */
+  modularOpts?: {
+    intent: PromptIntent;
+    stage: PromptStage;
+    hasOrderInProgress: boolean;
+  }
 ): Promise<string> {
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) return FALLBACK_ATENDENTE;
@@ -385,11 +396,12 @@ export async function runAtendente(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const [promosRes, settingsRes, acaiRes, allRecipesRes] = await Promise.all([
+    const [promosRes, settingsRes, acaiRes, allRecipesRes, deliveryZonesRes] = await Promise.all([
       supabase.from("auto_promotions").select("discount_percent, promo_price, status").eq("status", "ativa").limit(5),
       supabase.from("crm_settings").select("key, value").in("key", ["payment_pix_key", "payment_instructions", "atendente_instructions"]),
       supabase.from("recipes").select("id, name, sale_price, slice_price, complementos").eq("active", true).eq("category", "acai"),
       supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price").eq("active", true).order("name"),
+      supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro").catch(() => ({ data: [] })),
     ]);
     const promos = (promosRes.data || []) as { discount_percent?: number; promo_price?: number }[];
     const promoSummary = promos.length
@@ -405,7 +417,7 @@ export async function runAtendente(
       const lines = acaiRecipes.map((r) => {
         const price = Number(r.slice_price ?? r.sale_price ?? 0);
         const comps = Array.isArray(r.complementos) && r.complementos.length > 0 ? r.complementos : defaultComplements;
-        return `${r.name}: R$ ${price.toFixed(2)}. Complementos disponíveis: ${comps.join(", ")}.`;
+        return `${r.name}: R$ ${price.toFixed(2)}. Complementos disponÃ­veis: ${comps.join(", ")}.`;
       });
       cardapioAcai = lines.join("\n");
     }
@@ -418,28 +430,70 @@ export async function runAtendente(
         const fatia = r.slice_price != null ? `fatia: R$ ${Number(r.slice_price).toFixed(2)}` : "";
         const unidade = r.sale_price != null ? `unidade: R$ ${Number(r.sale_price).toFixed(2)}` : "";
         const partes = [inteiro, fatia, unidade].filter(Boolean).join(" | ");
-        return partes ? `- ${nome} – ${partes}` : `- ${nome}`;
+        return partes ? `- ${nome} â ${partes}` : `- ${nome}`;
       })
       .join("\n");
-    // Truncar cardápio se ultrapassar 4000 caracteres para economizar tokens
+    // Truncar cardÃ¡pio se ultrapassar 4000 caracteres para economizar tokens
     if (cardapioProdutosDetalhado.length > 4000) {
-      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardápio truncado)";
+      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardÃ¡pio truncado)";
     }
-    const systemPrompt = buildAtendentePrompt(
-      contactName,
-      promoSummary,
-      paymentInfo,
-      customInstructions,
-      cardapioAcai || null,
-      cardapioProdutos || null,
-      cardapioProdutosDetalhado || null
-    );
+
+    // ââ Montar tabela de zonas de delivery com disponibilidade ââ
+    interface DeliveryZoneDisp {
+      bairro: string; cidade: string; taxa: number; taxa_max?: number | null;
+      distancia_km?: number | null; max_pedidos_dia?: number;
+      pedidos_hoje?: number; vagas_restantes?: number; disponivel?: boolean;
+    }
+    const deliveryZones = ((deliveryZonesRes as any)?.data || []) as DeliveryZoneDisp[];
+    let deliveryZonesText = "";
+    if (deliveryZones.length > 0) {
+      const lines = deliveryZones.map((z) => {
+        const taxaMin = Number(z.taxa).toFixed(2);
+        const taxaStr = z.taxa_max ? `R$ ${taxaMin} a R$ ${Number(z.taxa_max).toFixed(2)}` : `R$ ${taxaMin}`;
+        const dist = z.distancia_km != null ? `${z.distancia_km}km` : "";
+        const limite = z.max_pedidos_dia ?? 20;
+        const vagas = z.vagas_restantes ?? limite;
+        const status = vagas <= 0 ? " â ESGOTADO HOJE" : vagas <= 3 ? ` â ï¸ ${vagas} vagas` : "";
+        return `- ${z.bairro} (${z.cidade}): ${taxaStr} | ${dist} | mÃ¡x ${limite}/dia${status}`;
+      });
+      deliveryZonesText = lines.join("\n");
+    }
+
+    // ââ Sistema Modular: se recebemos intent/stage, usar prompt modular ââ
+    let systemPrompt: string;
+    if (modularOpts) {
+      systemPrompt = buildModularAtendentePrompt({
+        intent: modularOpts.intent,
+        stage: modularOpts.stage,
+        hasOrderInProgress: modularOpts.hasOrderInProgress,
+        contactName,
+        promoSummary,
+        paymentInfo,
+        customInstructions,
+        cardapioAcai: cardapioAcai || null,
+        cardapioProdutos: cardapioProdutos || null,
+        cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
+        deliveryZonesText: deliveryZonesText || null,
+      });
+    } else {
+      // Fallback: prompt monolÃ­tico original (para chamadas sem contexto modular)
+      systemPrompt = buildAtendentePrompt(
+        contactName,
+        promoSummary,
+        paymentInfo,
+        customInstructions,
+        cardapioAcai || null,
+        cardapioProdutos || null,
+        cardapioProdutosDetalhado || null
+      );
+    }
+
     const config = await getLlmConfig(supabase);
     if (config) {
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
       return reply || FALLBACK_ATENDENTE;
     }
-    return "Olá! Obrigado pelo contato. Em breve nossa equipe retorna. Qual seu nome?";
+    return "OlÃ¡! Obrigado pelo contato. Em breve nossa equipe retorna. Qual seu nome?";
   } catch (e) {
     if ((e as Error).name === "AbortError") return FALLBACK_ATENDENTE;
     console.error("runAtendente error:", (e as Error).message);
