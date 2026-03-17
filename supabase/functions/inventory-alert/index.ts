@@ -114,7 +114,7 @@ serve(async (req) => {
       .in("id", ids);
 
     for (const row of inventoryRows || []) {
-      const inv = row as {
+      const inv = row as unknown as {
         id: string;
         slices_available: number;
         stock_grams: number | null;

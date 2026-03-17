@@ -1124,7 +1124,7 @@ serve(async (req) => {
         if (sessionRow) {
           await supabase.from("sessions").update(sessionUpdate as any).eq("remote_jid", remoteJid);
         } else {
-          await supabase.from("sessions").insert({ remote_jid: remoteJid, ...sessionUpdate } as Record<string, unknown>).catch(() => {});
+          try { await supabase.from("sessions").insert({ remote_jid: remoteJid, ...sessionUpdate } as Record<string, unknown>); } catch (_) {}
         }
 
         await supabase.from("crm_messages").insert({
