@@ -23,6 +23,7 @@ const corsHeaders = {
 
 const EVOLUTION_KEYS = ["evolution_base_url", "evolution_api_key", "evolution_instance", "evolution_webhook_secret"] as const;
 const SEND_MESSAGE_TIMEOUT_MS = 12000;
+const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
 
 function getEvolutionConfig(settings: { key: string; value: string }[]) {
   const map = new Map(settings.map((s) => [s.key, s.value]));
@@ -99,6 +100,64 @@ function extractMessageId(payload: Record<string, unknown>): string | null {
   return typeof id === "string" && id.length > 0 && id.length <= 128 ? id : null;
 }
 
+function normalizeForCompare(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildRecentHistoryHint(history: { role: "user" | "assistant"; content: string }[]): string {
+  const recent = history.slice(-6);
+  if (recent.length === 0) return "";
+  const lines = recent.map((h) => `${h.role === "user" ? "cliente" : "atendente"}: ${h.content.slice(0, 180)}`);
+  return lines.join("\n");
+}
+
+function extractBoloRecommendations(text: string): string[] {
+  const out: string[] = [];
+  const matches = text.match(/bolo\s+de\s+[a-zA-ZÀ-ÿ0-9\s]+/gi) || [];
+  for (const m of matches) {
+    const cleaned = m
+      .replace(/[.,!?;:()\[\]"]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (cleaned.length >= 8) out.push(cleaned);
+  }
+  return [...new Set(out)];
+}
+
+function hasInvalidRecommendation(replyText: string, recipeNames: string[]): boolean {
+  const normalizedRecipes = recipeNames.map((n) => normalizeForCompare(n));
+  const candidates = extractBoloRecommendations(replyText).map((c) => normalizeForCompare(c));
+  if (candidates.length === 0) return false;
+  for (const candidate of candidates) {
+    const found = normalizedRecipes.some((r) => r === candidate || r.includes(candidate) || candidate.includes(r));
+    if (!found) return true;
+  }
+  return false;
+}
+
+function enforceReplyGuardrails(
+  replyText: string,
+  recipeNames: string[],
+  fullMessage: string
+): string {
+  if (!replyText || recipeNames.length === 0) return replyText;
+  const msg = normalizeForCompare(fullMessage);
+  const askedRecommendation =
+    msg.includes("recomenda") ||
+    msg.includes("sugere") ||
+    msg.includes("sugestao") ||
+    msg.includes("sugestão") ||
+    msg.includes("qual bolo");
+  if (!askedRecommendation) return replyText;
+  if (!hasInvalidRecommendation(replyText, recipeNames)) return replyText;
+  return `Claro! Para te recomendar certinho, eu sigo apenas os sabores que estão no nosso cardápio oficial 😊\n\nSe quiser, te envio agora os sabores disponíveis e te indico os mais pedidos de hoje: ${CARDAPIO_PDF_URL}`;
+}
+
 async function sendEvolutionMessage(
   baseUrl: string,
   apiKey: string,
@@ -113,6 +172,7 @@ async function sendEvolutionMessage(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SEND_MESSAGE_TIMEOUT_MS);
   try {
+    const dynamicDelay = Math.min(9000, Math.max(1200, Math.floor(text.length * 24)));
     const res = await fetch(url, {
       method: "POST",
       signal: controller.signal,
@@ -123,7 +183,7 @@ async function sendEvolutionMessage(
       body: JSON.stringify({
         number: num,
         text: text.slice(0, 4096),
-        delay: 8000,
+        delay: dynamicDelay,
         textMessage: { text: text.slice(0, 4096) },
       }),
     });
@@ -953,6 +1013,13 @@ serve(async (req) => {
       } else {
         const customerId = await findOrCreateCustomer(supabase, normalizedPhone, pushName);
         await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessage);
+        const { data: recipeRows } = await supabase
+          .from("recipes")
+          .select("name")
+          .eq("active", true);
+        const recipeNames = ((recipeRows || []) as { name?: string }[])
+          .map((r) => (r.name || "").trim())
+          .filter((n) => n.length > 0);
 
         await supabase.from("crm_messages").insert({
           customer_id: customerId,
@@ -999,23 +1066,34 @@ serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(20);
 
-        const history =
+        let history =
           (historyRows || [])
             .reverse()
             .map((m: { message_type: string; message_content: string | null }) => {
               const role = m.message_type === "whatsapp_saida" ? "assistant" : "user";
               return { role, content: (m.message_content || "").slice(0, 4096) };
             });
+        if (history.length > 0) {
+          const last = history[history.length - 1];
+          if (last.role === "user" && normalizeForCompare(last.content) === normalizeForCompare(fullMessage)) {
+            history = history.slice(0, -1);
+          }
+        }
 
         // Injetar contexto da sessão se houver pedido em andamento
         let enrichedMessage = fullMessage;
         if (sessionMemory && Object.keys(sessionMemory).length > 0) {
           enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
         }
+        const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
+        if (recentHistoryHint) {
+          enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
+        }
 
         reply = await runAtendente(supabase, enrichedMessage, pushName || "Cliente", history as { role: "user" | "assistant"; content: string }[]);
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
+        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
         if (alertaEquipeText && ownerPhonesList.length > 0) {
@@ -1112,7 +1190,7 @@ serve(async (req) => {
             console.error("evolution-webhook: falha ao quitar encomenda", result.error);
           }
         }
-        reply = replyClean || reply;
+        reply = guardedReplyClean || replyClean || reply;
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         const sessionUpdate: Record<string, unknown> = {
