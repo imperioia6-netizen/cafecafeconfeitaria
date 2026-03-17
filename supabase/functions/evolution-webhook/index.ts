@@ -128,6 +128,84 @@ function buildPreviousQuestionHint(
   return `A mensagem atual parece resposta da pergunta anterior do atendente.\nPergunta anterior: ${recentAssistant.content.slice(0, 220)}\nResposta atual do cliente: ${msg}`;
 }
 
+type ConversationIntent =
+  | "greeting"
+  | "start_order"
+  | "ask_price"
+  | "ask_recommendation"
+  | "delivery_urgency"
+  | "payment_proof"
+  | "other";
+
+type ConversationStage =
+  | "start"
+  | "collecting_items"
+  | "awaiting_order_type"
+  | "confirming_order"
+  | "awaiting_payment"
+  | "post_payment";
+
+function detectIntent(fullMessage: string): ConversationIntent {
+  const msg = normalizeForCompare(fullMessage);
+  if (/^(oi|ola|olá|boa noite|bom dia|boa tarde)\b/.test(msg)) return "greeting";
+  if (msg.includes("comprovante") || msg.includes("pix") || msg.includes("paguei") || msg.includes("pago")) return "payment_proof";
+  if (msg.includes("preco") || msg.includes("valor") || msg.includes("quanto")) return "ask_price";
+  if (msg.includes("recomenda") || msg.includes("sugere") || msg.includes("qual bolo")) return "ask_recommendation";
+  if ((msg.includes("entregar") || msg.includes("delivery")) && (msg.includes("agora") || msg.includes("hoje"))) return "delivery_urgency";
+  if (msg.includes("quero pedir") || msg.includes("fazer um pedido") || msg.includes("gostaria de pedir") || msg.includes("encomenda")) return "start_order";
+  return "other";
+}
+
+function deriveStage(
+  memory: Record<string, unknown>,
+  intent: ConversationIntent,
+  fullMessage: string
+): ConversationStage {
+  const msg = normalizeForCompare(fullMessage);
+  const oldStage = (memory.stage as ConversationStage | undefined) || "start";
+  const mentionsOrderType = msg.includes("delivery") || msg.includes("retirada") || msg.includes("encomenda");
+  if (intent === "payment_proof") return "post_payment";
+  if (intent === "start_order" && !mentionsOrderType) return "awaiting_order_type";
+  if (intent === "start_order" && mentionsOrderType) return "collecting_items";
+  if (oldStage === "awaiting_payment" && intent === "other") return "awaiting_payment";
+  if (intent === "ask_price" || intent === "ask_recommendation") return "collecting_items";
+  return oldStage;
+}
+
+function buildControlHint(
+  intent: ConversationIntent,
+  stage: ConversationStage,
+  memory: Record<string, unknown>
+): string {
+  const lastIntent = (memory.last_intent as string | undefined) || "none";
+  return `[MOTOR_DE_CONTROLE_DE_FLUXO]
+- intent_atual: ${intent}
+- etapa_atual: ${stage}
+- intent_anterior: ${lastIntent}
+- regras_chave:
+  1) nao inventar produto fora do cardapio
+  2) manter contexto continuo da conversa
+  3) se etapa_atual=awaiting_order_type, perguntar objetivamente: "É para encomenda, delivery ou retirada?"
+  4) se etapa_atual=collecting_items, coletar itens e so depois fechar total
+  5) resposta curta, humana, direta e com pausa natural
+[/MOTOR_DE_CONTROLE_DE_FLUXO]`;
+}
+
+function enforceOrderTypeQuestion(
+  replyText: string,
+  intent: ConversationIntent,
+  stage: ConversationStage,
+  fullMessage: string
+): string {
+  if (!replyText) return replyText;
+  const msg = normalizeForCompare(fullMessage);
+  const hasOrderTypeInUserMsg = msg.includes("delivery") || msg.includes("retirada") || msg.includes("encomenda");
+  if (intent !== "start_order" || hasOrderTypeInUserMsg || stage !== "awaiting_order_type") return replyText;
+  const rep = normalizeForCompare(replyText);
+  if (rep.includes("encomenda") && rep.includes("delivery") && rep.includes("retirada")) return replyText;
+  return `${replyText.trim()}\n\nÉ para encomenda, delivery ou retirada?`;
+}
+
 function splitAboveFourKg(totalKg: number): number[] {
   const parts: number[] = [];
   let rem = totalKg;
@@ -1200,12 +1278,16 @@ serve(async (req) => {
         }
         const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
         const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
+        const intent = detectIntent(fullMessage);
+        const stage = deriveStage(sessionMemory, intent, fullMessage);
+        const controlHint = buildControlHint(intent, stage, sessionMemory);
         if (recentHistoryHint) {
           enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
         }
         if (previousQuestionHint) {
           enrichedMessage = `[CONTINUIDADE DE CONTEXTO]\n${previousQuestionHint}\n\n${enrichedMessage}`;
         }
+        enrichedMessage = `${controlHint}\n\n${enrichedMessage}`;
 
         const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
@@ -1316,12 +1398,15 @@ serve(async (req) => {
           }
         }
         reply = guardedReplyClean || replyClean || reply;
+        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessage);
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         const sessionUpdate: Record<string, unknown> = {
           memory: {
             last_message: fullMessage.slice(0, 300),
             last_reply: reply.slice(0, 300),
+            last_intent: intent,
+            stage,
             updated: new Date().toISOString(),
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,
