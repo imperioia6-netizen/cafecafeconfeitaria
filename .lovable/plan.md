@@ -1,23 +1,39 @@
 
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-# Plano: Salvar nova chave OpenAI e garantir que o CRM config funciona
+## Melhorias Aplicadas
 
-## Diagnóstico
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-A interface de configuração no CRM (aba Automação) **já existe e funciona** — tem campos para API Key, URL base e Modelo. O problema é que a chave salva anteriormente (`sk-svcacct-...`) provavelmente expirou ou é inválida, fazendo o sistema cair no fallback do Lovable AI (Google Gemini Flash).
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-Já existe uma chave no banco (`agent_api_key = sk-svcacct-...`), mas está desatualizada.
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-## Ações
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-### 1. Atualizar a chave no banco de dados
-Usar o Supabase para atualizar o valor de `agent_api_key` na tabela `crm_settings` com a nova chave que você passou (`sk-proj...`), e mudar o modelo para `gpt-4o` (atualmente está `gpt-4o-mini`).
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-### 2. Fazer deploy da edge function `evolution-webhook`
-Para garantir que o código com `temperature: 0` e todas as regras de prompt estejam rodando em produção.
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
-### Resultado
-- O agente WhatsApp passa a usar GPT-4o da OpenAI em vez do Gemini Flash
-- Você pode alterar a chave a qualquer momento pela aba **Automação** no CRM (campo "API Key OpenAI / ChatGPT")
-- Não precisa de nenhuma mudança no código — tudo já está implementado
+## Arquivos Editados
 
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
