@@ -1,39 +1,38 @@
 
-# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-## Melhorias Aplicadas
+# Diagnóstico: Por que a IA ainda inventa produtos e ignora contexto
 
-### 1. ✅ Sessões de Conversa (tabela `sessions`)
-- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
-- Contexto da sessão anterior é injetado na mensagem para o LLM
-- Sessão é limpa após criação de pedido/encomenda
+## O que está acontecendo
 
-### 2. ✅ Histórico do Dono no WhatsApp
-- Mensagens do dono são salvas em `messaages log` (entrada e saída)
-- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
+As mudanças do Cursor **estão no código** (confirmei linha por linha). Os dois problemas persistem por **duas razões técnicas**:
 
-### 3. ✅ Verificação de `ia_paused`
-- Webhook verifica `crm_settings.ia_paused` antes de responder
-- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
+### Razão 1: Deploy pode não ter ocorrido
+O GitHub Actions só faz deploy quando há push na branch `main`. Se o commit `6ef2bb0` (e os commits seguintes do Lovable) não foram pushed para `main`, a Edge Function em produção ainda roda o código **antigo** — sem REGRA #1, sem REGRA #2, sem o bloco de RECOMENDAÇÕES.
 
-### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
-- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
-- Envia alerta via Evolution para todos os números em `ownerPhones`
-- Remove o bloco da resposta enviada ao cliente
+**Ação**: Fazer deploy da edge function `evolution-webhook` agora mesmo (posso fazer isso pelo Lovable).
 
-### 5. ✅ Otimização de Prompt
-- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
-- Cardápio detalhado truncado se > 4000 caracteres
-- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
+### Razão 2: Falta `temperature: 0` na chamada do LLM
+Atualmente o `callLlm` (linha 433) envia o payload ao modelo **sem o parâmetro `temperature`**. O default da maioria dos modelos é `temperature: 1.0` — o que dá liberdade criativa ao modelo para "inventar" coisas como "bolo de cenoura". Com `temperature: 0` (ou 0.1), o modelo fica muito mais obediente às instruções do prompt e menos propenso a alucinar produtos.
 
-### 6. ✅ Integração `payment_confirmations`
-- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
-- Permite que o dono confirme pagamentos pelo painel
+## Plano de correção
 
-## Arquivos Editados
+### 1. Adicionar `temperature: 0` no `callLlm` 
+**Arquivo**: `supabase/functions/_shared/agentLogic.ts` (linha 433)
 
-| Arquivo | Mudança |
-|---|---|
-| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
-| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
-| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
+Mudar de:
+```typescript
+body: JSON.stringify({ model: config.model, messages }),
+```
+Para:
+```typescript
+body: JSON.stringify({ model: config.model, messages, temperature: 0 }),
+```
+
+### 2. Deploy da edge function `evolution-webhook`
+Usar a ferramenta de deploy do Lovable para garantir que o código atualizado (REGRA #1, REGRA #2, temperature: 0) esteja rodando em produção.
+
+### Resultado esperado
+- `temperature: 0` elimina a criatividade que faz o modelo inventar "bolo de cenoura"
+- Com o deploy feito, as regras de RECOMENDAÇÕES e CONVERSA CONTÍNUA passam a valer
+- O modelo vai seguir estritamente a lista do cardápio ao recomendar produtos
+
