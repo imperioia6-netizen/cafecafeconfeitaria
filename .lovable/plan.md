@@ -1,18 +1,39 @@
 
+# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-# Plano: Encaminhar pedidos do agente para a plataforma externa
+## Melhorias Aplicadas
 
-## Problema
+### 1. ✅ Sessões de Conversa (tabela `sessions`)
+- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
+- Contexto da sessão anterior é injetado na mensagem para o LLM
+- Sessão é limpa após criação de pedido/encomenda
 
-A edge function `confirm-payment` cria pedidos e encomendas quando o dono confirma um comprovante, mas **não encaminha para a plataforma externa** (TicketFlow/receive-orders). As versões dessas funções no `evolution-webhook` já fazem isso, mas as cópias simplificadas no `confirm-payment` não têm essa chamada.
+### 2. ✅ Histórico do Dono no WhatsApp
+- Mensagens do dono são salvas em `messaages log` (entrada e saída)
+- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
 
-## Correção
+### 3. ✅ Verificação de `ia_paused`
+- Webhook verifica `crm_settings.ia_paused` antes de responder
+- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
 
-Editar `supabase/functions/confirm-payment/index.ts` para:
+### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
+- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
+- Envia alerta via Evolution para todos os números em `ownerPhones`
+- Remove o bloco da resposta enviada ao cliente
 
-1. Importar `sendTicketFlowOrder` de `../_shared/ticketflow.ts`
-2. Após criar o pedido em `createOrderFromPayload`, chamar `sendTicketFlowOrder` com type `"pedido"` e os itens
-3. Após criar a encomenda em `createEncomendaFromPayload`, chamar `sendTicketFlowOrder` com type `"encomenda"`
+### 5. ✅ Otimização de Prompt
+- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
+- Cardápio detalhado truncado se > 4000 caracteres
+- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
 
-Isso replica o mesmo comportamento que já existe no `evolution-webhook` (linhas 763-785 e 905-924), garantindo que todo pedido/encomenda criado pelo agente vá para a plataforma vinculada.
+### 6. ✅ Integração `payment_confirmations`
+- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
+- Permite que o dono confirme pagamentos pelo painel
 
+## Arquivos Editados
+
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
+| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
+| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |

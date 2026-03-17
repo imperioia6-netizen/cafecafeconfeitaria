@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendTicketFlowOrder } from "../_shared/ticketflow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -287,6 +288,28 @@ async function createOrderFromPayload(
   // Finalizar pedido
   await supabase.from("orders").update({ status: "finalizado" as any, closed_at: new Date().toISOString() }).eq("id", orderId);
 
+  // Encaminhar para plataforma externa
+  try {
+    await sendTicketFlowOrder(supabase, customerPhone, {
+      type: "pedido",
+      channel: channel === "delivery" ? "delivery" : "balcao",
+      total,
+      payment_method: payment_method,
+      items: orderItems.map((i: any) => {
+        const recipe = (recipes || []).find((r: any) => r.id === i.recipe_id);
+        return {
+          name: recipe?.name || "Item",
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          category: null,
+          unit: i.unit_type === "whole" ? "UN" : "FATIA",
+        };
+      }),
+    });
+  } catch (e) {
+    console.error("confirm-payment: erro ao encaminhar pedido para plataforma externa", (e as Error).message);
+  }
+
   return { ok: true, orderId };
 }
 
@@ -339,6 +362,27 @@ async function createEncomendaFromPayload(
     }
   } catch (e) {
     console.error("createEncomendaFromPayload sales insert error:", (e as Error).message);
+  }
+
+  // Encaminhar para plataforma externa
+  try {
+    await sendTicketFlowOrder(supabase, (payload.customer_phone as string) || "", {
+      type: "encomenda",
+      channel: "delivery",
+      total: total_value,
+      payment_method,
+      items: [{
+        name: product_description,
+        quantity,
+        unit_price: total_value / quantity,
+        category: null,
+        unit: "UN",
+      }],
+      deliveryDate: (payload.delivery_date as string) || null,
+      deliveryTime: (payload.delivery_time_slot as string) || null,
+    });
+  } catch (e) {
+    console.error("confirm-payment: erro ao encaminhar encomenda para plataforma externa", (e as Error).message);
   }
 
   return { ok: true, encomendaId: (enc as any).id };
