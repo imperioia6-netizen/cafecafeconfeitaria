@@ -48,6 +48,26 @@ const Profile = () => {
     setSaving(false);
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !profileId) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Imagem muito grande (máx 5MB)'); return; }
+
+    setUploading(true);
+    const path = `${user.id}/avatar.${file.name.split('.').pop() || 'jpg'}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (uploadError) { toast.error('Erro no upload'); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+    const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase.from('profiles').update({ photo_url: newUrl }).eq('id', profileId);
+    if (updateError) { toast.error('Erro ao salvar foto'); }
+    else { setPhotoUrl(newUrl); toast.success('Foto atualizada!'); }
+    setUploading(false);
+  };
+
   const initials = form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
