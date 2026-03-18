@@ -1228,10 +1228,10 @@ serve(async (req) => {
         await supabase.from("messaages log").insert({
           remote_jid: remoteJid,
           from_me: false,
-          text: fullMessage.slice(0, 4096),
+          text: fullMessageFinal.slice(0, 4096),
         });
 
-        reply = await runAssistente(supabase, fullMessage, ownerHistory);
+        reply = await runAssistente(supabase, fullMessageFinal, ownerHistory);
 
         // Salvar resposta de saída para o dono
         await supabase.from("messaages log").insert({
