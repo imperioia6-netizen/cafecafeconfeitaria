@@ -1224,10 +1224,13 @@ export type Database = {
         Row: {
           address: string | null
           customer_name: string | null
+          debounce_leader_id: string | null
+          debounce_until: string | null
           delivery_free: number | null
           id: string | null
           memory: Json
           payment_method: string | null
+          pending_messages: string[] | null
           remote_jid: string
           "status text": Database["public"]["Enums"]["status text"] | null
           subtotal: number | null
@@ -1238,10 +1241,13 @@ export type Database = {
         Insert: {
           address?: string | null
           customer_name?: string | null
+          debounce_leader_id?: string | null
+          debounce_until?: string | null
           delivery_free?: number | null
           id?: string | null
           memory: Json
           payment_method?: string | null
+          pending_messages?: string[] | null
           remote_jid: string
           "status text"?: Database["public"]["Enums"]["status text"] | null
           subtotal?: number | null
@@ -1252,10 +1258,13 @@ export type Database = {
         Update: {
           address?: string | null
           customer_name?: string | null
+          debounce_leader_id?: string | null
+          debounce_until?: string | null
           delivery_free?: number | null
           id?: string | null
           memory?: Json
           payment_method?: string | null
+          pending_messages?: string[] | null
           remote_jid?: string
           "status text"?: Database["public"]["Enums"]["status text"] | null
           subtotal?: number | null
@@ -1413,6 +1422,14 @@ export type Database = {
     }
     Functions: {
       crm_auto_return: { Args: never; Returns: undefined }
+      debounce_add_message: {
+        Args: { p_delay_ms?: number; p_message: string; p_remote_jid: string }
+        Returns: Json
+      }
+      debounce_collect_messages: {
+        Args: { p_leader_id: string; p_remote_jid: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

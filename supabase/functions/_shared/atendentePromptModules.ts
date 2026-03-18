@@ -471,6 +471,15 @@ export function selectModules(
   // Sempre incluir interpretaÃ§Ã£o inteligente (clientes respondem curto)
   modules.push(moduleInterpretacao());
 
+  // Flavor validation - stricter sabor check
+  modules.push(`——— VALIDAÇÃO DE SABOR ———
+Quando você perguntar o sabor e o cliente responder, VERIFIQUE se a resposta contém um nome real do cardápio.
+- "brigadeiro", "ninho com morango", "limão" → SÃO sabores válidos (se estiverem no cardápio).
+- "ok", "sim", "pode ser", "tá bom", "isso" → NÃO são sabores. São confirmações genéricas. Se você perguntou o sabor, pergunte de novo qual sabor específico.
+- Respostas genéricas como "qualquer um", "o mais vendido", "tanto faz" → Peça para escolher um sabor específico do cardápio.
+- NUNCA assuma que uma resposta curta qualquer é um sabor. Só aceite se for um nome que EXISTE no cardápio.
+- Se o cliente disser um sabor que NÃO está no cardápio: "Esse sabor a gente não tem no momento, mas posso te mostrar os que temos!"`);
+
   // MÃ³dulos por intenÃ§Ã£o
   switch (intent) {
     case "greeting":

@@ -1150,6 +1150,46 @@ serve(async (req) => {
       try { await supabase.from("webhook_processed_events").insert({ id: messageId }); } catch (_) {}
     }
 
+    // ===== DEBOUNCE ATÔMICO: acumular mensagens rápidas =====
+    let debounceApplied = false;
+    let finalMessage = fullMessage;
+    try {
+      const { data: debounceResult } = await supabase.rpc("debounce_add_message", {
+        p_remote_jid: remoteJid,
+        p_message: fullMessage.slice(0, 2000),
+        p_delay_ms: 3000,
+      });
+      if (debounceResult && typeof debounceResult === "object") {
+        const dr = debounceResult as { is_leader?: boolean; leader_id?: string; delay_ms?: number };
+        if (dr.is_leader === false) {
+          // Não é líder: outra invocação vai processar tudo
+          console.log("evolution-webhook: debounced (not leader) for", remoteJid);
+          return new Response(JSON.stringify({ ok: true, debounced: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (dr.is_leader === true && dr.delay_ms && dr.delay_ms > 0 && dr.leader_id) {
+          // É líder: esperar delay e coletar mensagens acumuladas
+          debounceApplied = true;
+          await new Promise((r) => setTimeout(r, dr.delay_ms! + 500));
+          const { data: collected } = await supabase.rpc("debounce_collect_messages", {
+            p_remote_jid: remoteJid,
+            p_leader_id: dr.leader_id,
+          });
+          if (collected && Array.isArray(collected) && collected.length > 1) {
+            finalMessage = (collected as string[]).join("\n");
+            console.log("evolution-webhook: debounce collected", collected.length, "messages for", remoteJid);
+          }
+        }
+      }
+    } catch (e) {
+      // RPCs não existem ou erro — processar normalmente sem debounce
+      console.warn("evolution-webhook: debounce RPC fallback:", (e as Error).message);
+    }
+    // Replace fullMessage references below with finalMessage
+    const fullMessageFinal = debounceApplied ? finalMessage : fullMessage;
+
     const owner = await getOwner(supabase);
     const { data: ownerSettingsRows } = await supabase.from("crm_settings").select("key, value").in("key", ["owner_phones", "owner_phone_override"]);
     const ownerPhonesMap = new Map((ownerSettingsRows || []).map((r: { key: string; value: string }) => [r.key, r.value]));
@@ -1188,10 +1228,10 @@ serve(async (req) => {
         await supabase.from("messaages log").insert({
           remote_jid: remoteJid,
           from_me: false,
-          text: fullMessage.slice(0, 4096),
+          text: fullMessageFinal.slice(0, 4096),
         });
 
-        reply = await runAssistente(supabase, fullMessage, ownerHistory);
+        reply = await runAssistente(supabase, fullMessageFinal, ownerHistory);
 
         // Salvar resposta de saída para o dono
         await supabase.from("messaages log").insert({
@@ -1201,7 +1241,7 @@ serve(async (req) => {
         });
       } else {
         const customerId = await findOrCreateCustomer(supabase, normalizedPhone, pushName);
-        await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessage);
+        await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessageFinal);
         const { data: recipeRows } = await supabase
           .from("recipes")
           .select("name, whole_price, sale_price, slice_price")
@@ -1215,7 +1255,7 @@ serve(async (req) => {
         await supabase.from("crm_messages").insert({
           customer_id: customerId,
           message_type: "whatsapp_entrada",
-          message_content: fullMessage.slice(0, 4096),
+          message_content: fullMessageFinal.slice(0, 4096),
           status: "lida",
           sent_at: new Date().toISOString(),
         });
@@ -1272,14 +1312,14 @@ serve(async (req) => {
         }
 
         // Injetar contexto da sessão se houver pedido em andamento
-        let enrichedMessage = fullMessage;
+        let enrichedMessage = fullMessageFinal;
         if (sessionMemory && Object.keys(sessionMemory).length > 0) {
-          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
+          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessageFinal}`;
         }
         const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
-        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
-        const intent = detectIntent(fullMessage);
-        const stage = deriveStage(sessionMemory, intent, fullMessage);
+        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessageFinal);
+        const intent = detectIntent(fullMessageFinal);
+        const stage = deriveStage(sessionMemory, intent, fullMessageFinal);
         const controlHint = buildControlHint(intent, stage, sessionMemory);
         if (recentHistoryHint) {
           enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
@@ -1291,7 +1331,7 @@ serve(async (req) => {
         const timeHint = `[HORA_ATUAL_SP]\nAgora em São Paulo: ${nowSp}\nUse essa referência para decidir regras de horário e prazo do mesmo dia.\n[/HORA_ATUAL_SP]`;
         enrichedMessage = `${timeHint}\n\n${controlHint}\n\n${enrichedMessage}`;
 
-        const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
+        const deterministicPriceReply = detectCakePriceIntent(fullMessageFinal, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
           reply = deterministicPriceReply;
         } else {
@@ -1299,10 +1339,10 @@ serve(async (req) => {
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
-        const decorationText = extractDecorationRequestFromMessage(fullMessage);
+        const decorationText = extractDecorationRequestFromMessage(fullMessageFinal);
         const pedidoJsonWithDecoration = applyDecorationToPedidoPayload(pedidoJson, decorationText);
         const encomendaJsonWithDecoration = applyDecorationToEncomendaPayload(encomendaJson, decorationText);
-        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
+        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessageFinal);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
         if (alertaEquipeText && ownerPhonesList.length > 0) {
@@ -1400,16 +1440,36 @@ serve(async (req) => {
           }
         }
         reply = guardedReplyClean || replyClean || reply;
-        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessage);
+        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessageFinal);
 
-        // ===== MELHORIA 1: Salvar sessão de conversa =====
+        // ===== MELHORIA 1 + PERSISTÊNCIA: Salvar sessão com dados extraídos =====
+        // Extrair dados do pedido da mensagem para persistir na sessão
+        const msgNormForMemory = normalizeForCompare(fullMessageFinal);
+        const weightMatch = fullMessageFinal.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+        const extractedWeight = weightMatch ? Number(weightMatch[1].replace(",", ".")) : null;
+        const mentionedFlavors = recipeNames.filter((n) => msgNormForMemory.includes(normalizeForCompare(n)));
+        const mentionsDelivery = msgNormForMemory.includes("delivery");
+        const mentionsRetirada = msgNormForMemory.includes("retirada");
+        const mentionsEncomenda = msgNormForMemory.includes("encomenda");
+        const orderType = mentionsDelivery ? "delivery" : mentionsRetirada ? "retirada" : mentionsEncomenda ? "encomenda" : null;
+
+        const prevMemory = (sessionMemory || {}) as Record<string, unknown>;
+        const persistedFlavors = [...new Set([
+          ...((prevMemory.flavors as string[]) || []),
+          ...mentionedFlavors,
+        ])].slice(0, 10);
+
         const sessionUpdate: Record<string, unknown> = {
           memory: {
-            last_message: fullMessage.slice(0, 300),
+            last_message: fullMessageFinal.slice(0, 300),
             last_reply: reply.slice(0, 300),
             last_intent: intent,
             stage,
             updated: new Date().toISOString(),
+            // Persistência de dados do pedido
+            weight_kg: extractedWeight || (prevMemory.weight_kg as number | null) || null,
+            flavors: persistedFlavors.length > 0 ? persistedFlavors : (prevMemory.flavors as string[] | null) || null,
+            order_type: orderType || (prevMemory.order_type as string | null) || null,
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,
           updated_at: new Date().toISOString(),
