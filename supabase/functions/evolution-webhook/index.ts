@@ -1255,7 +1255,7 @@ serve(async (req) => {
         await supabase.from("crm_messages").insert({
           customer_id: customerId,
           message_type: "whatsapp_entrada",
-          message_content: fullMessage.slice(0, 4096),
+          message_content: fullMessageFinal.slice(0, 4096),
           status: "lida",
           sent_at: new Date().toISOString(),
         });
