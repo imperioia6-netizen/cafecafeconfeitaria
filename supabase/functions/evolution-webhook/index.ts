@@ -1312,14 +1312,14 @@ serve(async (req) => {
         }
 
         // Injetar contexto da sessão se houver pedido em andamento
-        let enrichedMessage = fullMessage;
+        let enrichedMessage = fullMessageFinal;
         if (sessionMemory && Object.keys(sessionMemory).length > 0) {
-          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessage}`;
+          enrichedMessage = `[CONTEXTO DA SESSÃO ANTERIOR: ${JSON.stringify(sessionMemory).slice(0, 500)}]\n\n${fullMessageFinal}`;
         }
         const recentHistoryHint = buildRecentHistoryHint(history as { role: "user" | "assistant"; content: string }[]);
-        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
-        const intent = detectIntent(fullMessage);
-        const stage = deriveStage(sessionMemory, intent, fullMessage);
+        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessageFinal);
+        const intent = detectIntent(fullMessageFinal);
+        const stage = deriveStage(sessionMemory, intent, fullMessageFinal);
         const controlHint = buildControlHint(intent, stage, sessionMemory);
         if (recentHistoryHint) {
           enrichedMessage = `[RESUMO DO HISTÓRICO RECENTE]\n${recentHistoryHint}\n\n[MENSAGEM ATUAL]\n${enrichedMessage}`;
