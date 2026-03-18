@@ -1150,6 +1150,46 @@ serve(async (req) => {
       try { await supabase.from("webhook_processed_events").insert({ id: messageId }); } catch (_) {}
     }
 
+    // ===== DEBOUNCE ATÔMICO: acumular mensagens rápidas =====
+    let debounceApplied = false;
+    let finalMessage = fullMessage;
+    try {
+      const { data: debounceResult } = await supabase.rpc("debounce_add_message", {
+        p_remote_jid: remoteJid,
+        p_message: fullMessage.slice(0, 2000),
+        p_delay_ms: 3000,
+      });
+      if (debounceResult && typeof debounceResult === "object") {
+        const dr = debounceResult as { is_leader?: boolean; leader_id?: string; delay_ms?: number };
+        if (dr.is_leader === false) {
+          // Não é líder: outra invocação vai processar tudo
+          console.log("evolution-webhook: debounced (not leader) for", remoteJid);
+          return new Response(JSON.stringify({ ok: true, debounced: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (dr.is_leader === true && dr.delay_ms && dr.delay_ms > 0 && dr.leader_id) {
+          // É líder: esperar delay e coletar mensagens acumuladas
+          debounceApplied = true;
+          await new Promise((r) => setTimeout(r, dr.delay_ms! + 500));
+          const { data: collected } = await supabase.rpc("debounce_collect_messages", {
+            p_remote_jid: remoteJid,
+            p_leader_id: dr.leader_id,
+          });
+          if (collected && Array.isArray(collected) && collected.length > 1) {
+            finalMessage = (collected as string[]).join("\n");
+            console.log("evolution-webhook: debounce collected", collected.length, "messages for", remoteJid);
+          }
+        }
+      }
+    } catch (e) {
+      // RPCs não existem ou erro — processar normalmente sem debounce
+      console.warn("evolution-webhook: debounce RPC fallback:", (e as Error).message);
+    }
+    // Replace fullMessage references below with finalMessage
+    const fullMessageFinal = debounceApplied ? finalMessage : fullMessage;
+
     const owner = await getOwner(supabase);
     const { data: ownerSettingsRows } = await supabase.from("crm_settings").select("key, value").in("key", ["owner_phones", "owner_phone_override"]);
     const ownerPhonesMap = new Map((ownerSettingsRows || []).map((r: { key: string; value: string }) => [r.key, r.value]));
