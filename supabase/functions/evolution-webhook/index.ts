@@ -1331,7 +1331,7 @@ serve(async (req) => {
         const timeHint = `[HORA_ATUAL_SP]\nAgora em São Paulo: ${nowSp}\nUse essa referência para decidir regras de horário e prazo do mesmo dia.\n[/HORA_ATUAL_SP]`;
         enrichedMessage = `${timeHint}\n\n${controlHint}\n\n${enrichedMessage}`;
 
-        const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
+        const deterministicPriceReply = detectCakePriceIntent(fullMessageFinal, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
           reply = deterministicPriceReply;
         } else {
@@ -1339,10 +1339,10 @@ serve(async (req) => {
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
-        const decorationText = extractDecorationRequestFromMessage(fullMessage);
+        const decorationText = extractDecorationRequestFromMessage(fullMessageFinal);
         const pedidoJsonWithDecoration = applyDecorationToPedidoPayload(pedidoJson, decorationText);
         const encomendaJsonWithDecoration = applyDecorationToEncomendaPayload(encomendaJson, decorationText);
-        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
+        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessageFinal);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
         if (alertaEquipeText && ownerPhonesList.length > 0) {
