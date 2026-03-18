@@ -1440,16 +1440,36 @@ serve(async (req) => {
           }
         }
         reply = guardedReplyClean || replyClean || reply;
-        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessage);
+        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessageFinal);
 
-        // ===== MELHORIA 1: Salvar sessão de conversa =====
+        // ===== MELHORIA 1 + PERSISTÊNCIA: Salvar sessão com dados extraídos =====
+        // Extrair dados do pedido da mensagem para persistir na sessão
+        const msgNormForMemory = normalizeForCompare(fullMessageFinal);
+        const weightMatch = fullMessageFinal.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+        const extractedWeight = weightMatch ? Number(weightMatch[1].replace(",", ".")) : null;
+        const mentionedFlavors = recipeNames.filter((n) => msgNormForMemory.includes(normalizeForCompare(n)));
+        const mentionsDelivery = msgNormForMemory.includes("delivery");
+        const mentionsRetirada = msgNormForMemory.includes("retirada");
+        const mentionsEncomenda = msgNormForMemory.includes("encomenda");
+        const orderType = mentionsDelivery ? "delivery" : mentionsRetirada ? "retirada" : mentionsEncomenda ? "encomenda" : null;
+
+        const prevMemory = (sessionMemory || {}) as Record<string, unknown>;
+        const persistedFlavors = [...new Set([
+          ...((prevMemory.flavors as string[]) || []),
+          ...mentionedFlavors,
+        ])].slice(0, 10);
+
         const sessionUpdate: Record<string, unknown> = {
           memory: {
-            last_message: fullMessage.slice(0, 300),
+            last_message: fullMessageFinal.slice(0, 300),
             last_reply: reply.slice(0, 300),
             last_intent: intent,
             stage,
             updated: new Date().toISOString(),
+            // Persistência de dados do pedido
+            weight_kg: extractedWeight || (prevMemory.weight_kg as number | null) || null,
+            flavors: persistedFlavors.length > 0 ? persistedFlavors : (prevMemory.flavors as string[] | null) || null,
+            order_type: orderType || (prevMemory.order_type as string | null) || null,
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,
           updated_at: new Date().toISOString(),
