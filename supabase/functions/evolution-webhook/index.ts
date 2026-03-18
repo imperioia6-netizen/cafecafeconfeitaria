@@ -1241,7 +1241,7 @@ serve(async (req) => {
         });
       } else {
         const customerId = await findOrCreateCustomer(supabase, normalizedPhone, pushName);
-        await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessage);
+        await findOrCreateLead(supabase, normalizedPhone, pushName, fullMessageFinal);
         const { data: recipeRows } = await supabase
           .from("recipes")
           .select("name, whole_price, sale_price, slice_price")
