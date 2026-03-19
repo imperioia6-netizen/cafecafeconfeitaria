@@ -25,6 +25,7 @@ const corsHeaders = {
 const EVOLUTION_KEYS = ["evolution_base_url", "evolution_api_key", "evolution_instance", "evolution_webhook_secret"] as const;
 const SEND_MESSAGE_TIMEOUT_MS = 12000;
 const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
+const DEBOUNCE_MS = 4000; // Espera 4 segundos para agrupar mensagens rápidas
 
 function getEvolutionConfig(settings: { key: string; value: string }[]) {
   const map = new Map(settings.map((s) => [s.key, s.value]));
@@ -160,13 +161,71 @@ function extractOrderMemory(history: { role: "user" | "assistant"; content: stri
   return { hasCake, hasSalgados, items: dedup.slice(-12) };
 }
 
-function buildOrderMemoryHint(history: { role: "user" | "assistant"; content: string }[]): string {
+function buildOrderMemoryHint(
+  history: { role: "user" | "assistant"; content: string }[],
+  sessionMemory?: Record<string, unknown>
+): string {
   const mem = extractOrderMemory(history);
-  if (mem.items.length === 0) return "";
+
+  // ── Extrair TODOS os detalhes já fornecidos pelo cliente ──
+  const clientText = history.filter((h) => h.role === "user").map((h) => h.content || "").join("\n");
+
+  // Pesos mencionados (regex do histórico)
+  const allWeights = [...clientText.matchAll(/(\d+)\s*kg/gi)].map((m) => `${m[1]}kg`);
+  const regexWeight = allWeights.length > 0 ? allWeights[allWeights.length - 1] : "";
+  // Fallback: peso persistido na sessão (sobrevive entre invocações)
+  const confirmedWeight = regexWeight || (sessionMemory?.confirmed_weight as string) || "";
+
+  // Sabores de bolo mencionados pelo cliente
+  const flavorMatches = [...clientText.matchAll(/(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç\s]+)/gi)];
+  const flavors = flavorMatches.map((m) => m[1].trim()).filter((f) => f.length > 2 && !f.match(/^\d/));
+  const regexFlavor = flavors.length > 0 ? flavors[flavors.length - 1] : "";
+  // Fallback: sabor persistido na sessão
+  const confirmedFlavor = regexFlavor || (sessionMemory?.confirmed_flavor as string) || "";
+
+  // Quantidade de salgados
+  const salgadoQty = [...clientText.matchAll(/(\d+)\s*(?:mini|salgado|coxinha|quibe)/gi)].map((m) => m[1]);
+  const confirmedSalgadoQty = salgadoQty.length > 0 ? salgadoQty[salgadoQty.length - 1] : "";
+
+  // Tipo de pedido (regex + fallback sessão)
+  const regexOrderType = clientText.toLowerCase().includes("delivery") ? "delivery"
+    : clientText.toLowerCase().includes("encomenda") ? "encomenda"
+    : clientText.toLowerCase().includes("retirada") ? "retirada"
+    : "";
+  const orderType = regexOrderType || (sessionMemory?.order_type as string) || "";
+
+  // Itens persistidos da sessão como fallback se o regex do histórico não pegou
+  const sessionItems = (sessionMemory?.order_items as string[]) || [];
+  const allItems = mem.items.length > 0 ? mem.items : sessionItems;
+
+  // Se não tem nada, retornar vazio
+  if (allItems.length === 0 && !confirmedWeight && !confirmedFlavor && !confirmedSalgadoQty && !orderType) {
+    return "";
+  }
+
+  // Perguntas que o atendente fez e que estão PENDENTES de resposta
+  const lastAssistantMsg = [...history].reverse().find((h) => h.role === "assistant");
+  const pendingQuestions: string[] = [];
+  if (lastAssistantMsg?.content?.includes("?")) {
+    const questions = lastAssistantMsg.content.match(/[^.!]*\?/g) || [];
+    pendingQuestions.push(...questions.map((q) => q.trim()));
+  }
+
+  // ── Montar resumo estruturado ──
+  const details: string[] = [];
+  if (confirmedWeight) details.push(`PESO: ${confirmedWeight} (já informado — NÃO pergunte de novo)`);
+  if (confirmedFlavor) details.push(`SABOR: ${confirmedFlavor} (já informado — NÃO pergunte de novo)`);
+  if (confirmedSalgadoQty) details.push(`SALGADOS: ${confirmedSalgadoQty} unidades (já informado — NÃO pergunte de novo)`);
+  if (orderType) details.push(`TIPO: ${orderType} (já informado — NÃO pergunte de novo)`);
+
   return `[MEMORIA_DO_PEDIDO_EM_ANDAMENTO]
-Itens já citados/confirmados na conversa:
-${mem.items.map((i) => `- ${i}`).join("\n")}
-Regra: não perder itens já confirmados. Se cliente perguntar "e meu bolo?", retome o bolo já citado.
+${allItems.length > 0 ? `Itens já citados/confirmados na conversa:\n${allItems.map((i) => `- ${i}`).join("\n")}` : ""}
+
+DETALHES JÁ CONFIRMADOS PELO CLIENTE (usar sem re-perguntar):
+${details.length > 0 ? details.map((d) => `✓ ${d}`).join("\n") : "(nenhum detalhe específico extraído)"}
+${pendingQuestions.length > 0 ? `\nPERGUNTAS PENDENTES (última resposta do atendente):\n${pendingQuestions.map((q) => `? ${q}`).join("\n")}` : ""}
+
+REGRA DE OURO: Antes de fazer QUALQUER pergunta, verifique se a resposta já está nos detalhes acima. Se estiver, USE a informação e NÃO pergunte.
 [/MEMORIA_DO_PEDIDO_EM_ANDAMENTO]`;
 }
 
@@ -215,12 +274,67 @@ function buildPreviousQuestionHint(
   history: { role: "user" | "assistant"; content: string }[],
   currentMessage: string
 ): string {
-  const recentAssistant = [...history].reverse().find((h) => h.role === "assistant" && !!h.content?.trim());
-  if (!recentAssistant) return "";
   const msg = (currentMessage || "").trim();
-  if (!msg || msg.length > 80) return "";
-  if (!recentAssistant.content.includes("?")) return "";
-  return `A mensagem atual parece resposta da pergunta anterior do atendente.\nPergunta anterior: ${recentAssistant.content.slice(0, 220)}\nResposta atual do cliente: ${msg}`;
+  if (!msg || msg.length > 120) return "";
+
+  // Buscar nas últimas 4 mensagens do atendente por perguntas não respondidas
+  // Isso resolve o problema de perguntas que ficam "enterradas" por trocas intermediárias
+  const assistantMsgs = history
+    .map((h, idx) => ({ ...h, idx }))
+    .filter((h) => h.role === "assistant" && !!h.content?.trim() && h.content.includes("?"));
+
+  if (assistantMsgs.length === 0) return "";
+
+  // Pegar as últimas 4 mensagens do atendente com perguntas
+  const recentQuestions = assistantMsgs.slice(-4);
+  const hints: string[] = [];
+
+  for (const q of recentQuestions) {
+    // Verificar se a pergunta já foi respondida por uma mensagem subsequente do cliente
+    const subsequentUserMsgs = history
+      .slice(q.idx + 1)
+      .filter((h) => h.role === "user");
+
+    const questionNorm = normalizeForCompare(q.content);
+
+    // Se a pergunta era sobre sabor/peso/tipo e não foi respondida diretamente
+    const asksFlavor = questionNorm.includes("sabor") || questionNorm.includes("qual sabor");
+    const asksWeight = questionNorm.includes("peso") || questionNorm.includes("quantos kg") || questionNorm.includes("qual peso");
+    const asksOrderType = questionNorm.includes("encomenda") && questionNorm.includes("delivery") && questionNorm.includes("retirada");
+
+    // Se perguntou sabor e nenhuma resposta subsequente mencionou sabor, a pergunta segue pendente
+    const wasAnswered = subsequentUserMsgs.some((u) => {
+      const uNorm = normalizeForCompare(u.content);
+      if (asksFlavor) {
+        // Resposta de sabor precisa conter padrão de sabor real, não qualquer texto curto
+        return uNorm.includes("sabor") ||
+          /bolo\s+de\s+\w/.test(uNorm) ||
+          /(?:pode\s+ser|vai\s+ser|quero|o\s+de|de)\s+[a-záàâãéèêíïóôõúüç]{3,}/i.test(uNorm) ||
+          // Nomes de sabores comuns como resposta direta
+          /(?:chocolate|morango|ninho|brigadeiro|mousse|maracuja|limao|coco|cenoura|red\s*velvet|prestígio|prestigio|abacaxi|doce\s+de\s+leite)/i.test(uNorm);
+      }
+      if (asksWeight) return /\d+\s*kg/.test(uNorm);
+      if (asksOrderType) return uNorm.includes("delivery") || uNorm.includes("encomenda") || uNorm.includes("retirada");
+      return false;
+    });
+
+    if (!wasAnswered || q === recentQuestions[recentQuestions.length - 1]) {
+      hints.push(q.content.slice(0, 220));
+    }
+  }
+
+  if (hints.length === 0) return "";
+
+  // A pergunta mais relevante é a última com "?"
+  const mostRelevant = hints[hints.length - 1];
+  let hint = `A mensagem atual ("${msg}") parece resposta de uma pergunta anterior do atendente.\nPergunta anterior: ${mostRelevant}\nResposta atual do cliente: ${msg}`;
+
+  // Se há mais perguntas pendentes, incluir contexto extra
+  if (hints.length > 1) {
+    hint += `\nOutras perguntas recentes do atendente (podem ter contexto relevante):\n${hints.slice(0, -1).map((h) => `- ${h.slice(0, 150)}`).join("\n")}`;
+  }
+
+  return hint;
 }
 
 // Reusar tipos do módulo de prompts para garantir consistência
@@ -269,6 +383,14 @@ function detectIntent(fullMessage: string): ConversationIntent {
   // Quantidades diretas: "100 mini salgados", "2kg de brigadeiro"
   if (/\d+\s*(kg|mini|unidade|fatia|cento)/.test(msg) && !msg.includes("quanto") && !msg.includes("preco") && !msg.includes("valor")) return "start_order";
 
+  // ── Respostas de sabor/escolha de bolo (ex: "pode ser de mousse de maracujá", "o bolo de brigadeiro") ──
+  // Esses padrões indicam que o cliente está escolhendo/informando sabor dentro de um pedido em andamento
+  if (/(?:pode\s+ser|quero|vai\s+ser|faz|seja)\s+(?:de\s+|o\s+de\s+)?/i.test(msg) && msg.includes("bolo")) return "start_order";
+  // "pode ser de [sabor]" / "vai ser de [sabor]" — sem "quanto/preço" = está escolhendo, não perguntando preço
+  if (/(?:pode\s+ser|vai\s+ser)\s+(?:de\s+|o\s+de\s+)\w/i.test(msg) && !msg.includes("quanto") && !msg.includes("preco") && !msg.includes("valor") && msg.length < 80) return "start_order";
+  // "o de [sabor]" ou "de [sabor]" — resposta direta a "qual sabor?"
+  if (/^(?:o\s+de|de)\s+[a-záàâãéèêíïóôõúüç]/i.test(msg) && msg.length < 50 && !msg.includes("?")) return "start_order";
+
   // ── Perguntas de preço ──
   if (msg.includes("preco") || msg.includes("valor") || msg.includes("quanto custa") ||
       msg.includes("quanto fica") || msg.includes("quanto e") || msg.includes("quanto sai") ||
@@ -297,7 +419,13 @@ function deriveStage(
   // Pagamento/comprovante → pós-pagamento
   if (intent === "payment_proof") return "post_payment";
 
-  // Início de pedido
+  // Se já está coletando itens ou aguardando tipo, e o intent é start_order → manter collecting_items
+  // (cliente está complementando informação, não iniciando pedido do zero)
+  if (intent === "start_order" && (oldStage === "collecting_items" || oldStage === "awaiting_order_type")) {
+    return mentionsOrderType ? "collecting_items" : oldStage === "collecting_items" ? "collecting_items" : "awaiting_order_type";
+  }
+
+  // Início de pedido (novo)
   if (intent === "start_order" && !mentionsOrderType) return "awaiting_order_type";
   if (intent === "start_order" && mentionsOrderType) return "collecting_items";
 
@@ -335,10 +463,12 @@ function buildControlHint(
 - intent_anterior: ${lastIntent}
 - regras_chave:
   1) nao inventar produto fora do cardapio
-  2) manter contexto continuo da conversa
+  2) manter contexto continuo da conversa — NUNCA re-perguntar info ja fornecida (peso, sabor, quantidade)
   3) se etapa_atual=awaiting_order_type, perguntar objetivamente: "É para encomenda, delivery ou retirada?"
   4) se etapa_atual=collecting_items, coletar itens e so depois fechar total
   5) resposta curta, humana, direta e com pausa natural
+  6) se o cliente informa sabor e peso ja foi dito → combinar e calcular, sem perguntar peso de novo
+  7) se o cliente informa peso e sabor ja foi dito → combinar e calcular, sem perguntar sabor de novo
 [/MOTOR_DE_CONTROLE_DE_FLUXO]`;
 }
 
@@ -354,7 +484,9 @@ function enforceOrderTypeQuestion(
   if (intent !== "start_order" || hasOrderTypeInUserMsg || stage !== "awaiting_order_type") return replyText;
   const rep = normalizeForCompare(replyText);
   if (rep.includes("encomenda") && rep.includes("delivery") && rep.includes("retirada")) return replyText;
-  return `${replyText.trim()}\n\nÉ para encomenda, delivery ou retirada?`;
+  // Verificar se a resposta já pergunta de alguma forma sobre tipo de pedido
+  if (rep.includes("retirada") || rep.includes("delivery") || rep.includes("encomenda")) return replyText;
+  return `${replyText.trim()}\n\nMe diz: é retirada, delivery ou encomenda? 😊`;
 }
 
 function splitAboveFourKg(totalKg: number): number[] {
@@ -1231,6 +1363,66 @@ async function settleEncomendaFromPayload(
   return { ok: true, encomendaId: target.id };
 }
 
+// ─────────────────────────────────────────────────────────────
+// DEBOUNCE: Agrupar mensagens rápidas do WhatsApp
+// No WhatsApp é muito comum as pessoas mandarem várias mensagens seguidas.
+// Em vez de responder cada uma, esperamos uns segundos e juntamos tudo.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Debounce ATÔMICO via RPC Postgres (SELECT ... FOR UPDATE).
+ * Resolve race condition: garante que apenas UM request se torna "líder".
+ * Mensagens subsequentes são adicionadas ao buffer sem criar novos líderes.
+ */
+async function debounceMessage(
+  supabase: any,
+  remoteJid: string,
+  messageText: string
+): Promise<{ shouldProcess: boolean; allMessages: string[] }> {
+  // 1. Chamar RPC atômico — Postgres decide quem é líder com FOR UPDATE
+  const { data: addResult, error: addErr } = await supabase.rpc("debounce_add_message", {
+    p_remote_jid: remoteJid,
+    p_message: messageText,
+    p_debounce_ms: DEBOUNCE_MS,
+  });
+
+  if (addErr) {
+    // Fallback: se RPC não existe ainda (migration pendente), processar direto sem debounce
+    console.warn("debounce_add_message RPC error (migration pendente?):", addErr.message);
+    return { shouldProcess: true, allMessages: [messageText] };
+  }
+
+  const isLeader = (addResult as { is_leader?: boolean })?.is_leader ?? true;
+  const debounceMs = (addResult as { debounce_ms?: number })?.debounce_ms ?? DEBOUNCE_MS;
+
+  if (!isLeader) {
+    // Outro request é o líder — esta mensagem já está no buffer
+    return { shouldProcess: false, allMessages: [] };
+  }
+
+  // 2. Somos o líder — esperar o período de debounce
+  await new Promise((resolve) => setTimeout(resolve, debounceMs));
+
+  // 3. Coletar TODAS as mensagens que chegaram durante a espera (atômico)
+  const { data: messages, error: collectErr } = await supabase.rpc("debounce_collect_messages", {
+    p_remote_jid: remoteJid,
+  });
+
+  if (collectErr) {
+    console.warn("debounce_collect_messages RPC error:", collectErr.message);
+    return { shouldProcess: true, allMessages: [messageText] };
+  }
+
+  const allMessages: string[] = Array.isArray(messages) ? messages.filter((m: unknown) => typeof m === "string") : [messageText];
+
+  // Se por algum motivo ficou vazio, pelo menos processar a mensagem original
+  if (allMessages.length === 0) {
+    return { shouldProcess: true, allMessages: [messageText] };
+  }
+
+  return { shouldProcess: true, allMessages };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -1437,6 +1629,42 @@ serve(async (req) => {
           });
         }
 
+        // ===== DEBOUNCE: Agrupar mensagens rápidas =====
+        // No WhatsApp as pessoas mandam várias mensagens seguidas (ex: "Oi" / "quero pedir" / "bolo de 4kg")
+        // Esperamos uns segundos e juntamos tudo antes de responder
+        const debounceResult = await debounceMessage(supabase, remoteJid, fullMessage);
+        if (!debounceResult.shouldProcess) {
+          // Outro request já está aguardando e vai processar todas as mensagens juntas
+          console.log("evolution-webhook: mensagem adicionada ao buffer de debounce para", remoteJid);
+          return new Response(JSON.stringify({ ok: true, debounced: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Combinar todas as mensagens do debounce em uma só
+        const combinedMessage = debounceResult.allMessages.length > 1
+          ? debounceResult.allMessages.join("\n")
+          : fullMessage;
+
+        // Se tiveram mensagens extras do debounce, salvar elas também no histórico
+        if (debounceResult.allMessages.length > 1) {
+          // As mensagens extras (além da primeira) que chegaram durante o debounce
+          const extraMessages = debounceResult.allMessages.slice(1);
+          for (const extraMsg of extraMessages) {
+            if (extraMsg !== fullMessage) {
+              await supabase.from("crm_messages").insert({
+                customer_id: customerId,
+                message_type: "whatsapp_entrada",
+                message_content: extraMsg.slice(0, 4096),
+                status: "lida",
+                sent_at: new Date().toISOString(),
+              });
+            }
+          }
+          console.log(`evolution-webhook: ${debounceResult.allMessages.length} mensagens agrupadas para`, remoteJid);
+        }
+
         // ===== MELHORIA 1: Carregar sessão de conversa =====
         const { data: sessionRow } = await supabase
           .from("sessions")
@@ -1464,7 +1692,7 @@ serve(async (req) => {
           .select("message_type, message_content")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: false })
-          .limit(30);
+          .limit(20);
 
         let history =
           (historyRows || [])
@@ -1475,40 +1703,47 @@ serve(async (req) => {
             });
         if (history.length > 0) {
           const last = history[history.length - 1];
-          if (last.role === "user" && normalizeForCompare(last.content) === normalizeForCompare(fullMessage)) {
+          if (last.role === "user" && normalizeForCompare(last.content) === normalizeForCompare(combinedMessage)) {
             history = history.slice(0, -1);
           }
         }
 
         // ── Contexto enriquecido: limpo e focado ──
-        const intent = detectIntent(fullMessage);
-        const stage = deriveStage(sessionMemory, intent, fullMessage);
-        const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[]);
-        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], fullMessage);
+        // Usar combinedMessage (mensagens agrupadas pelo debounce) para capturar contexto completo
+        const intent = detectIntent(combinedMessage);
+        const stage = deriveStage(sessionMemory, intent, combinedMessage);
+        const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[], sessionMemory);
+        const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], combinedMessage);
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-        // Construir contexto de forma limpa — só o essencial, sem ruído
+        // Construir contexto ESTRUTURADO — cada seção claramente separada
         const contextParts: string[] = [];
 
-        // Horário (sempre útil para regras de prazo)
+        // 1. Horário (sempre útil para regras de prazo)
         contextParts.push(`[HORA_ATUAL: ${nowSp}]`);
 
-        // Memória de pedido em andamento (crucial para não perder itens)
+        // 2. Controle de fluxo (intent + stage)
+        contextParts.push(buildControlHint(intent, stage, sessionMemory));
+
+        // 3. Memória de pedido em andamento (crucial para não perder itens)
         if (orderMemoryHint) {
           contextParts.push(orderMemoryHint);
         }
 
-        // Continuidade: se a mensagem parece resposta a uma pergunta anterior
+        // 4. Continuidade: se a mensagem parece resposta a uma pergunta anterior
         if (previousQuestionHint) {
           contextParts.push(`[CONTINUIDADE]\n${previousQuestionHint}`);
         }
 
-        // Mensagem atual sempre por último e bem separada
-        const enrichedMessage = contextParts.length > 0
-          ? `${contextParts.join("\n\n")}\n\n[MENSAGEM DO CLIENTE]\n${fullMessage}`
-          : fullMessage;
+        // 5. Instrução de resposta
+        contextParts.push(`[INSTRUÇÃO]\nResponda SOMENTE com a mensagem para o cliente. Use as informações acima para NÃO re-perguntar nada que já foi dito. Seja curta, direta e humana.`);
 
-        const deterministicPriceReply = detectCakePriceIntent(fullMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
+        // 6. Mensagem do cliente SEMPRE por último
+        contextParts.push(`[MENSAGEM DO CLIENTE]\n${combinedMessage}`);
+
+        const enrichedMessage = contextParts.join("\n\n");
+
+        const deterministicPriceReply = detectCakePriceIntent(combinedMessage, recipeRowsTyped as { name: string; whole_price?: number | null; sale_price?: number | null; slice_price?: number | null }[]);
         if (deterministicPriceReply) {
           reply = deterministicPriceReply;
         } else {
@@ -1525,10 +1760,10 @@ serve(async (req) => {
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
-        const decorationText = extractDecorationRequestFromMessage(fullMessage);
+        const decorationText = extractDecorationRequestFromMessage(combinedMessage);
         const pedidoJsonWithDecoration = applyDecorationToPedidoPayload(pedidoJson, decorationText);
         const encomendaJsonWithDecoration = applyDecorationToEncomendaPayload(encomendaJson, decorationText);
-        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessage);
+        const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, combinedMessage);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
         if (alertaEquipeText && ownerPhonesList.length > 0) {
@@ -1626,16 +1861,37 @@ serve(async (req) => {
           }
         }
         reply = guardedReplyClean || replyClean || reply;
-        reply = enforceOrderTypeQuestion(reply, intent, stage, fullMessage);
-        reply = enforceCakeContinuity(reply, fullMessage, history as { role: "user" | "assistant"; content: string }[]);
+        reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
+        reply = enforceCakeContinuity(reply, combinedMessage, history as { role: "user" | "assistant"; content: string }[]);
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
+        // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico
+        const extractedOrder = extractOrderMemory(history as { role: "user" | "assistant"; content: string }[]);
+        const clientTextForSession = (history as { role: "user" | "assistant"; content: string }[])
+          .filter((h) => h.role === "user")
+          .map((h) => h.content || "")
+          .join("\n") + "\n" + combinedMessage;
+
+        // Extrair peso, sabor, tipo com os mesmos regex do buildOrderMemoryHint
+        const sessionWeights = [...clientTextForSession.matchAll(/(\d+)\s*kg/gi)].map((m) => `${m[1]}kg`);
+        const sessionFlavors = [...clientTextForSession.matchAll(/(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç\s]+)/gi)]
+          .map((m) => m[1].trim()).filter((f) => f.length > 2 && !f.match(/^\d/));
+        const sessionOrderType = clientTextForSession.toLowerCase().includes("delivery") ? "delivery"
+          : clientTextForSession.toLowerCase().includes("encomenda") ? "encomenda"
+          : clientTextForSession.toLowerCase().includes("retirada") ? "retirada"
+          : (sessionMemory.order_type as string) || "";
+
         const sessionUpdate: Record<string, unknown> = {
           memory: {
-            last_message: fullMessage.slice(0, 300),
+            last_message: combinedMessage.slice(0, 300),
             last_reply: reply.slice(0, 300),
             last_intent: intent,
             stage,
+            // Dados persistidos do pedido — sobrevivem entre invocações
+            confirmed_weight: sessionWeights.length > 0 ? sessionWeights[sessionWeights.length - 1] : (sessionMemory.confirmed_weight || ""),
+            confirmed_flavor: sessionFlavors.length > 0 ? sessionFlavors[sessionFlavors.length - 1] : (sessionMemory.confirmed_flavor || ""),
+            order_type: sessionOrderType || (sessionMemory.order_type || ""),
+            order_items: extractedOrder.items.slice(-12),
             updated: new Date().toISOString(),
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,

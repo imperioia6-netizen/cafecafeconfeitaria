@@ -6,6 +6,10 @@ import {
   type PromptIntent,
   type PromptStage,
 } from "./atendentePromptModules.ts";
+import { fetchAndBuildRules } from "./fetchRules.ts";
+import { buildDecisionContext, buildSmartPrompt, detectEntities } from "./decisionLayer.ts";
+import type { Intent } from "./routeNotes.ts";
+import type { RecipeInfo } from "./calculator.ts";
 
 /** Timeout para chamada ao LLM (ms). */
 const LLM_TIMEOUT_MS = 28000;
@@ -303,9 +307,15 @@ export async function callLlm(
   signal?: AbortSignal | null
 ): Promise<string> {
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
+  // Enviar histórico completo ao LLM (até 20 mensagens, que é o que vem do banco)
+  // Mensagens muito grandes são truncadas para economizar tokens
+  const recentHistory = history.slice(-20).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content.slice(0, 2000),
+  }));
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
-    ...history.slice(-30).map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, MAX_MESSAGE_LENGTH) })),
+    ...recentHistory,
     { role: "user", content: safeMessage },
   ];
   const url = `${config.baseUrl}/chat/completions`;
@@ -326,7 +336,7 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0.15, max_tokens: 1500 }),
+      body: JSON.stringify({ model, messages, temperature: 0.05, max_tokens: 1500 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -378,6 +388,24 @@ export async function runAssistente(
   }
 }
 
+/**
+ * Mapeia o intent legado (PromptIntent) para o novo sistema (Intent do routeNotes).
+ * Permite compatibilidade com o webhook existente enquanto migra para o novo.
+ */
+function mapLegacyIntent(legacyIntent?: PromptIntent): Intent {
+  if (!legacyIntent) return "unknown";
+  const map: Record<string, Intent> = {
+    greeting: "greeting",
+    start_order: "order_now",
+    ask_price: "pricing",
+    ask_recommendation: "pricing",
+    delivery_urgency: "delivery",
+    payment_proof: "payment",
+    other: "unknown",
+  };
+  return map[legacyIntent] || "unknown";
+}
+
 export async function runAtendente(
   supabase: SupabaseClient,
   message: string,
@@ -388,7 +416,9 @@ export async function runAtendente(
     intent: PromptIntent;
     stage: PromptStage;
     hasOrderInProgress: boolean;
-  }
+  },
+  /** Nova arquitetura: intent do routeNotes (mais granular) */
+  smartIntent?: Intent
 ): Promise<string> {
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) return FALLBACK_ATENDENTE;
@@ -459,33 +489,86 @@ export async function runAtendente(
       deliveryZonesText = lines.join("\n");
     }
 
-    // ── Sistema Modular: se recebemos intent/stage, usar prompt modular ──
+    // ════════════════════════════════════════════════════════════════
+    // NOVA ARQUITETURA v2: routeNotes + decisionLayer + calculator
+    //
+    //   Mensagem → detectEntities → routeNotes → fetchNotas → preCalcular → LLM
+    //
+    //   Obsidian = memória e regras
+    //   Calculator = cálculos exatos (FORA da LLM)
+    //   LLM = raciocínio + conversa + condução
+    // ════════════════════════════════════════════════════════════════
     let systemPrompt: string;
-    if (modularOpts) {
-      systemPrompt = buildModularAtendentePrompt({
-        intent: modularOpts.intent,
-        stage: modularOpts.stage,
-        hasOrderInProgress: modularOpts.hasOrderInProgress,
+
+    // Determinar o intent granular (novo routeNotes)
+    const effectiveIntent: Intent = smartIntent || mapLegacyIntent(modularOpts?.intent);
+
+    try {
+      // 1. Detectar entidades na mensagem
+      const entities = detectEntities(safeMessage);
+
+      // 2. Camada de decisão: rotear → buscar notas → pré-calcular
+      const decisionCtx = await buildDecisionContext(
+        supabase,
+        safeMessage,
+        effectiveIntent,
+        entities,
         contactName,
-        promoSummary,
         paymentInfo,
-        customInstructions,
-        cardapioAcai: cardapioAcai || null,
-        cardapioProdutos: cardapioProdutos || null,
-        cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
-        deliveryZonesText: deliveryZonesText || null,
-      });
-    } else {
-      // Fallback: prompt monolítico original (para chamadas sem contexto modular)
-      systemPrompt = buildAtendentePrompt(
-        contactName,
+        (customInstructions || "").trim().slice(0, 6000),
         promoSummary,
-        paymentInfo,
-        customInstructions,
-        cardapioAcai || null,
-        cardapioProdutos || null,
-        cardapioProdutosDetalhado || null
+        (cardapioAcai || "").trim(),
+        (cardapioProdutosDetalhado || "").trim(),
+        (cardapioProdutos || "").replace(/\n/g, ", "),
+        deliveryZonesText,
+        allRecipes as RecipeInfo[]
       );
+
+      // 3. Se encontrou notas → usar prompt inteligente
+      if (decisionCtx.notasRelevantes) {
+        systemPrompt = buildSmartPrompt(decisionCtx);
+      } else if (modularOpts) {
+        // Fallback: prompt modular hardcoded
+        console.warn("knowledge_base vazio — usando prompt modular hardcoded");
+        systemPrompt = buildModularAtendentePrompt({
+          intent: modularOpts.intent,
+          stage: modularOpts.stage,
+          hasOrderInProgress: modularOpts.hasOrderInProgress,
+          contactName,
+          promoSummary,
+          paymentInfo,
+          customInstructions,
+          cardapioAcai: cardapioAcai || null,
+          cardapioProdutos: cardapioProdutos || null,
+          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
+          deliveryZonesText: deliveryZonesText || null,
+        });
+      } else {
+        systemPrompt = buildAtendentePrompt(
+          contactName, promoSummary, paymentInfo, customInstructions,
+          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
+        );
+      }
+    } catch (e) {
+      console.error("decisionLayer falhou:", (e as Error).message);
+      // Fallback total
+      if (modularOpts) {
+        systemPrompt = buildModularAtendentePrompt({
+          intent: modularOpts.intent,
+          stage: modularOpts.stage,
+          hasOrderInProgress: modularOpts.hasOrderInProgress,
+          contactName, promoSummary, paymentInfo, customInstructions,
+          cardapioAcai: cardapioAcai || null,
+          cardapioProdutos: cardapioProdutos || null,
+          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
+          deliveryZonesText: deliveryZonesText || null,
+        });
+      } else {
+        systemPrompt = buildAtendentePrompt(
+          contactName, promoSummary, paymentInfo, customInstructions,
+          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
+        );
+      }
     }
 
     const config = await getLlmConfig(supabase);
