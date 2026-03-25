@@ -1,39 +1,51 @@
 
-# Melhorias do Agente Conversacional WhatsApp — IMPLEMENTADO ✅
 
-## Melhorias Aplicadas
+# Plano: Chat ao vivo + Retomada manual de conversas da IA
 
-### 1. ✅ Sessões de Conversa (tabela `sessions`)
-- Webhook carrega/cria sessão pelo `remote_jid` antes de chamar o atendente
-- Contexto da sessão anterior é injetado na mensagem para o LLM
-- Sessão é limpa após criação de pedido/encomenda
+## O que sera construido
 
-### 2. ✅ Histórico do Dono no WhatsApp
-- Mensagens do dono são salvas em `messaages log` (entrada e saída)
-- Últimas 12 mensagens são carregadas como `history` para `runAssistente`
+Uma nova aba "Conversas" no CRM (entre "Reativacao" e "Config") com interface estilo WhatsApp Web: lista de conversas a esquerda, chat a direita, botoes "Retomar" e "Voltar para IA".
 
-### 3. ✅ Verificação de `ia_paused`
-- Webhook verifica `crm_settings.ia_paused` antes de responder
-- Se pausada: salva mensagem no CRM mas NÃO envia resposta automática
+## Arquivos a criar/editar
 
-### 4. ✅ Processamento de `[ALERTA_EQUIPE]`
-- `parseCreateBlocks` agora extrai `[ALERTA_EQUIPE]...[/ALERTA_EQUIPE]`
-- Envia alerta via Evolution para todos os números em `ownerPhones`
-- Remove o bloco da resposta enviada ao cliente
+### 1. `src/hooks/useLiveChats.ts` (novo)
+- Query `crm_messages` agrupando por `customer_id` com join em `customers` (nome, phone, `ia_lock_at`)
+- Ordenar por ultima mensagem
+- Supabase Realtime subscription no canal `crm_messages` para updates em tempo real
+- Mutation para toggle `ia_lock_at`/`ia_lock_reason` no customer
+- Mutation para enviar mensagem via edge function `send-whatsapp`
 
-### 5. ✅ Otimização de Prompt
-- Removida referência rápida de preços duplicada (usa só o cardápio detalhado)
-- Cardápio detalhado truncado se > 4000 caracteres
-- Regras de bolos por kg simplificadas no prompt base (detalhes só no bloco CARDÁPIO)
+### 2. `src/components/crm/LiveChatsPanel.tsx` (novo)
+- Layout split: lista de conversas (esquerda) + chat (direita)
+- Lista mostra: nome do cliente, preview da ultima mensagem, horario, badge "Manual" se `ia_lock_at` ativo
+- Chat mostra bolhas (entrada = esquerda, saida = direita) com scroll automatico
+- Botao "Retomar" (seta `ia_lock_at = now()`) e "Voltar para IA" (limpa `ia_lock_at`)
+- Input de mensagem + botao enviar (só habilitado quando em modo manual)
+- Mobile: lista ocupa tela cheia, ao clicar abre o chat
 
-### 6. ✅ Integração `payment_confirmations`
-- Pedidos e encomendas criados pelo WhatsApp registram em `payment_confirmations` com status `pending`
-- Permite que o dono confirme pagamentos pelo painel
+### 3. `src/pages/Crm.tsx` (editar)
+- Adicionar tab `conversas` com icone `MessageSquare` entre "Reativação" e "Config"
+- Renderizar `LiveChatsPanel` no `TabsContent`
 
-## Arquivos Editados
+### 4. `supabase/functions/send-whatsapp/index.ts` (novo)
+- Recebe `{ remote_jid, message }` com auth do owner
+- Busca config Evolution de `crm_settings`
+- Envia via Evolution API (mesmo padrao de `sendEvolutionMessage`)
+- Salva em `crm_messages` como `whatsapp_saida`
 
-| Arquivo | Mudança |
-|---|---|
-| `supabase/functions/evolution-webhook/index.ts` | Sessões, ia_paused, histórico dono, ALERTA_EQUIPE, payment_confirmations |
-| `supabase/functions/_shared/agentLogic.ts` | Truncar cardápio, remover referência rápida duplicada |
-| `supabase/functions/_shared/atendentePromptBase.ts` | Simplificar regras de bolos (detalhes no contexto) |
+### 5. `supabase/functions/evolution-webhook/index.ts` (editar)
+- Apos verificar `iaPaused` (linha ~1263), adicionar check per-customer: buscar `ia_lock_at` do customer, se nao nulo e < 24h, pular resposta da IA (mas continuar salvando a mensagem de entrada em `crm_messages`)
+
+### 6. Migration (nao necessaria)
+- `ia_lock_at` e `ia_lock_reason` ja existem na tabela `customers`
+- `crm_messages` ja tem `message_type` e `customer_id`
+
+## Fluxo
+
+1. Owner abre CRM > aba "Conversas"
+2. Ve lista de clientes que conversaram com a IA
+3. Clica num cliente > ve historico completo
+4. Clica "Retomar" > IA para de responder aquele cliente
+5. Digita mensagem > enviada via WhatsApp em nome da confeitaria
+6. Clica "Voltar para IA" > IA retoma controle
+
