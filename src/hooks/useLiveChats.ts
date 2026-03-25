@@ -31,12 +31,17 @@ export function useLiveChats() {
   const conversationsQuery = useQuery({
     queryKey: ['live_chats_conversations'],
     queryFn: async () => {
-      // Get all whatsapp messages with customer info
+      // Get recent whatsapp messages (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const { data: messages, error } = await supabase
         .from('crm_messages')
         .select('customer_id, message_type, message_content, created_at')
         .in('message_type', ['whatsapp_entrada', 'whatsapp_saida'])
-        .order('created_at', { ascending: false });
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
 
