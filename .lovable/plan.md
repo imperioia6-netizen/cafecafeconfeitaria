@@ -1,51 +1,42 @@
 
 
-# Plano: Chat ao vivo + Retomada manual de conversas da IA
+# Plano: Organizar e limpar a lista de clientes do CRM
 
-## O que sera construido
+## Problema
 
-Uma nova aba "Conversas" no CRM (entre "Reativacao" e "Config") com interface estilo WhatsApp Web: lista de conversas a esquerda, chat a direita, botoes "Retomar" e "Voltar para IA".
+A lista de clientes mostra dados sujos vindos do WhatsApp: nomes com emojis, tildes ("~Maria Aparecida~"), handles do Instagram ("@alineazedia"), numeros brutos sem formatacao ("58755823698068", "11984437405"), e entradas sem nome real.
 
-## Arquivos a criar/editar
+## Solucao
 
-### 1. `src/hooks/useLiveChats.ts` (novo)
-- Query `crm_messages` agrupando por `customer_id` com join em `customers` (nome, phone, `ia_lock_at`)
-- Ordenar por ultima mensagem
-- Supabase Realtime subscription no canal `crm_messages` para updates em tempo real
-- Mutation para toggle `ia_lock_at`/`ia_lock_reason` no customer
-- Mutation para enviar mensagem via edge function `send-whatsapp`
+### 1. Limpar nomes no `CustomerCard.tsx`
 
-### 2. `src/components/crm/LiveChatsPanel.tsx` (novo)
-- Layout split: lista de conversas (esquerda) + chat (direita)
-- Lista mostra: nome do cliente, preview da ultima mensagem, horario, badge "Manual" se `ia_lock_at` ativo
-- Chat mostra bolhas (entrada = esquerda, saida = direita) com scroll automatico
-- Botao "Retomar" (seta `ia_lock_at = now()`) e "Voltar para IA" (limpa `ia_lock_at`)
-- Input de mensagem + botao enviar (só habilitado quando em modo manual)
-- Mobile: lista ocupa tela cheia, ao clicar abre o chat
+Criar funcao `cleanDisplayName(name)` que:
+- Remove tildes e caracteres decorativos (`~`, `*`)
+- Detecta se o nome e apenas um numero bruto e formata como telefone
+- Mantém emojis (sao nomes reais do WhatsApp)
+- Trim de espacos extras
 
-### 3. `src/pages/Crm.tsx` (editar)
-- Adicionar tab `conversas` com icone `MessageSquare` entre "Reativação" e "Config"
-- Renderizar `LiveChatsPanel` no `TabsContent`
+Criar funcao `formatPhone(phone)` que formata numeros brasileiros:
+- `11984437405` → `(11) 98443-7405`
+- `5511984437405` → `+55 (11) 98443-7405`
 
-### 4. `supabase/functions/send-whatsapp/index.ts` (novo)
-- Recebe `{ remote_jid, message }` com auth do owner
-- Busca config Evolution de `crm_settings`
-- Envia via Evolution API (mesmo padrao de `sendEvolutionMessage`)
-- Salva em `crm_messages` como `whatsapp_saida`
+### 2. Melhorar o `CustomerCard.tsx`
 
-### 5. `supabase/functions/evolution-webhook/index.ts` (editar)
-- Apos verificar `iaPaused` (linha ~1263), adicionar check per-customer: buscar `ia_lock_at` do customer, se nao nulo e < 24h, pular resposta da IA (mas continuar salvando a mensagem de entrada em `crm_messages`)
+- Aplicar `cleanDisplayName` no nome exibido
+- Aplicar `formatPhone` no telefone
+- Melhorar layout com espacamento mais consistente
+- Adicionar icone de WhatsApp se o cliente tem `remote_jid`
 
-### 6. Migration (nao necessaria)
-- `ia_lock_at` e `ia_lock_reason` ja existem na tabela `customers`
-- `crm_messages` ja tem `message_type` e `customer_id`
+### 3. Melhorar iniciais no avatar
 
-## Fluxo
+Atualizar `getInitials` para lidar com nomes que sao numeros (mostrar "#") ou emojis (mostrar o proprio emoji).
 
-1. Owner abre CRM > aba "Conversas"
-2. Ve lista de clientes que conversaram com a IA
-3. Clica num cliente > ve historico completo
-4. Clica "Retomar" > IA para de responder aquele cliente
-5. Digita mensagem > enviada via WhatsApp em nome da confeitaria
-6. Clica "Voltar para IA" > IA retoma controle
+### 4. Ordenacao inteligente no `Crm.tsx`
+
+Nomes que sao apenas numeros brutos ficam no final da lista quando ordenado por "Nome A-Z", priorizando clientes com nomes reais.
+
+## Arquivos alterados
+
+- `src/components/crm/CustomerCard.tsx` — limpeza de nome, formatacao de telefone, melhoria visual
+- `src/pages/Crm.tsx` — ordenacao inteligente
 
