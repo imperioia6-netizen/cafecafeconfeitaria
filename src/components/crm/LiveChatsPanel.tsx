@@ -21,7 +21,7 @@ const LiveChatsPanel = () => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const messagesQuery = selected ? useCustomerMessages(selected.customer_id) : null;
+  const messagesQuery = useCustomerMessages(selected?.customer_id ?? null);
   const messages = messagesQuery?.data || [];
   const isLocked = selected && !!selected.ia_lock_at;
 

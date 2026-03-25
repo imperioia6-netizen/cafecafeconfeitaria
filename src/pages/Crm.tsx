@@ -270,6 +270,11 @@ const Crm = () => {
             <ReactivationPanel />
           </TabsContent>
 
+          {/* ─── Conversas Tab ─── */}
+          <TabsContent value="conversas">
+            <LiveChatsPanel />
+          </TabsContent>
+
           {/* ─── Config Tab ─── */}
           <TabsContent value="config">
             <N8nSettingsPanel />
