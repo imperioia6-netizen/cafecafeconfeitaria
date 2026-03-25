@@ -232,7 +232,7 @@ const LiveChatsPanel = () => {
               <div className="text-center py-16 px-4">
                 <Bot className="h-8 w-8 text-muted-foreground/15 mx-auto mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {search ? 'Nenhum resultado' : 'Nenhuma conversa ainda'}
+                  {search ? 'Nenhum resultado' : !hasInstance ? 'Nenhuma instância conectada. Configure o Evolution na aba Config.' : 'Nenhuma conversa nos últimos 7 dias'}
                 </p>
               </div>
             ) : (
