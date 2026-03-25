@@ -78,6 +78,7 @@ const Crm = () => {
     { value: 'pipeline', label: 'Pipeline', icon: Columns3 },
     { value: 'aniversarios', label: 'Aniversários', icon: Cake },
     { value: 'reativacao', label: 'Reativação', icon: AlertTriangle },
+    { value: 'conversas', label: 'Conversas', icon: MessageSquare },
     { value: 'config', label: 'Config', icon: Settings },
   ];
 
