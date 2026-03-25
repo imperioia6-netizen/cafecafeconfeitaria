@@ -27,11 +27,34 @@ export function useLiveChats() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
+  // Check if Evolution instance is configured
+  const settingsQuery = useQuery({
+    queryKey: ['crm_settings_evolution'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_settings')
+        .select('key, value')
+        .in('key', ['evolution_instance', 'evolution_base_url', 'evolution_api_key']);
+      if (error) throw error;
+      const map = new Map((data || []).map(s => [s.key, s.value]));
+      return {
+        instance: map.get('evolution_instance') || '',
+        baseUrl: map.get('evolution_base_url') || '',
+        apiKey: map.get('evolution_api_key') || '',
+      };
+    },
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const hasInstance = !!(settingsQuery.data?.instance && settingsQuery.data?.baseUrl);
+
   // Fetch conversations grouped by customer
   const conversationsQuery = useQuery({
-    queryKey: ['live_chats_conversations'],
+    queryKey: ['live_chats_conversations', hasInstance],
     queryFn: async () => {
-      // Get recent whatsapp messages (last 7 days)
+      if (!hasInstance) return [];
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -45,21 +68,20 @@ export function useLiveChats() {
 
       if (error) throw error;
 
-      // Get unique customer IDs
       const customerIds = [...new Set((messages || []).map(m => m.customer_id))];
       if (customerIds.length === 0) return [];
 
-      // Fetch customer details
+      // Only fetch customers with a real remote_jid
       const { data: customers, error: custError } = await supabase
         .from('customers')
         .select('id, name, phone, remote_jid, ia_lock_at')
-        .in('id', customerIds);
+        .in('id', customerIds)
+        .not('remote_jid', 'eq', '');
 
       if (custError) throw custError;
 
       const customerMap = new Map((customers || []).map(c => [c.id, c]));
 
-      // Group by customer
       const convMap = new Map<string, ChatConversation>();
       for (const msg of (messages || [])) {
         if (!convMap.has(msg.customer_id)) {
@@ -83,7 +105,9 @@ export function useLiveChats() {
         (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
       );
     },
-    refetchInterval: 10000,
+    enabled: settingsQuery.isSuccess,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Fetch messages for a specific customer
@@ -161,7 +185,8 @@ export function useLiveChats() {
 
   return {
     conversations: conversationsQuery.data || [],
-    isLoading: conversationsQuery.isLoading,
+    isLoading: conversationsQuery.isLoading || settingsQuery.isLoading,
+    hasInstance,
     useCustomerMessages,
     toggleIaLock,
     sendMessage,
