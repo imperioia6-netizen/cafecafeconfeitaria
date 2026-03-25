@@ -159,7 +159,7 @@ const ChatMessages = ({
 
 // ─── Main Panel ───
 const LiveChatsPanel = () => {
-  const { conversations, isLoading, useCustomerMessages, toggleIaLock, sendMessage } = useLiveChats();
+  const { conversations, isLoading, hasInstance, useCustomerMessages, toggleIaLock, sendMessage } = useLiveChats();
   const [selected, setSelected] = useState<ChatConversation | null>(null);
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
