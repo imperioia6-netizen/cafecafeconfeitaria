@@ -59,7 +59,13 @@ const Crm = () => {
         case 'total_spent': return Number(b.total_spent) - Number(a.total_spent);
         case 'last_purchase_at': return (b.last_purchase_at || '').localeCompare(a.last_purchase_at || '');
         case 'created_at': return (b.created_at || '').localeCompare(a.created_at || '');
-        default: return a.name.localeCompare(b.name);
+        default: {
+          const aIsNum = /^\d+$/.test(a.name.replace(/[~*\s]/g, ''));
+          const bIsNum = /^\d+$/.test(b.name.replace(/[~*\s]/g, ''));
+          if (aIsNum && !bIsNum) return 1;
+          if (!aIsNum && bIsNum) return -1;
+          return a.name.localeCompare(b.name);
+        }
       }
     });
 
