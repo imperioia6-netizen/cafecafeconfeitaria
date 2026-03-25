@@ -17,7 +17,8 @@ import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
 import LeadsKanban from '@/components/crm/LeadsKanban';
 import CustomerForm from '@/components/crm/CustomerForm';
 import CustomerFichaCard from '@/components/crm/CustomerFichaCard';
-import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, Plus, ContactRound } from 'lucide-react';
+import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, MessageSquare, Plus, ContactRound } from 'lucide-react';
+import LiveChatsPanel from '@/components/crm/LiveChatsPanel';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
@@ -77,6 +78,7 @@ const Crm = () => {
     { value: 'pipeline', label: 'Pipeline', icon: Columns3 },
     { value: 'aniversarios', label: 'Aniversários', icon: Cake },
     { value: 'reativacao', label: 'Reativação', icon: AlertTriangle },
+    { value: 'conversas', label: 'Conversas', icon: MessageSquare },
     { value: 'config', label: 'Config', icon: Settings },
   ];
 
@@ -266,6 +268,11 @@ const Crm = () => {
           {/* ─── Reativação Tab ─── */}
           <TabsContent value="reativacao">
             <ReactivationPanel />
+          </TabsContent>
+
+          {/* ─── Conversas Tab ─── */}
+          <TabsContent value="conversas">
+            <LiveChatsPanel />
           </TabsContent>
 
           {/* ─── Config Tab ─── */}

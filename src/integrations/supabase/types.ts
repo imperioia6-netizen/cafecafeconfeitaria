@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      _deploy_bundle: {
+        Row: {
+          content: string
+          created_at: string | null
+          name: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          name: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      _deploy_files: {
+        Row: {
+          content: string
+          id: number
+          name: string
+        }
+        Insert: {
+          content: string
+          id?: number
+          name: string
+        }
+        Update: {
+          content?: string
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       ai_reports: {
         Row: {
           content: string
@@ -700,6 +736,36 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_base: {
+        Row: {
+          ativa: boolean | null
+          caminho: string
+          conteudo: string
+          id: number
+          tags: string[] | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativa?: boolean | null
+          caminho: string
+          conteudo: string
+          id?: number
+          tags?: string[] | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativa?: boolean | null
+          caminho?: string
+          conteudo?: string
+          id?: number
+          tags?: string[] | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       "messaages log": {
         Row: {
           from_me: boolean | null
@@ -859,6 +925,8 @@ export type Database = {
           decided_by: string | null
           description: string
           id: string
+          image_base64: string | null
+          image_url: string | null
           order_payload: Json | null
           remote_jid: string | null
           status: string
@@ -874,6 +942,8 @@ export type Database = {
           decided_by?: string | null
           description: string
           id?: string
+          image_base64?: string | null
+          image_url?: string | null
           order_payload?: Json | null
           remote_jid?: string | null
           status?: string
@@ -889,6 +959,8 @@ export type Database = {
           decided_by?: string | null
           description?: string
           id?: string
+          image_base64?: string | null
+          image_url?: string | null
           order_payload?: Json | null
           remote_jid?: string | null
           status?: string
@@ -1430,6 +1502,8 @@ export type Database = {
         Args: { p_leader_id: string; p_remote_jid: string }
         Returns: string[]
       }
+      deploy_edge_function: { Args: never; Returns: Json }
+      deploy_edge_function_v2: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1444,6 +1518,8 @@ export type Database = {
       is_employee: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       pedidos_dia_por_zona: { Args: { zone_id: string }; Returns: number }
+      strip_local_imports: { Args: { src: string }; Returns: string }
+      strip_typescript: { Args: { src: string }; Returns: string }
     }
     Enums: {
       alert_type: "estoque_baixo" | "validade_12h" | "desperdicio" | "outro"

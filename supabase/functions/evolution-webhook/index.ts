@@ -1260,12 +1260,35 @@ serve(async (req) => {
           sent_at: new Date().toISOString(),
         });
 
-        // ===== MELHORIA 3: Verificar ia_paused =====
+        // ===== MELHORIA 3: Verificar ia_paused (global) =====
         if (iaPaused) {
           return new Response(JSON.stringify({ ok: true, paused: true }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        // ===== CHECK PER-CUSTOMER: ia_lock_at (owner takeover) =====
+        if (customerId) {
+          const { data: custLock } = await supabase
+            .from("customers")
+            .select("ia_lock_at")
+            .eq("id", customerId)
+            .maybeSingle();
+          if (custLock?.ia_lock_at) {
+            const lockTime = new Date(custLock.ia_lock_at).getTime();
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            if (Date.now() - lockTime < TWENTY_FOUR_HOURS) {
+              console.log("evolution-webhook: IA locked for customer", customerId, "- skipping AI response");
+              return new Response(JSON.stringify({ ok: true, skipped: "manual_takeover" }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            } else {
+              // Lock expired, clear it
+              await supabase.from("customers").update({ ia_lock_at: null, ia_lock_reason: null } as any).eq("id", customerId);
+            }
+          }
         }
 
         // ===== MELHORIA 1: Carregar sessão de conversa =====
