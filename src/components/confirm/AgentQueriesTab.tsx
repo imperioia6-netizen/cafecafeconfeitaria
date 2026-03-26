@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, User, Phone, MessageSquareWarning, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, User, Phone, MessageSquareWarning, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AgentQuery {
