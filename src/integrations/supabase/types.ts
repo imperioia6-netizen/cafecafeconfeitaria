@@ -50,6 +50,53 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_queries: {
+        Row: {
+          answered_at: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          query_text: string
+          remote_jid: string
+          response_text: string | null
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name: string
+          customer_phone: string
+          id?: string
+          query_text: string
+          remote_jid: string
+          response_text?: string | null
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          query_text?: string
+          remote_jid?: string
+          response_text?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_queries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_reports: {
         Row: {
           content: string
