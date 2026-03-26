@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: settings } = await admin
       .from("crm_settings")
       .select("key, value")
-      .in("key", ["evolution_api_url", "evolution_api_key", "evolution_instance"]);
+      .in("key", ["evolution_base_url", "evolution_api_url", "evolution_api_key", "evolution_instance"]);
 
     const settingsMap = new Map((settings || []).map((s: any) => [s.key, s.value]));
     const apiUrl = settingsMap.get("evolution_api_url");
