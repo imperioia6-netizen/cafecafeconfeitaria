@@ -1368,13 +1368,32 @@ serve(async (req) => {
         const guardedReplyClean = enforceReplyGuardrails(replyClean || reply, recipeNames, fullMessageFinal);
 
         // ===== MELHORIA 4: Processar ALERTA_EQUIPE =====
-        if (alertaEquipeText && ownerPhonesList.length > 0) {
-          const alertMsg = `⚠️ Alerta do atendente IA:\n${alertaEquipeText}\n\nCliente: ${pushName || "não identificado"} (${normalizedPhone})`;
-          for (const ownerPhone of ownerPhonesList) {
-            try {
-              await sendEvolutionMessage(evo.baseUrl, evo.apiKey, evo.instance, ownerPhone, alertMsg);
-            } catch (e) {
-              console.error("ALERTA_EQUIPE send error:", (e as Error).message);
+        if (alertaEquipeText) {
+          // Save to agent_queries table
+          try {
+            const custRow = existingCustomer || null;
+            await admin.from("agent_queries").insert({
+              customer_id: custRow?.id || null,
+              customer_name: pushName || normalizedPhone,
+              customer_phone: normalizedPhone,
+              remote_jid: remoteJid,
+              query_text: alertaEquipeText,
+              status: "pending",
+            });
+            console.log("agent_queries: saved pending query for", remoteJid);
+          } catch (aqErr) {
+            console.error("agent_queries insert error:", (aqErr as Error).message);
+          }
+
+          // Also notify owners via WhatsApp
+          if (ownerPhonesList.length > 0) {
+            const alertMsg = `⚠️ Alerta do atendente IA:\n${alertaEquipeText}\n\nCliente: ${pushName || "não identificado"} (${normalizedPhone})\n\n📋 Responda pela plataforma na aba "Consultas"`;
+            for (const ownerPhone of ownerPhonesList) {
+              try {
+                await sendEvolutionMessage(evo.baseUrl, evo.apiKey, evo.instance, ownerPhone, alertMsg);
+              } catch (e) {
+                console.error("ALERTA_EQUIPE send error:", (e as Error).message);
+              }
             }
           }
         }
