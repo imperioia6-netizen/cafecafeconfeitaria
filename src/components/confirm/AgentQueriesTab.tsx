@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, User, Phone, MessageSquareWarning, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, User, Phone, MessageSquareWarning, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AgentQuery {
@@ -22,6 +22,7 @@ const AgentQueriesTab = () => {
   const [loading, setLoading] = useState(true);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -168,7 +169,34 @@ const AgentQueriesTab = () => {
               }
               className="min-h-[80px] text-sm"
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={deletingId === q.id}
+                onClick={async () => {
+                  setDeletingId(q.id);
+                  const { error } = await supabase
+                    .from("agent_queries" as any)
+                    .delete()
+                    .eq("id", q.id);
+                  if (error) {
+                    toast.error("Erro ao excluir consulta");
+                  } else {
+                    toast.success("Consulta excluída");
+                    await load();
+                  }
+                  setDeletingId(null);
+                }}
+                className="gap-1.5"
+              >
+                {deletingId === q.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Excluir
+              </Button>
               <Button
                 size="sm"
                 disabled={sendingId === q.id || !responses[q.id]?.trim()}
