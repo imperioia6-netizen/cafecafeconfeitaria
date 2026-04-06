@@ -299,6 +299,17 @@ export async function getLlmConfig(supabase: SupabaseClient): Promise<LlmConfig 
   return null;
 }
 
+/** Retorna config de fallback (Lovable gateway) quando a primária falha. */
+export function getLlmFallbackConfig(): LlmConfig | null {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY") || "";
+  if (!lovableKey) return null;
+  return {
+    apiKey: lovableKey,
+    baseUrl: "https://ai.gateway.lovable.dev/v1",
+    model: "gpt-4o",
+  };
+}
+
 export async function callLlm(
   config: LlmConfig,
   systemPrompt: string,
@@ -336,11 +347,12 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0.05, max_tokens: 1500 }),
+      body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 600 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       lastErr = `model=${model} status=${res.status} ${text.slice(0, 200)}`;
+      console.error("callLlm FAIL:", lastErr);
       continue;
     }
     const data = await res.json();
@@ -352,6 +364,7 @@ export async function callLlm(
     return content.slice(0, 4096).trim();
   }
 
+  console.error("callLlm ALL MODELS FAILED. Last error:", lastErr, "| URL:", config.baseUrl, "| model:", config.model);
   throw new Error(`LLM error: ${lastErr || "sem resposta válida dos modelos"}`);
 }
 
@@ -375,8 +388,22 @@ export async function runAssistente(
     const systemPrompt = buildAssistentePrompt(dataContext, customInstructions);
     const config = await getLlmConfig(supabase);
     if (config) {
-      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
-      return reply || FALLBACK_ASSISTENTE;
+      try {
+        const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
+        return reply || FALLBACK_ASSISTENTE;
+      } catch (primaryErr) {
+        console.error("runAssistente primary LLM failed:", (primaryErr as Error).message);
+        // Tentar fallback com Lovable gateway se a config primária não for Lovable
+        if (!config.baseUrl.includes("lovable.dev")) {
+          const fallback = getLlmFallbackConfig();
+          if (fallback) {
+            console.log("runAssistente: tentando fallback Lovable gateway...");
+            const reply = await callLlm(fallback, systemPrompt, safeMessage, safeHistory, controller.signal);
+            return reply || FALLBACK_ASSISTENTE;
+          }
+        }
+        throw primaryErr;
+      }
     }
     return `Dados disponíveis: ${JSON.stringify(dataContext).slice(0, 1200)}. Configure a API de IA em CRM > Configurações para respostas completas.`;
   } catch (e) {
@@ -431,7 +458,7 @@ export async function runAtendente(
       supabase.from("crm_settings").select("key, value").in("key", ["payment_pix_key", "payment_instructions", "atendente_instructions"]),
       supabase.from("recipes").select("id, name, sale_price, slice_price, complementos").eq("active", true).eq("category", "acai"),
       supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price").eq("active", true).order("name"),
-      supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro").catch(() => ({ data: [] })),
+      supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro"),
     ]);
     const promos = (promosRes.data || []) as { discount_percent?: number; promo_price?: number }[];
     const promoSummary = promos.length
@@ -498,83 +525,51 @@ export async function runAtendente(
     //   Calculator = cálculos exatos (FORA da LLM)
     //   LLM = raciocínio + conversa + condução
     // ════════════════════════════════════════════════════════════════
-    let systemPrompt: string;
-
-    // Determinar o intent granular (novo routeNotes)
+    // ARQUITETURA v3: Vault = memória completa + dados tempo real
+    //   Vault (knowledge_base) = regras, fluxos, cardápio estático
+    //   Banco (recipes, zones) = preços e disponibilidade em tempo real
+    //   Calculator = cálculos exatos (FORA da LLM)
+    //   LLM = conversa + condução + apresentação
+    // ════════════════════════════════════════════════════════════════
     const effectiveIntent: Intent = smartIntent || mapLegacyIntent(modularOpts?.intent);
+    const entities = detectEntities(safeMessage);
 
-    try {
-      // 1. Detectar entidades na mensagem
-      const entities = detectEntities(safeMessage);
+    const decisionCtx = await buildDecisionContext(
+      supabase,
+      safeMessage,
+      effectiveIntent,
+      entities,
+      contactName,
+      paymentInfo,
+      (customInstructions || "").trim().slice(0, 6000),
+      promoSummary,
+      (cardapioAcai || "").trim(),
+      (cardapioProdutosDetalhado || "").trim(),
+      (cardapioProdutos || "").replace(/\n/g, ", "),
+      deliveryZonesText,
+      allRecipes as RecipeInfo[]
+    );
 
-      // 2. Camada de decisão: rotear → buscar notas → pré-calcular
-      const decisionCtx = await buildDecisionContext(
-        supabase,
-        safeMessage,
-        effectiveIntent,
-        entities,
-        contactName,
-        paymentInfo,
-        (customInstructions || "").trim().slice(0, 6000),
-        promoSummary,
-        (cardapioAcai || "").trim(),
-        (cardapioProdutosDetalhado || "").trim(),
-        (cardapioProdutos || "").replace(/\n/g, ", "),
-        deliveryZonesText,
-        allRecipes as RecipeInfo[]
-      );
-
-      // 3. Se encontrou notas → usar prompt inteligente
-      if (decisionCtx.notasRelevantes) {
-        systemPrompt = buildSmartPrompt(decisionCtx);
-      } else if (modularOpts) {
-        // Fallback: prompt modular hardcoded
-        console.warn("knowledge_base vazio — usando prompt modular hardcoded");
-        systemPrompt = buildModularAtendentePrompt({
-          intent: modularOpts.intent,
-          stage: modularOpts.stage,
-          hasOrderInProgress: modularOpts.hasOrderInProgress,
-          contactName,
-          promoSummary,
-          paymentInfo,
-          customInstructions,
-          cardapioAcai: cardapioAcai || null,
-          cardapioProdutos: cardapioProdutos || null,
-          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
-          deliveryZonesText: deliveryZonesText || null,
-        });
-      } else {
-        systemPrompt = buildAtendentePrompt(
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
-        );
-      }
-    } catch (e) {
-      console.error("decisionLayer falhou:", (e as Error).message);
-      // Fallback total
-      if (modularOpts) {
-        systemPrompt = buildModularAtendentePrompt({
-          intent: modularOpts.intent,
-          stage: modularOpts.stage,
-          hasOrderInProgress: modularOpts.hasOrderInProgress,
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai: cardapioAcai || null,
-          cardapioProdutos: cardapioProdutos || null,
-          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
-          deliveryZonesText: deliveryZonesText || null,
-        });
-      } else {
-        systemPrompt = buildAtendentePrompt(
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
-        );
-      }
-    }
+    const systemPrompt = buildSmartPrompt(decisionCtx);
 
     const config = await getLlmConfig(supabase);
     if (config) {
-      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
-      return reply || FALLBACK_ATENDENTE;
+      try {
+        const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
+        return reply || FALLBACK_ATENDENTE;
+      } catch (primaryErr) {
+        console.error("runAtendente primary LLM failed:", (primaryErr as Error).message);
+        // Tentar fallback com Lovable gateway se a config primária não for Lovable
+        if (!config.baseUrl.includes("lovable.dev")) {
+          const fallback = getLlmFallbackConfig();
+          if (fallback) {
+            console.log("runAtendente: tentando fallback Lovable gateway...");
+            const reply = await callLlm(fallback, systemPrompt, safeMessage, safeHistory, controller.signal);
+            return reply || FALLBACK_ATENDENTE;
+          }
+        }
+        throw primaryErr;
+      }
     }
     return "Olá! Obrigado pelo contato. Em breve nossa equipe retorna. Qual seu nome?";
   } catch (e) {

@@ -136,6 +136,28 @@ async function fetchNotas(
   return (data || []) as KBRow[];
 }
 
+/**
+ * Busca TODAS as notas ativas do knowledge_base.
+ * O Vault inteiro vira a memória do agente — sem roteamento, sem gargalo.
+ * ~30K chars (~8K tokens) = cabe tranquilo no gpt-4o (128K tokens).
+ */
+export async function fetchAllNotas(
+  supabase: SupabaseClient
+): Promise<KBRow[]> {
+  const { data, error } = await supabase
+    .from("knowledge_base")
+    .select("caminho, titulo, conteudo")
+    .eq("ativa", true)
+    .order("caminho");
+
+  if (error) {
+    console.error("fetchAllNotas error:", error.message);
+    return [];
+  }
+
+  return (data || []) as KBRow[];
+}
+
 // ── Pré-cálculo ──
 
 interface PreCalcResult {
@@ -144,7 +166,9 @@ interface PreCalcResult {
 }
 
 /**
- * Pré-calcula valores da mensagem. A LLM NÃO faz contas — recebe valores prontos.
+ * Pré-calcula TODOS os valores da mensagem. A LLM NÃO faz contas — recebe valores prontos.
+ * Cobre: bolos (com/sem peso), meio a meio, múltiplos bolos, salgados, docinhos, fatias,
+ * decoração, total combinado, sinal 50%, regras de negócio.
  */
 function preCalcular(
   message: string,
@@ -154,99 +178,160 @@ function preCalcular(
 ): PreCalcResult {
   const calculos: string[] = [];
   const alertas: string[] = [];
+  let totalGeral = 0;
+  let temSalgados = false;
 
-  // Só calcular se faz sentido
-  const deveCalcular = [
-    "cakes", "cake_slice", "mini_savories", "savories", "sweets",
-    "drinks", "pricing", "order_now", "pre_order", "delivery", "delivery_fee"
-  ].includes(intent);
+  const msgLower = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  if (!deveCalcular && !entities.mentionsCake && !entities.mentionsMiniSavory && !entities.mentionsSlice) {
-    return { texto: "", alertas };
-  }
+  // ════════ BOLOS COM PESO ════════
+  // Padrões: "bolo de brigadeiro de 2kg", "2kg de brigadeiro", "bolo brigadeiro 3kg"
+  const boloPatterns = [
+    /(?:bolo\s+(?:de\s+)?)([\w\sà-ú]+?)(?:\s+(?:de\s+)?(\d+)\s*kg)/gi,
+    /(\d+)\s*kg\s+(?:de\s+)?(?:bolo\s+(?:de\s+)?)?([\w\sà-ú]+?)(?:\s|$|,|\.)/gi,
+  ];
+  const bolosDetectados: { sabor: string; peso: number; valor: number }[] = [];
 
-  const msgLower = message.toLowerCase();
+  for (const pattern of boloPatterns) {
+    let match;
+    while ((match = pattern.exec(msgLower)) !== null) {
+      const sabor = (pattern === boloPatterns[0] ? match[1] : match[2]).trim();
+      const peso = parseInt(pattern === boloPatterns[0] ? match[2] : match[1]);
+      if (!sabor || !peso || peso <= 0 || peso > 20) continue;
 
-  // ── Detectar bolo com peso ──
-  const boloMatch = msgLower.match(
-    /(?:bolo\s+(?:de\s+)?)([\w\sà-ú]+?)(?:\s+(?:de\s+)?(\d+)\s*kg)/i
-  );
-  if (boloMatch) {
-    const sabor = boloMatch[1].trim();
-    const peso = parseInt(boloMatch[2]);
+      // Validar peso fracionado
+      if (!Number.isInteger(peso)) {
+        alertas.push(`[REGRA] Peso ${peso}kg nao e inteiro. So fazemos 1kg, 2kg, 3kg, 4kg.`);
+        continue;
+      }
 
-    if (peso > 4) {
-      const formas = dividirBoloGrande(peso);
-      calculos.push(
-        `[CÁLCULO] Bolo de ${peso}kg → dividir em ${formas.length} formas: ${formas.map((f) => `${f}kg`).join(" + ")}`
-      );
-    }
+      // Dividir se >4kg
+      if (peso > 4) {
+        const formas = dividirBoloGrande(peso);
+        calculos.push(`[CALCULO] Bolo ${peso}kg → dividir em ${formas.length} formas: ${formas.map(f => `${f}kg`).join(" + ")} (limite 4kg/forma)`);
+      }
 
-    const resultado = calcularBolo(sabor, peso, recipes);
-    if (resultado) {
-      calculos.push(
-        `[CÁLCULO] Bolo ${sabor} ${peso}kg: R$${resultado.precoKg}/kg × ${peso}kg = R$${resultado.valor.toFixed(2)}`
-      );
-      const entrada = calcularEntrada(resultado.valor);
-      if (entrada.precisaEntrada) {
-        calculos.push(
-          `[CÁLCULO] Total > R$300 → entrada 50%: R$${entrada.valorEntrada.toFixed(2)}`
-        );
+      const resultado = calcularBolo(sabor, peso, recipes);
+      if (resultado) {
+        calculos.push(`[CALCULO] Bolo ${sabor} ${peso}kg: R$${resultado.precoKg.toFixed(2)}/kg x ${peso}kg = R$${resultado.valor.toFixed(2)}`);
+        bolosDetectados.push({ sabor, peso, valor: resultado.valor });
+        totalGeral += resultado.valor;
+
+        // Regra: delivery so ate 3kg
+        if (peso > 3 && (entities.mentionsDelivery || msgLower.includes("entreg"))) {
+          alertas.push(`[REGRA] Bolo ${peso}kg = SOMENTE retirada. Delivery ate 3kg.`);
+        }
       }
     }
   }
 
-  // ── Detectar bolo sem peso (só sabor) ──
-  if (!boloMatch && entities.mentionsCake) {
+  // ════════ BOLO SEM PESO (só sabor → mostrar tabela) ════════
+  if (bolosDetectados.length === 0 && entities.mentionsCake) {
     const saborMatch = msgLower.match(/bolo\s+(?:de\s+)?([\w\sà-ú]+)/i);
     if (saborMatch) {
       const sabor = saborMatch[1].trim();
-      const precoKg = recipes.find(
-        (r) => r.name.toLowerCase().includes(sabor)
-      );
-      if (precoKg && precoKg.sale_price) {
-        calculos.push(
-          `[REFERÊNCIA] Bolo ${sabor}: R$${Number(precoKg.sale_price).toFixed(2)}/kg (1kg=R$${Number(precoKg.sale_price).toFixed(2)}, 2kg=R$${(Number(precoKg.sale_price) * 2).toFixed(2)}, 3kg=R$${(Number(precoKg.sale_price) * 3).toFixed(2)}, 4kg=R$${(Number(precoKg.sale_price) * 4).toFixed(2)})`
-        );
+      const recipe = recipes.find(r => r.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(sabor));
+      if (recipe && recipe.sale_price) {
+        const p = Number(recipe.sale_price);
+        calculos.push(`[REFERENCIA] Bolo ${recipe.name}: R$${p.toFixed(2)}/kg → 1kg=R$${p.toFixed(2)}, 2kg=R$${(p*2).toFixed(2)}, 3kg=R$${(p*3).toFixed(2)}, 4kg=R$${(p*4).toFixed(2)}`);
       }
     }
   }
 
-  // ── Detectar salgados ──
-  const salgadosMatch = msgLower.match(
-    /(\d+)\s*(?:unidades?\s+(?:de\s+)?)?(?:mini\s+)?(?:salgad|coxinha|kibe|quibe|risoles)/i
-  );
-  if (salgadosMatch) {
-    const qtd = parseInt(salgadosMatch[1]);
+  // ════════ BOLO MEIO A MEIO ════════
+  const meioMatch = msgLower.match(/meio\s+a\s+meio|metade\s+(?:de\s+)?cada/i);
+  if (meioMatch) {
+    const pesoMatch = msgLower.match(/(\d+)\s*kg/);
+    const peso = pesoMatch ? parseInt(pesoMatch[1]) : 0;
+    if (peso === 1) {
+      alertas.push(`[REGRA] Bolo meio a meio de 1kg NAO e possivel. Somente a partir de 2kg.`);
+    } else if (peso >= 2) {
+      calculos.push(`[CALCULO] Meio a meio ${peso}kg: peso dividido igualmente (${peso/2}kg de cada). Valor = sabor MAIS CARO x ${peso}kg.`);
+    }
+  }
+
+  // ════════ MINI SALGADOS ════════
+  const salgadosMatches = [...msgLower.matchAll(/(\d+)\s*(?:unidades?\s+(?:de\s+)?)?(?:mini\s+)?(?:salgad|coxinha|kibe|quibe|risoles|bolinha|empada|esfiha|enrolado)/gi)];
+  for (const sMatch of salgadosMatches) {
+    const qtd = parseInt(sMatch[1]);
+    if (!qtd || qtd <= 0) continue;
+    temSalgados = true;
     const validacao = validarQuantidadeSalgados(qtd);
     if (!validacao.valido) {
-      alertas.push(
-        `[SALGADOS] Quantidade ${qtd} não é múltiplo de 25. Sugestões: ${validacao.sugestaoInferior} ou ${validacao.sugestaoSuperior}`
-      );
+      alertas.push(`[REGRA] ${qtd} salgados nao e multiplo de 25. Sugestoes: ${validacao.sugestaoInferior} ou ${validacao.sugestaoSuperior}.`);
     }
     const resultado = calcularSalgados(qtd);
-    calculos.push(
-      `[CÁLCULO] ${qtd} mini salgados: R$${resultado.valor.toFixed(2)} (R$175/cento)`
-    );
+    calculos.push(`[CALCULO] ${qtd} mini salgados: R$${resultado.valor.toFixed(2)} (R$175/cento)`);
+    totalGeral += resultado.valor;
   }
 
-  // ── Detectar fatias ──
-  const fatiaMatch = msgLower.match(/(\d+)\s*fatias?/i);
+  // ════════ DOCINHOS ════════
+  const docinhoMatch = msgLower.match(/(\d+)\s*(?:unidades?\s+(?:de\s+)?)?(?:docinhos?|brigadeiros?|beijinhos?|cajuzinhos?|bicho\s*de\s*pe|olho\s*de\s*sogra)/i);
+  if (docinhoMatch) {
+    const qtd = parseInt(docinhoMatch[1]);
+    if (qtd > 0) {
+      if (qtd % 25 !== 0) {
+        alertas.push(`[REGRA] ${qtd} docinhos nao e multiplo de 25.`);
+      }
+      const valor = qtd * 1.90;
+      calculos.push(`[CALCULO] ${qtd} docinhos: ${qtd} x R$1,90 = R$${valor.toFixed(2)}`);
+      totalGeral += valor;
+    }
+  }
+
+  // ════════ FATIAS ════════
+  const fatiaMatch = msgLower.match(/(\d+)\s*(?:fatias?|pedacos?|peda[cç]os?)/i);
   if (fatiaMatch) {
     const qtd = parseInt(fatiaMatch[1]);
-    const resultado = calcularFatias(qtd);
-    calculos.push(
-      `[CÁLCULO] ${qtd} fatia(s): ${qtd} × R$25 = R$${resultado.valor.toFixed(2)}`
-    );
+    if (qtd > 0) {
+      const valor = qtd * 25;
+      calculos.push(`[CALCULO] ${qtd} fatia(s): ${qtd} x R$25 = R$${valor.toFixed(2)}`);
+      totalGeral += valor;
+      alertas.push(`[VITRINE] Fatias sao da vitrine — CONSULTAR equipe quais sabores tem hoje.`);
+    }
   }
 
-  // ── Verificar horário ──
+  // ════════ DECORAÇÃO ════════
+  if (msgLower.includes("decoracao") || msgLower.includes("decorar") || msgLower.includes("decorado")) {
+    if (msgLower.includes("colorida") || msgLower.includes("cor")) {
+      calculos.push(`[CALCULO] Decoracao colorida: +R$25,00`);
+      totalGeral += 25;
+    } else if (msgLower.includes("escrita") || msgLower.includes("personalizada") || msgLower.includes("escrever")) {
+      calculos.push(`[CALCULO] Escrita personalizada: +R$15,00`);
+      totalGeral += 15;
+    } else if (msgLower.includes("papel de arroz") || msgLower.includes("arroz")) {
+      calculos.push(`[CALCULO] Papel de arroz (cliente traz): +R$25,00`);
+      totalGeral += 25;
+    } else {
+      calculos.push(`[INFO] Cliente quer decoracao — perguntar tipo: escrita (R$15), colorida (R$25) ou papel de arroz (R$25, cliente traz).`);
+    }
+  }
+
+  // ════════ TOTAL COMBINADO ════════
+  if (totalGeral > 0 && calculos.length > 1) {
+    calculos.push(`[TOTAL] Subtotal dos itens: R$${totalGeral.toFixed(2)}`);
+
+    // Sinal 50%
+    if (temSalgados) {
+      calculos.push(`[SINAL] Salgados = SEMPRE 50% de sinal: R$${(totalGeral * 0.5).toFixed(2)}`);
+    } else if (totalGeral > 300) {
+      const sinal = Math.ceil(totalGeral * 0.5 * 100) / 100;
+      calculos.push(`[SINAL] Total > R$300 → sinal 50%: R$${sinal.toFixed(2)}`);
+    }
+  } else if (totalGeral > 0) {
+    // Item único — checar sinal
+    if (temSalgados) {
+      calculos.push(`[SINAL] Salgados = SEMPRE 50% de sinal: R$${(totalGeral * 0.5).toFixed(2)}`);
+    } else if (totalGeral > 300) {
+      const sinal = Math.ceil(totalGeral * 0.5 * 100) / 100;
+      calculos.push(`[SINAL] Total > R$300 → sinal 50%: R$${sinal.toFixed(2)}`);
+    }
+  }
+
+  // ════════ VERIFICAÇÕES DE HORÁRIO ════════
   const horario = verificarHorarioFuncionamento();
   if (!horario.aberto) {
-    alertas.push(`[HORÁRIO] ${horario.mensagem}`);
+    alertas.push(`[HORARIO] ${horario.mensagem}`);
   }
-
-  // ── Verificar delivery ──
   if (entities.mentionsDelivery || intent === "delivery" || intent === "delivery_fee") {
     const deliveryHorario = verificarHorarioDelivery();
     if (!deliveryHorario.disponivel) {
@@ -254,11 +339,14 @@ function preCalcular(
     }
   }
 
-  // ── Bairro mencionado ──
+  // ════════ BAIRRO ════════
   if (entities.mentionsNeighborhood) {
-    calculos.push(
-      `[INFO] Cliente mencionou bairro: ${entities.mentionsNeighborhood} → buscar taxa na tabela`
-    );
+    calculos.push(`[INFO] Bairro mencionado: ${entities.mentionsNeighborhood} → verificar taxa na tabela.`);
+  }
+
+  // ════════ MINI COXINHA COM CATUPIRY ════════
+  if (msgLower.includes("mini") && msgLower.includes("coxinha") && msgLower.includes("catupiry")) {
+    alertas.push(`[REGRA] Mini coxinha NAO tem catupiry. Coxinha com catupiry so no tamanho normal (R$15).`);
   }
 
   return {
@@ -288,11 +376,10 @@ export async function buildDecisionContext(
   deliveryZonesTexto: string,
   recipes: RecipeInfo[]
 ): Promise<DecisionContext> {
-  // 1. Rotear: quais notas buscar?
-  const caminhos = routeNotes(intent, entities);
-
-  // 2. Buscar notas do knowledge_base
-  const notas = await fetchNotas(supabase, caminhos);
+  // 1. Buscar TODAS as notas do knowledge_base (Vault = memória completa do agente)
+  // ~30K chars (~8K tokens) — cabe tranquilo no gpt-4o (128K tokens)
+  // Isso elimina gargalos de roteamento: o agente SEMPRE tem todo o conhecimento
+  const notas = await fetchAllNotas(supabase);
   const notasRelevantes = notas
     .map((n) => `═══ ${n.titulo.toUpperCase()} ═══\n${n.conteudo}`)
     .join("\n\n");
@@ -330,21 +417,16 @@ export async function buildDecisionContext(
 export function buildSmartPrompt(ctx: DecisionContext): string {
   const parts: string[] = [];
 
-  // 1. Prompt fixo MÍNIMO
-  parts.push(`Você é a atendente virtual da Café Café Confeitaria.
+  // 1. Identidade mínima (todo conhecimento vem do VAULT abaixo)
+  parts.push(`Voce e a atendente virtual do Cafe Cafe Confeitaria (Osasco-SP) no WhatsApp.
+Tom: brasileiro natural, curto e direto. Nunca robotica. Nunca repita informacoes na mesma mensagem.
+Use o VAULT abaixo como sua memoria completa. Use CALCULOS PRE-FEITOS quando disponiveis.
+Duvidas que nao souber: consulte equipe com [ALERTA_EQUIPE].
+RESPONDA SOMENTE COM A MENSAGEM PARA O CLIENTE.`);
 
-Regras:
-- Responda apenas com base no contexto fornecido.
-- Nunca invente preço, taxa, produto, prazo ou disponibilidade.
-- Se faltar informação, diga que vai verificar.
-- Seja humana, profissional, clara e objetiva.
-- Sempre conduza para o fechamento do pedido quando fizer sentido.
-- Nunca finalize pedido sem validação completa.
-- Use os CÁLCULOS PRÉ-FEITOS quando disponíveis — são exatos.`);
-
-  // 2. Notas relevantes do knowledge_base (Obsidian)
+  // 2. VAULT COMPLETO — memória total do agente (todas as notas do knowledge_base)
   if (ctx.notasRelevantes) {
-    parts.push(`\n${ctx.notasRelevantes}`);
+    parts.push(`\n═══ VAULT — SUA MEMÓRIA COMPLETA (USE COMO BASE PARA TUDO) ═══\n${ctx.notasRelevantes}`);
   }
 
   // 3. Cálculos pré-feitos (A LLM DEVE usar estes valores)
@@ -362,22 +444,19 @@ Regras:
     parts.push(`\n═══ INSTRUÇÕES DO PROPRIETÁRIO (PRIORIDADE MÁXIMA) ═══\n${ctx.customInstructions}`);
   }
 
-  // 6. Açaí (quando relevante)
-  const needsAcai = ["cakes", "cake_slice", "pricing", "order_now", "pre_order", "drinks"].includes(ctx.intent);
-  if (ctx.cardapioAcai && needsAcai) {
+  // 6. Açaí (dados do banco — sempre disponível)
+  if (ctx.cardapioAcai) {
     parts.push(`\n═══ AÇAÍ ═══\n${ctx.cardapioAcai}`);
   }
 
-  // 7. Cardápio detalhado (fonte de verdade)
-  const needsMenu = ["cakes", "cake_slice", "mini_savories", "savories", "sweets", "drinks", "pricing", "order_now", "pre_order"].includes(ctx.intent);
-  if (ctx.cardapioDetalhado && needsMenu) {
-    parts.push(`\n═══ CARDÁPIO E PREÇOS (FONTE DE VERDADE) ═══\n${ctx.cardapioDetalhado}\n⚠️ Se NÃO está aqui, NÃO EXISTE.`);
+  // 7. Cardápio detalhado (dados em tempo real do banco recipes — SEMPRE disponível)
+  if (ctx.cardapioDetalhado) {
+    parts.push(`\n═══ CARDÁPIO E PREÇOS (FONTE DE VERDADE — DADOS EM TEMPO REAL) ═══\n${ctx.cardapioDetalhado}\n⚠️ Se NÃO está aqui, NÃO EXISTE.`);
   }
 
-  // 8. Zonas de delivery
-  const needsDelivery = ["delivery", "delivery_fee", "order_now", "pre_order"].includes(ctx.intent);
-  if (ctx.deliveryZonesTexto && needsDelivery) {
-    parts.push(`\n═══ TAXAS DE ENTREGA ═══\n${ctx.deliveryZonesTexto}`);
+  // 8. Zonas de delivery (dados em tempo real — SEMPRE disponível)
+  if (ctx.deliveryZonesTexto) {
+    parts.push(`\n═══ TAXAS DE ENTREGA POR BAIRRO ═══\n${ctx.deliveryZonesTexto}`);
   }
 
   // 9. Dados do cliente
@@ -387,16 +466,13 @@ Promoções: ${ctx.promoSummary || "nenhuma"}
 Pagamento: ${ctx.paymentInfo}
 Cardápio PDF: http://bit.ly/3OYW9Fw`);
 
-  // 10. Nomes para registro (quando relevante)
-  if (ctx.cardapioNomes && ["order_now", "pre_order", "payment"].includes(ctx.intent)) {
-    parts.push(`\n⚠️ Nomes exatos para registro: ${ctx.cardapioNomes}`);
+  // 10. Nomes para registro (sempre disponível)
+  if (ctx.cardapioNomes) {
+    parts.push(`\n⚠️ Nomes exatos para registro de pedido: ${ctx.cardapioNomes}`);
   }
 
-  // 11. Lembrete final
-  parts.push(`\n═══ ANTES DE RESPONDER ═══
-1. Li TODA a mensagem? 2. Verifiquei HISTÓRICO? 3. Usei CÁLCULOS PRÉ-FEITOS?
-4. Produto EXISTE no cardápio? 5. Resposta CURTA e NATURAL?
-RESPONDA SOMENTE COM A MENSAGEM PARA O CLIENTE.`);
+  // 11. Lembrete final compacto
+  parts.push(`\nRESPONDA SOMENTE COM A MENSAGEM PARA O CLIENTE. Sem explicacoes internas.`);
 
   return parts.join("\n");
 }

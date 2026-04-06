@@ -894,6 +894,22 @@ async function getBotOperatorId(supabase: any): Promise<string | null> {
   return (profile as { id?: string } | null)?.id ?? null;
 }
 
+/** Valida payload de pedido ANTES de registrar. Retorna lista de problemas. */
+function validateOrderPayload(payload: Record<string, unknown>, customerPhone: string): string[] {
+  const problems: string[] = [];
+  const name = (payload.customer_name as string || "").trim();
+  if (!name || name.length < 3) problems.push("nome_incompleto");
+  if (!customerPhone || customerPhone.length < 10) problems.push("telefone_invalido");
+  const items = (payload.items as unknown[]) || [];
+  if (items.length === 0) problems.push("sem_itens");
+  for (const item of items) {
+    const it = item as { recipe_name?: string; quantity?: number };
+    if (!it.recipe_name || !it.recipe_name.trim()) problems.push("item_sem_nome");
+    if (!it.quantity || it.quantity <= 0) problems.push("item_sem_quantidade");
+  }
+  return problems;
+}
+
 /** Cria pedido + itens + venda na plataforma a partir do JSON emitido pela IA (após comprovante). */
 async function createOrderFromPayload(
   supabase: any,
@@ -903,6 +919,13 @@ async function createOrderFromPayload(
   evo: { baseUrl: string; apiKey: string; instance: string },
   ownerPhones: string[]
 ): Promise<{ ok: boolean; orderId?: string; error?: string }> {
+  // Validar payload antes de registrar
+  const validationProblems = validateOrderPayload(payload, customerPhone);
+  if (validationProblems.length > 0) {
+    console.error("createOrderFromPayload validation failed:", validationProblems.join(", "));
+    return { ok: false, error: `Dados incompletos: ${validationProblems.join(", ")}` };
+  }
+
   const operatorId = await getBotOperatorId(supabase);
   if (!operatorId) {
     console.error("createOrderFromPayload: nenhum operator_id (bot_operator_id ou profile)");
@@ -1716,30 +1739,24 @@ serve(async (req) => {
         const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], combinedMessage);
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-        // Construir contexto ESTRUTURADO — cada seção claramente separada
+        // Construir contexto ENXUTO — só o essencial, sem repetir o que já está no Vault
         const contextParts: string[] = [];
 
-        // 1. Horário (sempre útil para regras de prazo)
-        contextParts.push(`[HORA_ATUAL: ${nowSp}]`);
+        // 1. Horário atual (para regras de prazo/antecedência)
+        contextParts.push(`[HORA: ${nowSp}]`);
 
-        // 2. Controle de fluxo (intent + stage)
-        contextParts.push(buildControlHint(intent, stage, sessionMemory));
-
-        // 3. Memória de pedido em andamento (crucial para não perder itens)
+        // 2. Memória do pedido em andamento (se houver)
         if (orderMemoryHint) {
           contextParts.push(orderMemoryHint);
         }
 
-        // 4. Continuidade: se a mensagem parece resposta a uma pergunta anterior
+        // 3. Continuidade (se mensagem parece resposta a pergunta anterior)
         if (previousQuestionHint) {
           contextParts.push(`[CONTINUIDADE]\n${previousQuestionHint}`);
         }
 
-        // 5. Instrução de resposta
-        contextParts.push(`[INSTRUÇÃO]\nResponda SOMENTE com a mensagem para o cliente. Use as informações acima para NÃO re-perguntar nada que já foi dito. Seja curta, direta e humana.`);
-
-        // 6. Mensagem do cliente SEMPRE por último
-        contextParts.push(`[MENSAGEM DO CLIENTE]\n${combinedMessage}`);
+        // 4. Mensagem do cliente
+        contextParts.push(combinedMessage);
 
         const enrichedMessage = contextParts.join("\n\n");
 
@@ -1757,6 +1774,14 @@ serve(async (req) => {
             history as { role: "user" | "assistant"; content: string }[],
             { intent, stage, hasOrderInProgress }
           );
+        }
+
+        // ===== DETECÇÃO AUTOMÁTICA: consulta vitrine =====
+        // Se cliente pede fatia/pedaço e a IA NÃO gerou [ALERTA_EQUIPE], forçar automaticamente
+        const msgNormForVitrine = normalizeForCompare(combinedMessage);
+        const pedeFatiaVitrine = msgNormForVitrine.includes("fatia") || msgNormForVitrine.includes("pedaco") || msgNormForVitrine.includes("vitrine") || msgNormForVitrine.includes("bolo do dia");
+        if (pedeFatiaVitrine && !reply.includes("[ALERTA_EQUIPE]")) {
+          reply = reply + "\n[ALERTA_EQUIPE]Cliente pediu fatia/pedaço de bolo. Quais sabores temos na vitrine hoje?[/ALERTA_EQUIPE]";
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
