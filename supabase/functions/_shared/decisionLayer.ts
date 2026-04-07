@@ -383,16 +383,13 @@ export async function buildDecisionContext(
   deliveryZonesTexto: string,
   recipes: RecipeInfo[]
 ): Promise<DecisionContext> {
-  // 1. Buscar SOMENTE a nota master (condensada, ~3K chars)
-  // Em vez de 36 notas (30K chars que sobrecarregam o LLM),
-  // usamos 1 nota master com TUDO condensado + cardápio filtrado por contexto
-  const { data: masterRow } = await supabase
-    .from("knowledge_base")
-    .select("conteudo")
-    .eq("caminho", "sistema/master")
-    .eq("ativa", true)
-    .maybeSingle();
-  const notasRelevantes = (masterRow as { conteudo?: string } | null)?.conteudo || "";
+  // 1. Buscar TODAS as notas do Vault — é a ÚNICA fonte de conhecimento do agente
+  // A LLM não sabe NADA sozinha. Tudo vem do Vault.
+  // 30K chars + cardápio filtrado (~3K) = ~33K chars = ~8K tokens (6% do gpt-4o)
+  const notas = await fetchAllNotas(supabase);
+  const notasRelevantes = notas
+    .map((n) => `[${n.titulo}]\n${n.conteudo}`)
+    .join("\n\n");
 
   // 3. Pré-calcular valores (FORA da LLM)
   const preCalc = preCalcular(message, intent, entities, recipes);
@@ -428,81 +425,51 @@ export function buildSmartPrompt(ctx: DecisionContext): string {
   const parts: string[] = [];
 
   // ══════════════════════════════════════════════════════════════
-  // ESTRUTURA DO PROMPT (LLM presta mais atenção no TOPO e FINAL)
-  //   TOPO: Identidade + Regras críticas + Instruções proprietário
-  //   MEIO: Cardápio + Dados (referência)
-  //   FINAL: Vault completo + Alertas + Reforço regras
+  // A LLM NÃO SABE NADA SOZINHA. Todo conhecimento vem do VAULT.
+  // Estrutura: Instrução mínima → Vault completo → Dados tempo real → Mensagem
   // ══════════════════════════════════════════════════════════════
 
-  // ═══ TOPO: REGRAS CRÍTICAS (LLM presta MÁXIMA atenção aqui) ═══
-  parts.push(`Voce e a atendente virtual do Cafe Cafe Confeitaria (Osasco-SP) no WhatsApp.
+  // Instrução MÍNIMA (só diz pra ler o Vault)
+  parts.push(`Voce e a atendente virtual do Cafe Cafe Confeitaria no WhatsApp.
+Voce NAO sabe nada sozinha. TODO seu conhecimento esta no VAULT abaixo.
+Siga EXATAMENTE o que esta no Vault. Se nao esta no Vault, voce nao sabe.
+Responda SOMENTE com a mensagem para o cliente. Sem tags internas.`);
 
-REGRAS QUE VOCE NUNCA PODE QUEBRAR:
-1. Salgados e docinhos: SOMENTE multiplos de 25. Se pedir 90, 30, 60 = ERRADO. Corrigir.
-2. Entrega de bolo: SOMENTE ate 3kg. 4kg = retirada obrigatoria. NUNCA aceitar delivery de 4kg.
-3. NUNCA misturar categorias: se cliente fala de BOLO, sugerir SOMENTE sabores de BOLO. NUNCA citar salgados.
-4. Peso quebrado (1,5kg, 5,5kg): NAO fazemos. So inteiro: 1, 2, 3, 4kg.
-5. Meio a meio: SOMENTE a partir de 2kg. 1kg NAO faz.
-6. RESPONDER a pergunta do cliente. Se perguntou X, responder X. NAO mudar de assunto.
-7. Decoracao: colorida R$30, escrita R$15, papel arroz R$25 (cliente TRAZ de casa).
-8. Pagamento diferente do padrao: "Vou verificar com a equipe!" + [ALERTA_EQUIPE]. NAO aceitar sozinho.
-9. Mini coxinha NAO tem catupiry. NAO existe mini 3 queijos, mini enroladinho, mini hamburgao.
-10. Duvidas: consultar equipe com [ALERTA_EQUIPE]. NUNCA inventar.
-
-Tom: brasileiro natural, curto e direto. Maximo 1-2 emoji. Respostas CURTAS.`);
-
-  // ═══ INSTRUÇÕES DO PROPRIETÁRIO (prioridade máxima — no topo) ═══
-  if (ctx.customInstructions) {
-    parts.push(`\n═══ INSTRUCOES DO PROPRIETARIO ═══\n${ctx.customInstructions}`);
-  }
-
-  // ═══ CÁLCULOS PRÉ-FEITOS (exatos — LLM deve usar) ═══
-  if (ctx.calculosTexto) {
-    parts.push(`\n═══ CALCULOS PRE-FEITOS (USE ESTES VALORES) ═══\n${ctx.calculosTexto}`);
-  }
-
-  // ═══ ALERTAS (regras violadas detectadas) ═══
-  if (ctx.alertas.length > 0) {
-    parts.push(`\n═══ ALERTAS IMPORTANTES ═══\n${ctx.alertas.join("\n")}`);
-  }
-
-  // ═══ MEIO: DADOS DE REFERÊNCIA (cardápio, taxas) ═══
-  if (ctx.cardapioAcai) {
-    parts.push(`\n═══ ACAI ═══\n${ctx.cardapioAcai}`);
-  }
-
-  if (ctx.cardapioDetalhado) {
-    parts.push(`\n═══ CARDAPIO E PRECOS ═══\n${ctx.cardapioDetalhado}\nSe NAO esta aqui, NAO EXISTE.`);
-  }
-
-  if (ctx.deliveryZonesTexto) {
-    parts.push(`\n═══ TAXAS DE ENTREGA ═══\n${ctx.deliveryZonesTexto}`);
-  }
-
-  parts.push(`\n═══ DADOS DO CLIENTE ═══
-Nome: ${ctx.contactName || "nao informado"}
-Promocoes: ${ctx.promoSummary || "nenhuma"}
-Pagamento: ${ctx.paymentInfo}
-Cardapio PDF: http://bit.ly/3OYW9Fw`);
-
-  if (ctx.cardapioNomes) {
-    parts.push(`\nNomes exatos para registro: ${ctx.cardapioNomes}`);
-  }
-
-  // ═══ FINAL: VAULT COMPLETO (LLM presta MÁXIMA atenção aqui também) ═══
+  // VAULT COMPLETO — a memória total do agente
   if (ctx.notasRelevantes) {
-    parts.push(`\n═══ VAULT — SUA MEMORIA COMPLETA ═══\n${ctx.notasRelevantes}`);
+    parts.push(`\n${ctx.notasRelevantes}`);
   }
 
-  // ═══ REFORÇO FINAL (última coisa que o LLM lê) ═══
-  parts.push(`\n═══ ANTES DE RESPONDER ═══
-PARE e verifique:
-- Estou respondendo a pergunta do cliente? Se nao, corrija.
-- Citei algum salgado em mensagem sobre bolo? Se sim, REMOVA.
-- Quantidade e multiplo de 25? Se nao, corrija.
-- Bolo 4kg+ e delivery? Se sim, diga que e so retirada.
-- Peso e inteiro (1,2,3,4kg)? Se nao, corrija.
-RESPONDA SOMENTE COM A MENSAGEM PARA O CLIENTE.`);
+  // Instruções do proprietário (complementa o Vault)
+  if (ctx.customInstructions) {
+    parts.push(`\n[Instrucoes do Proprietario]\n${ctx.customInstructions}`);
+  }
+
+  // Cálculos pré-feitos (valores exatos — use estes, não calcule)
+  if (ctx.calculosTexto) {
+    parts.push(`\n[Calculos Exatos]\n${ctx.calculosTexto}`);
+  }
+
+  // Alertas (regras violadas detectadas na mensagem)
+  if (ctx.alertas.length > 0) {
+    parts.push(`\n[Alertas]\n${ctx.alertas.join("\n")}`);
+  }
+
+  // Cardápio com preços em tempo real (só categorias relevantes)
+  if (ctx.cardapioAcai) {
+    parts.push(`\n[Acai - Precos]\n${ctx.cardapioAcai}`);
+  }
+  if (ctx.cardapioDetalhado) {
+    parts.push(`\n[Cardapio - Precos Atuais]\n${ctx.cardapioDetalhado}`);
+  }
+
+  // Taxas de entrega (só se relevante)
+  if (ctx.deliveryZonesTexto) {
+    parts.push(`\n[Taxas Entrega]\n${ctx.deliveryZonesTexto}`);
+  }
+
+  // Dados do cliente
+  parts.push(`\n[Cliente]\nNome: ${ctx.contactName || "nao informado"}\nPagamento: ${ctx.paymentInfo}`);
 
   const prompt = parts.join("\n");
   console.log(`buildSmartPrompt: ${prompt.length} chars, vault=${ctx.notasRelevantes?.length || 0} chars`);
