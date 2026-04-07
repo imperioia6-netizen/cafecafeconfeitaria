@@ -1950,68 +1950,98 @@ serve(async (req) => {
         reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage, (sessionMemory.order_type as string) || "");
         reply = enforceCakeContinuity(reply, combinedMessage, history as { role: "user" | "assistant"; content: string }[]);
 
-        // ===== LIMPEZA: remover tags internas =====
+        // ═══════════════════════════════════════════════════════════════
+        // PÓS-PROCESSAMENTO PROGRAMÁTICO — corrige TUDO que o LLM errar
+        // O LLM gera texto natural. O CÓDIGO garante que as regras sejam seguidas.
+        // ═══════════════════════════════════════════════════════════════
+
+        // 1. Remover TODAS as tags internas
         reply = reply
-          .replace(/\[HORA[^\]]*\]/gi, "")
-          .replace(/\[HORARIO\][^\n]*/gi, "")
-          .replace(/\[CALCULO\][^\n]*/gi, "")
-          .replace(/\[REFERENCIA\][^\n]*/gi, "")
-          .replace(/\[REGRA\][^\n]*/gi, "")
-          .replace(/\[SINAL\][^\n]*/gi, "")
-          .replace(/\[TOTAL\][^\n]*/gi, "")
-          .replace(/\[INFO\][^\n]*/gi, "")
-          .replace(/\[VITRINE\][^\n]*/gi, "")
-          .replace(/\[DELIVERY\][^\n]*/gi, "")
-          .replace(/\[SALGADOS\][^\n]*/gi, "")
-          .replace(/\[NOVO_PEDIDO\][^\n]*/gi, "")
-          .replace(/\[PEDIDO_EM_ABERTO\][^\n]*/gi, "")
-          .replace(/\[CONTINUIDADE\][^\n]*/gi, "")
+          .replace(/\[[A-Z_]+(?:\][^\n]*|\])/gi, "")
           .replace(/\[produto do card[aá]pio\]/gi, "")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
 
-        // ===== FIX PROGRAMÁTICO: remover QUALQUER bloco com sabores de salgados =====
-        // A LLM insiste em adicionar "Nossos sabores incluem: Coxinha..." no final
-        // Este regex pega o bloco INTEIRO (multilinha) e remove
-        const salgadoKeywords = ["coxinha", "kibe", "pão de batata", "pao de batata", "empada palmito", "empada de palmito", "risoles", "bolinho de carne", "esfiha"];
-        const replyLower = reply.toLowerCase();
-        const hasSalgadoMention = salgadoKeywords.some(k => replyLower.includes(k));
-        const clientTalkingSalgado = normalizeForCompare(combinedMessage).includes("salgad") || normalizeForCompare(combinedMessage).includes("coxinha") || normalizeForCompare(combinedMessage).includes("kibe") || normalizeForCompare(combinedMessage).includes("mini");
+        // 2. REMOVER qualquer menção a salgados quando NÃO é contexto de salgados
+        // Dividir resposta em parágrafos e remover os que contêm salgados fora de contexto
+        const clientMsgNorm = normalizeForCompare(combinedMessage);
+        const isSalgadoContext = clientMsgNorm.includes("salgad") || clientMsgNorm.includes("coxinha") || clientMsgNorm.includes("kibe") || clientMsgNorm.includes("mini salgad") || clientMsgNorm.includes("risol") || clientMsgNorm.includes("esfiha");
 
-        // Se a resposta menciona salgados MAS o cliente NÃO está falando de salgados → REMOVER
-        if (hasSalgadoMention && !clientTalkingSalgado) {
-          // Remover blocos que começam com "Nossos sabores" ou "Os sabores" até o fim do parágrafo
-          reply = reply
-            .replace(/\n*[Nn]ossos sabores[\s\S]*?(?:\n\n|\n?$)/g, "")
-            .replace(/\n*[Oo]s sabores[\s\S]*?(?:\n\n|\n?$)/g, "")
-            .replace(/\n*[Ss]abores dispon[ií]veis[\s\S]*?(?:\n\n|\n?$)/g, "")
-            .replace(/\n*[Qq]uer ver o card[aá]pio completo\??\s*/g, "")
-            .replace(/\n*[Pp]ara mini salgados[\s\S]*?(?:\n\n|\n?$)/g, "")
-            .trim();
+        if (!isSalgadoContext) {
+          const paragraphs = reply.split(/\n\n+/);
+          const cleanParagraphs = paragraphs.filter(p => {
+            const pLower = p.toLowerCase();
+            // Remover parágrafos que são listas de sabores de salgados
+            if (pLower.includes("coxinha") && (pLower.includes("kibe") || pLower.includes("empada") || pLower.includes("risol"))) return false;
+            if (pLower.includes("nossos sabores") && (pLower.includes("coxinha") || pLower.includes("kibe"))) return false;
+            if (pLower.includes("sabores dispon") && (pLower.includes("coxinha") || pLower.includes("kibe"))) return false;
+            if (pLower.includes("quer ver o card") && pLower.includes("completo")) return false;
+            if (pLower.includes("para mini salgados")) return false;
+            return true;
+          });
+          reply = cleanParagraphs.join("\n\n").trim();
         }
-        reply = reply.replace(/\n{3,}/g, "\n\n").trim();
 
-        // ===== FIX PROGRAMÁTICO: Forçar sinal 50% quando valor > R$300 ou salgados =====
-        // Se a resposta menciona valor total > R$300 e NÃO menciona sinal/50% → adicionar
+        // 3. Forçar sinal 50% quando valor > R$300 ou tem salgados
         const totalMatch = reply.match(/[Tt]otal[:\s]*R?\$?\s*([\d.,]+)/);
-        const replyMentionsSinal = reply.toLowerCase().includes("50%") || reply.toLowerCase().includes("sinal") || reply.toLowerCase().includes("adiantado");
-        const hasSalgadosInOrder = normalizeForCompare(combinedMessage).includes("salgad") || normalizeForCompare(combinedMessage).includes("mini") || (Array.isArray(sessionMemory.order_items) && (sessionMemory.order_items as string[]).some((i: string) => i.toLowerCase().includes("salgad") || i.toLowerCase().includes("mini")));
-        if (totalMatch && !replyMentionsSinal) {
-          const totalValue = parseFloat(totalMatch[1].replace(",", "."));
-          if (totalValue > 300 || hasSalgadosInOrder) {
-            const sinalValue = (totalValue * 0.5).toFixed(2);
-            const sinalMsg = hasSalgadosInOrder
-              ? `\n\nPara salgados pedimos sinal de 50%, que seria R$${sinalValue}.`
-              : `\n\nComo o valor passa de R$300, pedimos sinal de 50%, que seria R$${sinalValue}.`;
-            reply = reply + sinalMsg;
+        const mentionsSinal = /50%|sinal|adiantado/i.test(reply);
+        const hasSalgadosInOrder = (Array.isArray(sessionMemory.order_items) && (sessionMemory.order_items as string[]).some((i: string) => /salgad|mini/i.test(i)));
+        if (totalMatch && !mentionsSinal) {
+          const totalVal = parseFloat(totalMatch[1].replace(/\./g, "").replace(",", "."));
+          if (totalVal > 300 || hasSalgadosInOrder) {
+            const sinal = (totalVal * 0.5).toFixed(2).replace(".", ",");
+            reply += hasSalgadosInOrder
+              ? `\n\nPara salgados pedimos sinal de 50%, que seria R$${sinal}.`
+              : `\n\nComo o valor passa de R$300, pedimos sinal de 50% (R$${sinal}).`;
           }
         }
 
-        // ===== FIX PROGRAMÁTICO: Corrigir bolo 5kg na resposta =====
-        // Se resposta menciona "5kg" ou "5 kg" como tamanho válido → corrigir para 4+1
-        if (reply.match(/\bbolo[^.]*5\s*kg/i) && !reply.includes("4kg") && !reply.includes("4 kg")) {
-          reply = reply.replace(/\bbolo[^.]*5\s*kg[^.]*/i, "Para 5kg, dividimos em dois bolos: 4kg + 1kg (limite de 4kg por forma)");
+        // 4. Corrigir peso > 4kg (máximo é 4kg por forma)
+        // Se resposta aceita 5kg, 6kg etc como tamanho único → corrigir
+        const pesoErrado = reply.match(/(?:bolo|fazer|um)\s+(?:de\s+)?(\d+)\s*kg/i);
+        if (pesoErrado) {
+          const peso = parseInt(pesoErrado[1]);
+          if (peso > 4) {
+            const resto = peso - 4;
+            if (peso <= 4) { /* ok */ }
+            else if (resto <= 4) {
+              // Substituir a menção ao peso errado
+              reply = reply.replace(
+                new RegExp(`(bolo|fazer|um)\\s+(de\\s+)?${peso}\\s*kg`, "gi"),
+                `dois bolos: um de 4kg e outro de ${resto}kg (limite de 4kg por forma)`
+              );
+            }
+          }
+          // Entrega: se > 3kg e contexto de delivery
+          if (peso > 3 && (clientMsgNorm.includes("delivery") || clientMsgNorm.includes("entreg"))) {
+            if (!/retirada|retirar/i.test(reply)) {
+              reply += "\n\nLembrando: para entrega, bolos somente até 3kg. Acima disso é só retirada na loja.";
+            }
+          }
         }
+
+        // 5. Corrigir meio a meio de 1kg
+        if (/meio\s+a\s+meio.*1\s*kg|1\s*kg.*meio\s+a\s+meio/i.test(reply) && !/n[aã]o fazemos|n[aã]o faz|somente a partir/i.test(reply)) {
+          reply = reply.replace(
+            /meio\s+a\s+meio[^.]*1\s*kg[^.]*/i,
+            "meio a meio só a partir de 2kg. Para 1kg, escolha um sabor único"
+          );
+        }
+
+        // 6. Limpar frases cortadas ("Para o , vamos" → "Para o bolo, vamos")
+        reply = reply
+          .replace(/[Pp]ara o\s+,/g, "Para o bolo,")
+          .replace(/[Pp]ara o\s+\./g, "Para o bolo.")
+          .replace(/o\s+de\s+(\d)/g, "o bolo de $1")
+          .replace(/\bum\s+\.\s/g, "um bolo. ")
+          .replace(/\bum\s+,\s/g, "um bolo, ")
+          .replace(/\bé um\s+\./g, "é um bolo.")
+          .replace(/\bé um\s+,/g, "é um bolo,")
+          .replace(/\bé um\s+decorado/g, "é um bolo decorado")
+          .trim();
+
+        // 7. Limpar linhas vazias extras
+        reply = reply.replace(/\n{3,}/g, "\n\n").trim();
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico
