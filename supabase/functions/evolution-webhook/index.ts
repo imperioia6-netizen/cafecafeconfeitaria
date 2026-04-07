@@ -476,15 +476,17 @@ function enforceOrderTypeQuestion(
   replyText: string,
   intent: ConversationIntent,
   stage: ConversationStage,
-  fullMessage: string
+  fullMessage: string,
+  sessionOrderType?: string
 ): string {
   if (!replyText) return replyText;
+  // Se a sessão JÁ TEM o tipo de pedido, NÃO perguntar de novo
+  if (sessionOrderType && sessionOrderType.length > 0) return replyText;
   const msg = normalizeForCompare(fullMessage);
   const hasOrderTypeInUserMsg = msg.includes("delivery") || msg.includes("retirada") || msg.includes("encomenda");
-  if (intent !== "start_order" || hasOrderTypeInUserMsg || stage !== "awaiting_order_type") return replyText;
+  if (hasOrderTypeInUserMsg) return replyText;
+  if (intent !== "start_order" || stage !== "awaiting_order_type") return replyText;
   const rep = normalizeForCompare(replyText);
-  if (rep.includes("encomenda") && rep.includes("delivery") && rep.includes("retirada")) return replyText;
-  // Verificar se a resposta já pergunta de alguma forma sobre tipo de pedido
   if (rep.includes("retirada") || rep.includes("delivery") || rep.includes("encomenda")) return replyText;
   return `${replyText.trim()}\n\nMe diz: é retirada, delivery ou encomenda? 😊`;
 }
@@ -1945,7 +1947,7 @@ serve(async (req) => {
           }
         }
         reply = guardedReplyClean || replyClean || reply;
-        reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
+        reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage, (sessionMemory.order_type as string) || "");
         reply = enforceCakeContinuity(reply, combinedMessage, history as { role: "user" | "assistant"; content: string }[]);
 
         // ===== LIMPEZA: remover tags internas =====
@@ -1968,21 +1970,48 @@ serve(async (req) => {
           .replace(/\n{3,}/g, "\n\n")
           .trim();
 
-        // ===== FIX PROGRAMÁTICO: remover blocos de salgados que a LLM insere sem contexto =====
-        // Padrão: "Nossos sabores disponíveis incluem: Coxinha, Kibe..." no final da msg
-        // Ou: "Nossos sabores incluem:" seguido de lista de salgados
-        // Isso acontece porque a LLM vê salgados no cardápio e menciona sem motivo
-        const salgadoPatterns = [
-          /\n*nossos sabores dispon[ií]veis incluem[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
-          /\n*nossos sabores incluem[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
-          /\n*(?:os )?sabores (?:dispon[ií]veis |de mini salgados? )?(?:incluem|s[aã]o)[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
-          /\n*quer ver o card[aá]pio completo\??\s*$/gi,
-        ];
-        for (const pat of salgadoPatterns) {
-          reply = reply.replace(pat, "").trim();
+        // ===== FIX PROGRAMÁTICO: remover QUALQUER bloco com sabores de salgados =====
+        // A LLM insiste em adicionar "Nossos sabores incluem: Coxinha..." no final
+        // Este regex pega o bloco INTEIRO (multilinha) e remove
+        const salgadoKeywords = ["coxinha", "kibe", "pão de batata", "pao de batata", "empada palmito", "empada de palmito", "risoles", "bolinho de carne", "esfiha"];
+        const replyLower = reply.toLowerCase();
+        const hasSalgadoMention = salgadoKeywords.some(k => replyLower.includes(k));
+        const clientTalkingSalgado = normalizeForCompare(combinedMessage).includes("salgad") || normalizeForCompare(combinedMessage).includes("coxinha") || normalizeForCompare(combinedMessage).includes("kibe") || normalizeForCompare(combinedMessage).includes("mini");
+
+        // Se a resposta menciona salgados MAS o cliente NÃO está falando de salgados → REMOVER
+        if (hasSalgadoMention && !clientTalkingSalgado) {
+          // Remover blocos que começam com "Nossos sabores" ou "Os sabores" até o fim do parágrafo
+          reply = reply
+            .replace(/\n*[Nn]ossos sabores[\s\S]*?(?:\n\n|\n?$)/g, "")
+            .replace(/\n*[Oo]s sabores[\s\S]*?(?:\n\n|\n?$)/g, "")
+            .replace(/\n*[Ss]abores dispon[ií]veis[\s\S]*?(?:\n\n|\n?$)/g, "")
+            .replace(/\n*[Qq]uer ver o card[aá]pio completo\??\s*/g, "")
+            .replace(/\n*[Pp]ara mini salgados[\s\S]*?(?:\n\n|\n?$)/g, "")
+            .trim();
         }
-        // Remover linhas vazias extras que sobraram
         reply = reply.replace(/\n{3,}/g, "\n\n").trim();
+
+        // ===== FIX PROGRAMÁTICO: Forçar sinal 50% quando valor > R$300 ou salgados =====
+        // Se a resposta menciona valor total > R$300 e NÃO menciona sinal/50% → adicionar
+        const totalMatch = reply.match(/[Tt]otal[:\s]*R?\$?\s*([\d.,]+)/);
+        const replyMentionsSinal = reply.toLowerCase().includes("50%") || reply.toLowerCase().includes("sinal") || reply.toLowerCase().includes("adiantado");
+        const hasSalgadosInOrder = normalizeForCompare(combinedMessage).includes("salgad") || normalizeForCompare(combinedMessage).includes("mini") || (Array.isArray(sessionMemory.order_items) && (sessionMemory.order_items as string[]).some((i: string) => i.toLowerCase().includes("salgad") || i.toLowerCase().includes("mini")));
+        if (totalMatch && !replyMentionsSinal) {
+          const totalValue = parseFloat(totalMatch[1].replace(",", "."));
+          if (totalValue > 300 || hasSalgadosInOrder) {
+            const sinalValue = (totalValue * 0.5).toFixed(2);
+            const sinalMsg = hasSalgadosInOrder
+              ? `\n\nPara salgados pedimos sinal de 50%, que seria R$${sinalValue}.`
+              : `\n\nComo o valor passa de R$300, pedimos sinal de 50%, que seria R$${sinalValue}.`;
+            reply = reply + sinalMsg;
+          }
+        }
+
+        // ===== FIX PROGRAMÁTICO: Corrigir bolo 5kg na resposta =====
+        // Se resposta menciona "5kg" ou "5 kg" como tamanho válido → corrigir para 4+1
+        if (reply.match(/\bbolo[^.]*5\s*kg/i) && !reply.includes("4kg") && !reply.includes("4 kg")) {
+          reply = reply.replace(/\bbolo[^.]*5\s*kg[^.]*/i, "Para 5kg, dividimos em dois bolos: 4kg + 1kg (limite de 4kg por forma)");
+        }
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico
@@ -2001,9 +2030,9 @@ serve(async (req) => {
           : clientTextForSession.toLowerCase().includes("retirada") ? "retirada"
           : (sessionMemory.order_type as string) || "";
 
-        // Extrair data/horário mencionados pelo cliente
-        const dateMatch = clientTextForSession.match(/(?:amanha|hoje|segunda|terca|quarta|quinta|sexta|sabado|\d{1,2}\/\d{1,2})/i);
-        const timeMatch = clientTextForSession.match(/(?:as\s+)?(\d{1,2}(?::\d{2})?\s*(?:h|hrs?|horas?)?(?:\s*da\s*(?:manha|tarde|noite))?)/i);
+        // Extrair data/horário — regex robusto que pega "amanhã às 9", "sabado 14h", "9:00", "9h", "às 9"
+        const dateMatch = clientTextForSession.match(/(?:amanh[aã]|hoje|segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|pr[oó]ximo\s+\w+|\d{1,2}\/\d{1,2})/i);
+        const timeMatch = clientTextForSession.match(/(?:[àa]s\s+)?(\d{1,2}(?::\d{2})?)\s*(?:h(?:rs?|oras?)?)?(?:\s*da\s*(?:manh[aã]|tarde|noite))?/i);
 
         const sessionUpdate: Record<string, unknown> = {
           memory: {

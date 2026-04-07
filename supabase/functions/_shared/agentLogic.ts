@@ -320,9 +320,20 @@ export async function callLlm(
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
   // Enviar histórico completo ao LLM (até 20 mensagens, que é o que vem do banco)
   // Mensagens muito grandes são truncadas para economizar tokens
+  // Limpar histórico: remover blocos de salgados que o bot inseriu em respostas anteriores
+  // Isso evita que o LLM copie o padrão "Nossos sabores incluem: Coxinha..."
+  const cleanSalgadoBlock = (text: string): string => {
+    return text
+      .replace(/\n*[Nn]ossos sabores[\s\S]*?(?:\n\n|$)/g, "\n")
+      .replace(/\n*[Oo]s sabores[\s\S]*?(?:\n\n|$)/g, "\n")
+      .replace(/\n*[Ss]abores dispon[ií]veis[\s\S]*?(?:\n\n|$)/g, "\n")
+      .replace(/\n*[Qq]uer ver o card[aá]pio completo\??[^\n]*/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
   const recentHistory = history.slice(-20).map((m) => ({
     role: m.role as "user" | "assistant",
-    content: m.content.slice(0, 2000),
+    content: cleanSalgadoBlock(m.content.slice(0, 2000)),
   }));
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
@@ -347,7 +358,7 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 800 }),
+      body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 1200 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
