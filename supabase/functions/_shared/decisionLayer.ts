@@ -383,13 +383,16 @@ export async function buildDecisionContext(
   deliveryZonesTexto: string,
   recipes: RecipeInfo[]
 ): Promise<DecisionContext> {
-  // 1. Buscar TODAS as notas do knowledge_base (Vault = memória completa do agente)
-  // ~30K chars (~8K tokens) — cabe tranquilo no gpt-4o (128K tokens)
-  // Isso elimina gargalos de roteamento: o agente SEMPRE tem todo o conhecimento
-  const notas = await fetchAllNotas(supabase);
-  const notasRelevantes = notas
-    .map((n) => `═══ ${n.titulo.toUpperCase()} ═══\n${n.conteudo}`)
-    .join("\n\n");
+  // 1. Buscar SOMENTE a nota master (condensada, ~3K chars)
+  // Em vez de 36 notas (30K chars que sobrecarregam o LLM),
+  // usamos 1 nota master com TUDO condensado + cardápio filtrado por contexto
+  const { data: masterRow } = await supabase
+    .from("knowledge_base")
+    .select("conteudo")
+    .eq("caminho", "sistema/master")
+    .eq("ativa", true)
+    .maybeSingle();
+  const notasRelevantes = (masterRow as { conteudo?: string } | null)?.conteudo || "";
 
   // 3. Pré-calcular valores (FORA da LLM)
   const preCalc = preCalcular(message, intent, entities, recipes);

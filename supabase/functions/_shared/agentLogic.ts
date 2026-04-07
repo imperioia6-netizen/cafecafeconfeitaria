@@ -482,21 +482,18 @@ export async function runAtendente(
     const cardapioProdutos = allRecipes.map((r) => r.name).join("\n");
 
     // ═══ CARDÁPIO ORGANIZADO POR CATEGORIA (evita confundir bolo com salgado) ═══
-    const categoryLabels: Record<string, string> = {
-      bolo: "BOLOS (preco por kg)",
-      torta: "TORTAS",
-      salgado: "SALGADOS",
-      bebida: "BEBIDAS",
-      doce: "DOCINHOS",
-      acai: "ACAI",
-    };
-    // Separar salgados em: MINI SALGADOS (cento) vs SALGADOS GRANDES vs LANCHES
-    const miniSalgados: string[] = [];
-    const salgadosGrandes: string[] = [];
-    const lanches: string[] = [];
-    const bolosList: string[] = [];
-    const outros: Record<string, string[]> = {};
+    // ═══ CARDÁPIO INTELIGENTE: só carrega categorias relevantes ao contexto ═══
+    // Em vez de 263 itens (~15K chars), carrega só o necessário (~2-4K chars)
+    const msgLowerForMenu = (safeMessage || "").toLowerCase();
+    const needsBolos = msgLowerForMenu.includes("bolo") || msgLowerForMenu.includes("kg") || msgLowerForMenu.includes("decoracao") || msgLowerForMenu.includes("decorar") || msgLowerForMenu.includes("meio a meio");
+    const needsSalgados = msgLowerForMenu.includes("salgad") || msgLowerForMenu.includes("coxinha") || msgLowerForMenu.includes("kibe") || msgLowerForMenu.includes("risol") || msgLowerForMenu.includes("esfiha") || msgLowerForMenu.includes("empada") || msgLowerForMenu.includes("mini");
+    const needsDoces = msgLowerForMenu.includes("docinho") || msgLowerForMenu.includes("brigadeiro") || msgLowerForMenu.includes("beijinho");
+    const needsBebidas = msgLowerForMenu.includes("bebida") || msgLowerForMenu.includes("suco") || msgLowerForMenu.includes("refri") || msgLowerForMenu.includes("agua") || msgLowerForMenu.includes("cafe");
+    const needsLanches = msgLowerForMenu.includes("lanche") || msgLowerForMenu.includes("hambur") || msgLowerForMenu.includes("cheese") || msgLowerForMenu.includes("misto") || msgLowerForMenu.includes("pao ");
+    // Se não detectou nada específico (ex: "oi", "quero pedir"), carregar resumo geral
+    const needsAll = !needsBolos && !needsSalgados && !needsDoces && !needsBebidas && !needsLanches;
 
+    const sections: string[] = [];
     for (const r of allRecipes) {
       const cat = (r.category || "outro").toLowerCase();
       const nome = r.name;
@@ -505,32 +502,35 @@ export async function runAtendente(
                     r.slice_price != null ? `R$${Number(r.slice_price).toFixed(2)}/fatia` : "";
       const line = preco ? `${nome} – ${preco}` : nome;
 
-      if (cat === "bolo") {
-        bolosList.push(line);
-      } else if (cat === "salgado") {
-        if (nome.includes("(cento)")) {
-          miniSalgados.push(line);
-        } else if (Number(r.sale_price) >= 17 && (nome.includes("Cheese") || nome.includes("Hambúrguer") || nome.includes("Americano") || nome.includes("Saladeiro") || nome.includes("Mix") || nome.includes("Dú"))) {
-          lanches.push(line);
-        } else {
-          salgadosGrandes.push(line);
+      if (!r._section) (r as any)._section = [];
+      if (cat === "bolo" && (needsBolos || needsAll)) {
+        if (!sections.some(s => s.startsWith("── BOLOS"))) sections.push("── BOLOS (preco por kg) ──");
+        sections.push(`- ${line}`);
+      }
+      if (cat === "salgado" && nome.includes("(cento)") && (needsSalgados || needsAll)) {
+        if (!sections.some(s => s.startsWith("── MINI"))) {
+          sections.push("── MINI SALGADOS (cento, multiplos de 25) ──\nSOMENTE estes sabores existem em mini:");
         }
-      } else {
-        if (!outros[cat]) outros[cat] = [];
-        outros[cat].push(line);
+        sections.push(`- ${line}`);
+      }
+      if (cat === "salgado" && !nome.includes("(cento)") && (needsSalgados || needsLanches)) {
+        if (!sections.some(s => s.startsWith("── SALGADOS"))) sections.push("── SALGADOS GRANDES (unidade) ──");
+        sections.push(`- ${line}`);
+      }
+      if (cat === "doce" && (needsDoces || needsAll)) {
+        if (!sections.some(s => s.startsWith("── DOC"))) sections.push("── DOCINHOS (multiplos de 25) ──");
+        sections.push(`- ${line}`);
+      }
+      if (cat === "bebida" && (needsBebidas)) {
+        if (!sections.some(s => s.startsWith("── BEB"))) sections.push("── BEBIDAS ──");
+        sections.push(`- ${line}`);
       }
     }
-
-    const sections: string[] = [];
-    if (bolosList.length > 0) sections.push(`── BOLOS (preco por kg — NAO sao salgados) ──\n${bolosList.map(i => `- ${i}`).join("\n")}`);
-    if (miniSalgados.length > 0) sections.push(`── MINI SALGADOS (por cento — minimo 25 unidades/sabor) ──\nSABORES DISPONIVEIS PARA MINI: SOMENTE estes abaixo. NAO existe mini de outros sabores.\n${miniSalgados.map(i => `- ${i}`).join("\n")}\n⚠️ Mini coxinha NAO tem catupiry. NAO existe mini 3 queijos, mini enroladinho, mini hamburgao.`);
-    if (salgadosGrandes.length > 0) sections.push(`── SALGADOS GRANDES (unidade — para consumo individual) ──\n${salgadosGrandes.map(i => `- ${i}`).join("\n")}`);
-    if (lanches.length > 0) sections.push(`── LANCHES E HAMBURGUERES ──\n${lanches.map(i => `- ${i}`).join("\n")}`);
-    for (const [cat, items] of Object.entries(outros)) {
-      const label = categoryLabels[cat] || cat.toUpperCase();
-      sections.push(`── ${label} ──\n${items.map(i => `- ${i}`).join("\n")}`);
+    // Se é mensagem geral, só mostrar categorias disponíveis sem listar tudo
+    if (needsAll && sections.length === 0) {
+      sections.push("Categorias disponiveis: BOLOS, MINI SALGADOS, SALGADOS, DOCINHOS, BEBIDAS, TORTAS. Enviar cardapio PDF: http://bit.ly/3OYW9Fw");
     }
-    let cardapioProdutosDetalhado = sections.join("\n\n");
+    let cardapioProdutosDetalhado = sections.join("\n");
     // Truncar se muito grande
     if (cardapioProdutosDetalhado.length > 6000) {
       cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 5900) + "\n...(truncado)";
