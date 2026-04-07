@@ -347,7 +347,7 @@ export async function callLlm(
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 600 }),
+      body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 800 }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
