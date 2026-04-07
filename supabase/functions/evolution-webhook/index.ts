@@ -1788,18 +1788,28 @@ serve(async (req) => {
             { intent, stage: "start", hasOrderInProgress }
           );
         } else {
-        // Construir contexto ENXUTO — só o essencial, sem repetir o que já está no Vault
+        // Construir contexto com RESUMO ESTRUTURADO do pedido
         const contextParts: string[] = [];
 
-        // 1. Horário atual (para regras de prazo/antecedência)
+        // 1. Horário
         contextParts.push(`[HORA: ${nowSp}]`);
 
-        // 2. Memória do pedido em andamento (se houver)
-        if (orderMemoryHint) {
-          contextParts.push(orderMemoryHint);
+        // 2. RESUMO COMPLETO DO PEDIDO (sessão — SEMPRE presente quando há dados)
+        const pedidoResumo: string[] = [];
+        if (sessionMemory.order_type) pedidoResumo.push(`Tipo: ${sessionMemory.order_type}`);
+        if (sessionMemory.confirmed_flavor) pedidoResumo.push(`Sabor bolo: ${sessionMemory.confirmed_flavor}`);
+        if (sessionMemory.confirmed_weight) pedidoResumo.push(`Peso bolo: ${sessionMemory.confirmed_weight}`);
+        if (sessionMemory.confirmed_date) pedidoResumo.push(`Data: ${sessionMemory.confirmed_date}`);
+        if (sessionMemory.confirmed_time) pedidoResumo.push(`Horario: ${sessionMemory.confirmed_time}`);
+        if (sessionMemory.customer_name_full) pedidoResumo.push(`Nome cliente: ${sessionMemory.customer_name_full}`);
+        if (Array.isArray(sessionMemory.order_items) && (sessionMemory.order_items as string[]).length > 0) {
+          pedidoResumo.push(`Itens ja combinados: ${(sessionMemory.order_items as string[]).join(", ")}`);
+        }
+        if (pedidoResumo.length > 0) {
+          contextParts.push(`[PEDIDO EM ANDAMENTO — USE estas informacoes, NAO pergunte de novo]\n${pedidoResumo.join("\n")}`);
         }
 
-        // 3. Continuidade (se mensagem parece resposta a pergunta anterior)
+        // 3. Continuidade (resposta a pergunta anterior)
         if (previousQuestionHint) {
           contextParts.push(`[CONTINUIDADE]\n${previousQuestionHint}`);
         }
@@ -1991,6 +2001,10 @@ serve(async (req) => {
           : clientTextForSession.toLowerCase().includes("retirada") ? "retirada"
           : (sessionMemory.order_type as string) || "";
 
+        // Extrair data/horário mencionados pelo cliente
+        const dateMatch = clientTextForSession.match(/(?:amanha|hoje|segunda|terca|quarta|quinta|sexta|sabado|\d{1,2}\/\d{1,2})/i);
+        const timeMatch = clientTextForSession.match(/(?:as\s+)?(\d{1,2}(?::\d{2})?\s*(?:h|hrs?|horas?)?(?:\s*da\s*(?:manha|tarde|noite))?)/i);
+
         const sessionUpdate: Record<string, unknown> = {
           memory: {
             last_message: combinedMessage.slice(0, 300),
@@ -2002,6 +2016,9 @@ serve(async (req) => {
             confirmed_flavor: sessionFlavors.length > 0 ? sessionFlavors[sessionFlavors.length - 1] : (sessionMemory.confirmed_flavor || ""),
             order_type: sessionOrderType || (sessionMemory.order_type || ""),
             order_items: extractedOrder.items.slice(-12),
+            confirmed_date: dateMatch ? dateMatch[0].trim() : (sessionMemory.confirmed_date || ""),
+            confirmed_time: timeMatch ? timeMatch[1]?.trim() : (sessionMemory.confirmed_time || ""),
+            customer_name_full: (sessionMemory.customer_name_full || pushName || ""),
             updated: new Date().toISOString(),
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,
