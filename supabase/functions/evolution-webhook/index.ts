@@ -1750,7 +1750,7 @@ serve(async (req) => {
         const horarioInfo = verificarHorarioFuncionamento();
         const horarioContexto = horarioInfo.aberto
           ? `[HORA: ${nowSp}] Horario de funcionamento (7h30-19h30).`
-          : `[HORA: ${nowSp}] FORA DO HORARIO (7h30-19h30). ${horarioInfo.mensagem} Pedidos feitos agora serao produzidos a partir das 7h30. Sugerir horario a partir das 12h para retirada/entrega.`;
+          : `[HORA: ${nowSp}] FORA DO HORARIO (7h30-19h30). ${horarioInfo.mensagem} REGRA: Fora do horario SOMENTE encomendas. NAO aceite delivery nem retirada imediata. Se cliente pedir algo "pra agora" ou "pra ja", informe que fora do horario so encomendas.`;
 
         // ===== DETECÇÃO: "novo pedido" / "iniciar novo" → RESETAR TUDO =====
         const msgNormReset = normalizeForCompare(combinedMessage);

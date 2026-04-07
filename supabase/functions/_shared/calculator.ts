@@ -292,7 +292,7 @@ export function verificarHorarioFuncionamento(
     return {
       aberto: false,
       horaSp: horaStr,
-      mensagem: "Domingo não abrimos. Posso agendar pro próximo dia útil a partir das 7h30!",
+      mensagem: "Domingo nao abrimos. Fora do horario so aceitamos ENCOMENDAS. Posso anotar sua encomenda pro proximo dia util a partir das 9h!",
     };
   }
 
@@ -301,7 +301,7 @@ export function verificarHorarioFuncionamento(
     return {
       aberto: false,
       horaSp: horaStr,
-      mensagem: `Agora são ${horaStr} e estamos fora do horário de funcionamento (7h30–19h30). Posso anotar seu pedido! A produção começa às 7h30. Qual horário a partir das 12h fica bom pra você?`,
+      mensagem: `Agora sao ${horaStr} e estamos fora do horario (7h30-19h30). Fora do horario so aceitamos ENCOMENDAS. Se a encomenda for pra HOJE, o horario minimo e a partir das 12h. Se for pra AMANHA ou outro dia, a partir das 9h. Qual dia e horario fica bom?`,
     };
   }
 
@@ -310,7 +310,7 @@ export function verificarHorarioFuncionamento(
     return {
       aberto: false,
       horaSp: horaStr,
-      mensagem: `Agora são ${horaStr} e estamos fora do horário (7h30–19h30). Posso anotar seu pedido para amanhã! A produção começa às 7h30. Qual horário fica bom?`,
+      mensagem: `Agora sao ${horaStr} e estamos fora do horario (7h30-19h30). Fora do horario so aceitamos ENCOMENDAS. Como ja passou do horario, a encomenda seria pra amanha ou outro dia, a partir das 9h. Qual dia e horario?`,
     };
   }
 
