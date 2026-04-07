@@ -1816,7 +1816,30 @@ serve(async (req) => {
           contextParts.push(`[CONTINUIDADE]\n${previousQuestionHint}`);
         }
 
-        // 4. Mensagem do cliente
+        // 4. Interceptar regras de negócio ANTES do LLM
+        const msgForRules = normalizeForCompare(combinedMessage);
+
+        // 4a. Peso > 4kg: forçar divisão no contexto
+        const pesoClienteMatch = combinedMessage.match(/(\d+)\s*kg/i);
+        const pesoCliente = pesoClienteMatch ? parseInt(pesoClienteMatch[1]) : 0;
+        if (pesoCliente > 4) {
+          const resto = pesoCliente - 4;
+          contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu ${pesoCliente}kg. O MAXIMO por forma e 4kg. Voce DEVE informar: "Para ${pesoCliente}kg, dividimos em dois bolos: um de 4kg e outro de ${resto}kg (limite de 4kg por forma). Qual sabor para cada um?" Se for entrega, SOMENTE ate 3kg (um de 3kg e outro de ${resto > 3 ? 3 : resto}kg).`);
+        }
+
+        // 4b. Meio a meio 1kg: bloquear
+        if (msgForRules.includes("meio a meio") && pesoCliente === 1) {
+          contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu meio a meio de 1kg. NAO FAZEMOS. Diga: "Meio a meio so a partir de 2kg. Para 1kg, escolha um sabor unico."`);
+        }
+
+        // 4c. Peso quebrado: bloquear
+        const pesoQuebrado = combinedMessage.match(/(\d+)[,.](\d+)\s*kg/);
+        if (pesoQuebrado) {
+          const inteiro = parseInt(pesoQuebrado[1]);
+          contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu ${pesoQuebrado[0]}. NAO fazemos peso quebrado. Diga: "Trabalhamos so com peso inteiro. Podemos fazer ${inteiro}kg ou ${inteiro + 1}kg. Qual prefere?"`);
+        }
+
+        // 5. Mensagem do cliente
         contextParts.push(combinedMessage);
 
         const enrichedMessage = contextParts.join("\n\n");

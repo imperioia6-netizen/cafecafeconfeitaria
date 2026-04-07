@@ -383,8 +383,8 @@ function preCalcular(
  * Agente GERAL: sistema/master + sistema/regras-de-ouro + manual/verificacao
  */
 const AGENT_NOTES: Record<string, string[]> = {
-  greeting: ["sistema/master", "modelos/respostas", "exemplos/saudacao", "sistema/tom-de-voz"],
-  cakes: ["cardapio/bolos", "sistema/regras-de-ouro", "manual/verificacao", "restricoes/erros-comuns"],
+  greeting: ["modelos/respostas", "exemplos/saudacao", "sistema/tom-de-voz"],
+  cakes: ["cardapio/bolos", "sistema/regras-de-ouro", "manual/verificacao"],
   cake_slice: ["cardapio/fatias", "sistema/regras-de-ouro"],
   mini_savories: ["cardapio/mini-salgados", "sistema/regras-de-ouro", "manual/verificacao"],
   savories: ["cardapio/salgados", "cardapio/mini-salgados", "sistema/regras-de-ouro"],
@@ -392,15 +392,15 @@ const AGENT_NOTES: Record<string, string[]> = {
   drinks: ["cardapio/bebidas"],
   delivery: ["fluxos/fluxo-delivery", "operacao/delivery", "operacao/taxas", "sistema/regras-de-ouro"],
   delivery_fee: ["operacao/taxas", "fluxos/fluxo-taxa"],
-  order_now: ["sistema/master", "fluxos/fluxo-pedido-completo", "modelos/perguntas", "sistema/regras-de-ouro", "manual/continuidade"],
-  pre_order: ["fluxos/fluxo-encomenda", "operacao/encomenda", "sistema/regras-de-ouro", "modelos/perguntas", "manual/continuidade"],
+  order_now: ["cardapio/bolos", "fluxos/fluxo-pedido-completo", "modelos/perguntas", "sistema/regras-de-ouro", "manual/continuidade"],
+  pre_order: ["cardapio/bolos", "fluxos/fluxo-encomenda", "operacao/encomenda", "sistema/regras-de-ouro", "modelos/perguntas", "manual/continuidade"],
   pricing: ["cardapio/bolos", "cardapio/mini-salgados", "cardapio/doces", "cardapio/bebidas"],
   payment: ["fluxos/fluxo-pix", "operacao/formas-de-pagamento", "operacao/pix", "manual/registro-pedido"],
   hours: ["operacao/horarios", "sistema/horario-sistema"],
   address: ["operacao/retirada"],
-  exceptions: ["sistema/excecoes", "restricoes/erros-comuns"],
+  exceptions: ["sistema/excecoes"],
   order_status: ["operacao/status-pedido"],
-  unknown: ["sistema/master", "sistema/regras-de-ouro", "sistema/tom-de-voz", "manual/verificacao"],
+  unknown: ["sistema/regras-de-ouro", "sistema/tom-de-voz", "manual/verificacao"],
 };
 
 // Notas SEMPRE incluídas (core do comportamento)

@@ -607,10 +607,29 @@ export async function runAtendente(
 
     const systemPrompt = buildSmartPrompt(decisionCtx);
 
+    // DEBUG: salvar prompt completo no banco para diagnóstico
+    try {
+      await supabase.from("debug_prompts").insert({
+        remote_jid: contactName,
+        intent: effectiveIntent,
+        system_prompt_length: systemPrompt.length,
+        system_prompt_preview: systemPrompt.slice(0, 2000),
+        user_message: safeMessage.slice(0, 500),
+        history_length: safeHistory.length,
+      });
+    } catch (_) { /* ignore */ }
+
     const config = await getLlmConfig(supabase);
     if (config) {
       try {
         const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
+
+        // Salvar reply no debug
+        try {
+          await supabase.from("debug_prompts").update({ reply: (reply || "").slice(0, 1000) })
+            .eq("remote_jid", contactName).order("created_at", { ascending: false }).limit(1);
+        } catch (_) { /* ignore */ }
+
         return reply || FALLBACK_ATENDENTE;
       } catch (primaryErr) {
         console.error("runAtendente primary LLM failed:", (primaryErr as Error).message);
