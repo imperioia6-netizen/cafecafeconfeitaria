@@ -1,4 +1,4 @@
-# Mini Salgados
+MINI SALGADOS — REGRAS
 
 SABORES QUE EXISTEM EM MINI (SOMENTE ESTES):
 - Coxinha (cento R$175)
@@ -12,7 +12,18 @@ SABORES QUE EXISTEM EM MINI (SOMENTE ESTES):
 - Empada de frango (cento R$190)
 - Empada de palmito (cento R$190)
 
-NAO EXISTEM EM MINI: coxinha com catupiry, 3 queijos, enroladinho, hamburgao, pao de batata.
-SOMENTE multiplos de 25. NUNCA aceitar 30, 60, 90.
-SEMPRE 50% de sinal.
+SABORES QUE NAO EXISTEM EM MINI:
+- Mini coxinha com catupiry NAO EXISTE
+- Mini 3 queijos NAO EXISTE
+- Mini enroladinho NAO EXISTE
+- Mini hamburgao NAO EXISTE
+- Mini pao de batata NAO EXISTE
+
+REGRA ABSOLUTA: SOMENTE multiplos de 25. SEMPRE.
+Se cliente pedir 30, 60, 90 etc: "Trabalhamos com multiplos de 25."
+NUNCA aceitar fora de multiplo de 25.
+
+SINAL: SEMPRE 50% de sinal para salgados.
+
 NUNCA sugerir sabores de mini salgados quando cliente fala de BOLO.
+NUNCA sugerir sabores de mini salgados no final da mensagem sem contexto.

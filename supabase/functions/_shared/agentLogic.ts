@@ -490,45 +490,48 @@ export async function runAtendente(
     const needsDoces = msgLowerForMenu.includes("docinho") || msgLowerForMenu.includes("brigadeiro") || msgLowerForMenu.includes("beijinho");
     const needsBebidas = msgLowerForMenu.includes("bebida") || msgLowerForMenu.includes("suco") || msgLowerForMenu.includes("refri") || msgLowerForMenu.includes("agua") || msgLowerForMenu.includes("cafe");
     const needsLanches = msgLowerForMenu.includes("lanche") || msgLowerForMenu.includes("hambur") || msgLowerForMenu.includes("cheese") || msgLowerForMenu.includes("misto") || msgLowerForMenu.includes("pao ");
-    // Se não detectou nada específico (ex: "oi", "quero pedir"), carregar resumo geral
+    // Se não detectou nada específico (ex: "oi", "quero pedir"), NÃO carregar itens individuais
+    // Isso evita que a LLM veja nomes de salgados e mencione sem motivo
     const needsAll = !needsBolos && !needsSalgados && !needsDoces && !needsBebidas && !needsLanches;
 
     const sections: string[] = [];
-    for (const r of allRecipes) {
-      const cat = (r.category || "outro").toLowerCase();
-      const nome = r.name;
-      const preco = r.whole_price != null ? `R$${Number(r.whole_price).toFixed(2)}` :
-                    r.sale_price != null ? `R$${Number(r.sale_price).toFixed(2)}` :
-                    r.slice_price != null ? `R$${Number(r.slice_price).toFixed(2)}/fatia` : "";
-      const line = preco ? `${nome} – ${preco}` : nome;
 
-      if (!r._section) (r as any)._section = [];
-      if (cat === "bolo" && (needsBolos || needsAll)) {
-        if (!sections.some(s => s.startsWith("── BOLOS"))) sections.push("── BOLOS (preco por kg) ──");
-        sections.push(`- ${line}`);
-      }
-      if (cat === "salgado" && nome.includes("(cento)") && (needsSalgados || needsAll)) {
-        if (!sections.some(s => s.startsWith("── MINI"))) {
-          sections.push("── MINI SALGADOS (cento, multiplos de 25) ──\nSOMENTE estes sabores existem em mini:");
+    // Se é mensagem genérica, NÃO listar produtos — só indicar que o cardápio está no PDF
+    if (needsAll) {
+      sections.push("Cardapio completo no PDF: http://bit.ly/3OYW9Fw\nPrecos de bolos estao no Vault. Para outros produtos, consultar cardapio.");
+    } else {
+      // Carregar SOMENTE as categorias relevantes ao contexto
+      for (const r of allRecipes) {
+        const cat = (r.category || "outro").toLowerCase();
+        const nome = r.name;
+        const preco = r.whole_price != null ? `R$${Number(r.whole_price).toFixed(2)}` :
+                      r.sale_price != null ? `R$${Number(r.sale_price).toFixed(2)}` :
+                      r.slice_price != null ? `R$${Number(r.slice_price).toFixed(2)}/fatia` : "";
+        const line = preco ? `${nome} – ${preco}` : nome;
+
+        if (cat === "bolo" && needsBolos) {
+          if (!sections.some(s => s.startsWith("── BOLOS"))) sections.push("── BOLOS (preco por kg) ──");
+          sections.push(`- ${line}`);
         }
-        sections.push(`- ${line}`);
+        if (cat === "salgado" && nome.includes("(cento)") && needsSalgados) {
+          if (!sections.some(s => s.startsWith("── MINI"))) {
+            sections.push("── MINI SALGADOS (cento, multiplos de 25) ──\nSOMENTE estes sabores existem em mini:");
+          }
+          sections.push(`- ${line}`);
+        }
+        if (cat === "salgado" && !nome.includes("(cento)") && (needsSalgados || needsLanches)) {
+          if (!sections.some(s => s.startsWith("── SALGADOS"))) sections.push("── SALGADOS GRANDES (unidade) ──");
+          sections.push(`- ${line}`);
+        }
+        if (cat === "doce" && needsDoces) {
+          if (!sections.some(s => s.startsWith("── DOC"))) sections.push("── DOCINHOS (multiplos de 25) ──");
+          sections.push(`- ${line}`);
+        }
+        if (cat === "bebida" && needsBebidas) {
+          if (!sections.some(s => s.startsWith("── BEB"))) sections.push("── BEBIDAS ──");
+          sections.push(`- ${line}`);
+        }
       }
-      if (cat === "salgado" && !nome.includes("(cento)") && (needsSalgados || needsLanches)) {
-        if (!sections.some(s => s.startsWith("── SALGADOS"))) sections.push("── SALGADOS GRANDES (unidade) ──");
-        sections.push(`- ${line}`);
-      }
-      if (cat === "doce" && (needsDoces || needsAll)) {
-        if (!sections.some(s => s.startsWith("── DOC"))) sections.push("── DOCINHOS (multiplos de 25) ──");
-        sections.push(`- ${line}`);
-      }
-      if (cat === "bebida" && (needsBebidas)) {
-        if (!sections.some(s => s.startsWith("── BEB"))) sections.push("── BEBIDAS ──");
-        sections.push(`- ${line}`);
-      }
-    }
-    // Se é mensagem geral, só mostrar categorias disponíveis sem listar tudo
-    if (needsAll && sections.length === 0) {
-      sections.push("Categorias disponiveis: BOLOS, MINI SALGADOS, SALGADOS, DOCINHOS, BEBIDAS, TORTAS. Enviar cardapio PDF: http://bit.ly/3OYW9Fw");
     }
     let cardapioProdutosDetalhado = sections.join("\n");
     // Truncar se muito grande

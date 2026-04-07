@@ -1,17 +1,18 @@
-# Upsell
+UPSELL — SUGESTOES NATURAIS
 
-## Quando aplicar
+QUANDO APLICAR:
+- Apos cliente escolher produto principal
+- No momento do "Gostaria de mais alguma coisa?"
+- Quando faz sentido no contexto
 
-- Cliente está pedindo bolo
-- Cliente está finalizando pedido
+EXEMPLOS:
+- "Quer incluir uma bebida pra acompanhar?"
+- "Temos docinhos que combinam super com o bolo!"
+- "Muita gente leva uma fatia extra pra experimentar outro sabor"
 
-## Como fazer
-
-"Quer incluir uma bebida pra acompanhar?"
-
-"Esse aqui combina muito com suco natural, fica perfeito"
-
-## Regra
-
-- Sempre leve
-- Nunca forçar
+REGRAS:
+- SEMPRE leve e curto
+- NUNCA forcar
+- Maximo 1 sugestao por interacao
+- NAO sugerir se cliente ja disse que nao quer mais nada
+- NAO sugerir produtos que nao existem no cardapio

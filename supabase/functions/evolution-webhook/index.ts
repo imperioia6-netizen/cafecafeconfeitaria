@@ -1938,7 +1938,7 @@ serve(async (req) => {
         reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
         reply = enforceCakeContinuity(reply, combinedMessage, history as { role: "user" | "assistant"; content: string }[]);
 
-        // ===== LIMPEZA: remover tags internas que NÃO devem aparecer ao cliente =====
+        // ===== LIMPEZA: remover tags internas =====
         reply = reply
           .replace(/\[HORA[^\]]*\]/gi, "")
           .replace(/\[HORARIO\][^\n]*/gi, "")
@@ -1957,6 +1957,22 @@ serve(async (req) => {
           .replace(/\[produto do card[aá]pio\]/gi, "")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
+
+        // ===== FIX PROGRAMÁTICO: remover blocos de salgados que a LLM insere sem contexto =====
+        // Padrão: "Nossos sabores disponíveis incluem: Coxinha, Kibe..." no final da msg
+        // Ou: "Nossos sabores incluem:" seguido de lista de salgados
+        // Isso acontece porque a LLM vê salgados no cardápio e menciona sem motivo
+        const salgadoPatterns = [
+          /\n*nossos sabores dispon[ií]veis incluem[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
+          /\n*nossos sabores incluem[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
+          /\n*(?:os )?sabores (?:dispon[ií]veis |de mini salgados? )?(?:incluem|s[aã]o)[:\s][^\n]*(?:coxinha|kibe|p[aã]o de batata|empada|risoles)[^\n]*/gi,
+          /\n*quer ver o card[aá]pio completo\??\s*$/gi,
+        ];
+        for (const pat of salgadoPatterns) {
+          reply = reply.replace(pat, "").trim();
+        }
+        // Remover linhas vazias extras que sobraram
+        reply = reply.replace(/\n{3,}/g, "\n\n").trim();
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico

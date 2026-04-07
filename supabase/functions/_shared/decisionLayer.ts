@@ -368,6 +368,44 @@ function preCalcular(
  * Executa toda a camada de decisão e retorna o contexto
  * pronto para ser injetado no prompt da LLM.
  */
+/**
+ * SISTEMA MULTI-AGENTE: cada intent carrega SOMENTE as notas relevantes.
+ * Prompt pequeno (~5K chars) = LLM segue TODAS as regras.
+ *
+ * Agente SAUDACAO: sistema/master + modelos/respostas + exemplos/saudacao
+ * Agente BOLO: cardapio/bolos + sistema/regras-de-ouro + manual/verificacao
+ * Agente SALGADO: cardapio/mini-salgados + cardapio/salgados + sistema/regras-de-ouro
+ * Agente DOCE: cardapio/doces + sistema/regras-de-ouro
+ * Agente DELIVERY: fluxos/fluxo-delivery + operacao/delivery + operacao/taxas
+ * Agente ENCOMENDA: fluxos/fluxo-encomenda + operacao/encomenda
+ * Agente RETIRADA: fluxos/fluxo-retirada + operacao/retirada
+ * Agente PAGAMENTO: fluxos/fluxo-pix + operacao/formas-de-pagamento
+ * Agente GERAL: sistema/master + sistema/regras-de-ouro + manual/verificacao
+ */
+const AGENT_NOTES: Record<string, string[]> = {
+  greeting: ["sistema/master", "modelos/respostas", "exemplos/saudacao", "sistema/tom-de-voz"],
+  cakes: ["cardapio/bolos", "sistema/regras-de-ouro", "manual/verificacao", "restricoes/erros-comuns"],
+  cake_slice: ["cardapio/fatias", "sistema/regras-de-ouro"],
+  mini_savories: ["cardapio/mini-salgados", "sistema/regras-de-ouro", "manual/verificacao"],
+  savories: ["cardapio/salgados", "cardapio/mini-salgados", "sistema/regras-de-ouro"],
+  sweets: ["cardapio/doces", "sistema/regras-de-ouro", "manual/verificacao"],
+  drinks: ["cardapio/bebidas"],
+  delivery: ["fluxos/fluxo-delivery", "operacao/delivery", "operacao/taxas", "sistema/regras-de-ouro"],
+  delivery_fee: ["operacao/taxas", "fluxos/fluxo-taxa"],
+  order_now: ["sistema/master", "fluxos/fluxo-pedido-completo", "modelos/perguntas", "sistema/regras-de-ouro", "manual/continuidade"],
+  pre_order: ["fluxos/fluxo-encomenda", "operacao/encomenda", "sistema/regras-de-ouro", "modelos/perguntas", "manual/continuidade"],
+  pricing: ["cardapio/bolos", "cardapio/mini-salgados", "cardapio/doces", "cardapio/bebidas"],
+  payment: ["fluxos/fluxo-pix", "operacao/formas-de-pagamento", "operacao/pix", "manual/registro-pedido"],
+  hours: ["operacao/horarios", "sistema/horario-sistema"],
+  address: ["operacao/retirada"],
+  exceptions: ["sistema/excecoes", "restricoes/erros-comuns"],
+  order_status: ["operacao/status-pedido"],
+  unknown: ["sistema/master", "sistema/regras-de-ouro", "sistema/tom-de-voz", "manual/verificacao"],
+};
+
+// Notas SEMPRE incluídas (core do comportamento)
+const ALWAYS_INCLUDE = ["manual/interpretacao", "manual/continuidade"];
+
 export async function buildDecisionContext(
   supabase: SupabaseClient,
   message: string,
@@ -383,13 +421,25 @@ export async function buildDecisionContext(
   deliveryZonesTexto: string,
   recipes: RecipeInfo[]
 ): Promise<DecisionContext> {
-  // 1. Buscar TODAS as notas do Vault — é a ÚNICA fonte de conhecimento do agente
-  // A LLM não sabe NADA sozinha. Tudo vem do Vault.
-  // 30K chars + cardápio filtrado (~3K) = ~33K chars = ~8K tokens (6% do gpt-4o)
-  const notas = await fetchAllNotas(supabase);
+  // 1. Determinar quais notas carregar baseado no intent
+  const agentNotes = AGENT_NOTES[intent] || AGENT_NOTES.unknown;
+  const allPaths = [...new Set([...agentNotes, ...ALWAYS_INCLUDE])];
+
+  // 2. Buscar SOMENTE as notas relevantes (~3-5K chars em vez de 37K)
+  const { data: notasData, error } = await supabase
+    .from("knowledge_base")
+    .select("caminho, titulo, conteudo")
+    .in("caminho", allPaths)
+    .eq("ativa", true);
+
+  if (error) console.error("fetchNotas error:", error.message);
+
+  const notas = (notasData || []) as { caminho: string; titulo: string; conteudo: string }[];
   const notasRelevantes = notas
     .map((n) => `[${n.titulo}]\n${n.conteudo}`)
     .join("\n\n");
+
+  console.log(`Agent[${intent}]: ${notas.length} notas, ${notasRelevantes.length} chars`);
 
   // 3. Pré-calcular valores (FORA da LLM)
   const preCalc = preCalcular(message, intent, entities, recipes);
@@ -425,53 +475,53 @@ export function buildSmartPrompt(ctx: DecisionContext): string {
   const parts: string[] = [];
 
   // ══════════════════════════════════════════════════════════════
-  // A LLM NÃO SABE NADA SOZINHA. Todo conhecimento vem do VAULT.
-  // Estrutura: Instrução mínima → Vault completo → Dados tempo real → Mensagem
+  // SISTEMA MULTI-AGENTE: Prompt PEQUENO e FOCADO.
+  // Cada intent carrega SOMENTE suas notas (~3-5K chars).
+  // A LLM segue TUDO porque o prompt é curto.
   // ══════════════════════════════════════════════════════════════
 
-  // Instrução MÍNIMA (só diz pra ler o Vault)
-  parts.push(`Voce e a atendente virtual do Cafe Cafe Confeitaria no WhatsApp.
-Voce NAO sabe nada sozinha. TODO seu conhecimento esta no VAULT abaixo.
-Siga EXATAMENTE o que esta no Vault. Se nao esta no Vault, voce nao sabe.
-Responda SOMENTE com a mensagem para o cliente. Sem tags internas.`);
+  parts.push(`Voce e a atendente do Cafe Cafe Confeitaria no WhatsApp.
+REGRAS ABSOLUTAS:
+- Siga EXATAMENTE o que esta nas instrucoes abaixo.
+- NUNCA mencione produtos de outra categoria (se fala de bolo, NAO cite salgados).
+- NUNCA invente sabor, preco ou disponibilidade.
+- Respostas CURTAS e diretas. Tom brasileiro natural.
+- Responda SOMENTE com a mensagem para o cliente.`);
 
-  // VAULT COMPLETO — a memória total do agente
+  // Vault focado (só notas do agente especializado)
   if (ctx.notasRelevantes) {
     parts.push(`\n${ctx.notasRelevantes}`);
   }
 
-  // Instruções do proprietário (complementa o Vault)
+  // Instruções do proprietário
   if (ctx.customInstructions) {
-    parts.push(`\n[Instrucoes do Proprietario]\n${ctx.customInstructions}`);
+    parts.push(`\n${ctx.customInstructions}`);
   }
 
-  // Cálculos pré-feitos (valores exatos — use estes, não calcule)
+  // Cálculos exatos (se houver)
   if (ctx.calculosTexto) {
-    parts.push(`\n[Calculos Exatos]\n${ctx.calculosTexto}`);
+    parts.push(`\n[Calculos]\n${ctx.calculosTexto}`);
   }
 
-  // Alertas (regras violadas detectadas na mensagem)
+  // Alertas de regras
   if (ctx.alertas.length > 0) {
     parts.push(`\n[Alertas]\n${ctx.alertas.join("\n")}`);
   }
 
-  // Cardápio com preços em tempo real (só categorias relevantes)
-  if (ctx.cardapioAcai) {
-    parts.push(`\n[Acai - Precos]\n${ctx.cardapioAcai}`);
-  }
-  if (ctx.cardapioDetalhado) {
-    parts.push(`\n[Cardapio - Precos Atuais]\n${ctx.cardapioDetalhado}`);
+  // Cardápio filtrado (só categorias relevantes)
+  if (ctx.cardapioDetalhado && ctx.cardapioDetalhado.length > 50) {
+    parts.push(`\n[Precos Atuais]\n${ctx.cardapioDetalhado}`);
   }
 
-  // Taxas de entrega (só se relevante)
-  if (ctx.deliveryZonesTexto) {
+  // Taxas (só se intent é delivery/taxa)
+  if (ctx.deliveryZonesTexto && ["delivery", "delivery_fee", "order_now"].includes(ctx.intent)) {
     parts.push(`\n[Taxas Entrega]\n${ctx.deliveryZonesTexto}`);
   }
 
   // Dados do cliente
-  parts.push(`\n[Cliente]\nNome: ${ctx.contactName || "nao informado"}\nPagamento: ${ctx.paymentInfo}`);
+  parts.push(`\n[Cliente] Nome: ${ctx.contactName || "nao informado"}`);
 
   const prompt = parts.join("\n");
-  console.log(`buildSmartPrompt: ${prompt.length} chars, vault=${ctx.notasRelevantes?.length || 0} chars`);
+  console.log(`buildSmartPrompt[${ctx.intent}]: ${prompt.length} chars, notas=${ctx.notasRelevantes?.length || 0} chars`);
   return prompt;
 }

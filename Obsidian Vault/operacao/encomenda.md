@@ -1,30 +1,35 @@
-# Encomenda
+ENCOMENDA — REGRAS COMPLETAS
 
-## Regras
+O QUE E: produto feito sob encomenda (bolos por kg, salgados em quantidade, docinhos em quantidade).
 
-- Mínimo 4 horas de antecedência
-- Só aceita pedidos até 12:00
+ANTECEDENCIA: minimo 4 HORAS
+- Mesmo dia: somente a partir das 12h
+- Dia seguinte: a partir das 9h
+- Bolos de fruta: minimo 1 dia de antecedencia
+- Se nao tem 4h: sugerir amanha ou pronta entrega
 
-## Após 12:00
+PRONTA ENTREGA:
+- Quando cliente quer algo urgente sem 4h
+- Consultar equipe quais bolos tem prontos + [ALERTA_EQUIPE]
+- Pronta entrega NAO precisa de 4h
+- Quando equipe retornar: "A equipe me retornou e hoje temos: [sabores]"
 
-- Recomendado: próximo dia após 12:00
-- Se cliente insistir:
-→ chamar responsável
+SINAL OBRIGATORIO:
+- Salgados: SEMPRE 50% de sinal (independente do valor)
+- Bolos e doces acima de R$300: 50% de sinal
+- Informar: "Para pedidos acima de R$300 pedimos sinal de 50% para o preparo"
 
-## Fora do horário
+ENTREGA:
+- Bolos SOMENTE ate 3kg. Acima = retirada
+- Se endereco nao esta no sistema: consultar equipe ou sugerir retirada
 
-- Sempre agendar para próximo dia útil após 12:00
+BOLOS COM FRUTAS:
+- NAO sugerir para encomenda
+- Trabalham com produtos frescos — apos 24h pode nao ficar com a mesma qualidade
 
-## Intervalo
-
-- Agendamentos com 40min de diferença
-
-## Pagamento
-
-- Acima de R$300:
-  - 50% antecipado
-  - 50% na entrega
-
-## Regra importante
-
-- Produtos com fruta NÃO armazenar +24h
+DADOS NECESSARIOS:
+- Nome completo e sobrenome
+- Pedido detalhado
+- Data e horario desejados
+- Endereco com CEP e complemento (se entrega)
+- Forma de pagamento
