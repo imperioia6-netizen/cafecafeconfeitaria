@@ -457,7 +457,7 @@ export async function runAtendente(
       supabase.from("auto_promotions").select("discount_percent, promo_price, status").eq("status", "ativa").limit(5),
       supabase.from("crm_settings").select("key, value").in("key", ["payment_pix_key", "payment_instructions", "atendente_instructions"]),
       supabase.from("recipes").select("id, name, sale_price, slice_price, complementos").eq("active", true).eq("category", "acai"),
-      supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price").eq("active", true).order("name"),
+      supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price, category").eq("active", true).order("category").order("name"),
       supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro"),
     ]);
     const promos = (promosRes.data || []) as { discount_percent?: number; promo_price?: number }[];
@@ -478,21 +478,37 @@ export async function runAtendente(
       });
       cardapioAcai = lines.join("\n");
     }
-    const allRecipes = (allRecipesRes.data || []) as { id: string; name: string; sale_price?: number | null; slice_price?: number | null; whole_price?: number | null }[];
+    const allRecipes = (allRecipesRes.data || []) as { id: string; name: string; sale_price?: number | null; slice_price?: number | null; whole_price?: number | null; category?: string | null }[];
     const cardapioProdutos = allRecipes.map((r) => r.name).join("\n");
-    let cardapioProdutosDetalhado = allRecipes
-      .map((r) => {
-        const nome = r.name;
-        const inteiro = r.whole_price != null ? `inteiro: R$ ${Number(r.whole_price).toFixed(2)}` : "";
-        const fatia = r.slice_price != null ? `fatia: R$ ${Number(r.slice_price).toFixed(2)}` : "";
-        const unidade = r.sale_price != null ? `unidade: R$ ${Number(r.sale_price).toFixed(2)}` : "";
-        const partes = [inteiro, fatia, unidade].filter(Boolean).join(" | ");
-        return partes ? `- ${nome} – ${partes}` : `- ${nome}`;
+
+    // ═══ CARDÁPIO ORGANIZADO POR CATEGORIA (evita confundir bolo com salgado) ═══
+    const categoryLabels: Record<string, string> = {
+      bolo: "BOLOS (preco por kg)",
+      torta: "TORTAS",
+      salgado: "SALGADOS",
+      bebida: "BEBIDAS",
+      doce: "DOCINHOS",
+      acai: "ACAI",
+    };
+    const byCategory: Record<string, string[]> = {};
+    for (const r of allRecipes) {
+      const cat = (r.category || "outro").toLowerCase();
+      if (!byCategory[cat]) byCategory[cat] = [];
+      const nome = r.name;
+      const preco = r.whole_price != null ? `R$${Number(r.whole_price).toFixed(2)}` :
+                    r.sale_price != null ? `R$${Number(r.sale_price).toFixed(2)}` :
+                    r.slice_price != null ? `R$${Number(r.slice_price).toFixed(2)}/fatia` : "";
+      byCategory[cat].push(preco ? `${nome} – ${preco}` : nome);
+    }
+    let cardapioProdutosDetalhado = Object.entries(byCategory)
+      .map(([cat, items]) => {
+        const label = categoryLabels[cat] || cat.toUpperCase();
+        return `── ${label} ──\n${items.map(i => `- ${i}`).join("\n")}`;
       })
-      .join("\n");
-    // Truncar cardápio se ultrapassar 4000 caracteres para economizar tokens
-    if (cardapioProdutosDetalhado.length > 4000) {
-      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardápio truncado)";
+      .join("\n\n");
+    // Truncar se muito grande
+    if (cardapioProdutosDetalhado.length > 6000) {
+      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 5900) + "\n...(truncado)";
     }
 
     // ── Montar tabela de zonas de delivery com disponibilidade ──

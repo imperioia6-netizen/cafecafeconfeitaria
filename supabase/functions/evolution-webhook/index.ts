@@ -1739,6 +1739,55 @@ serve(async (req) => {
         const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], combinedMessage);
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
+        // ===== DETECÇÃO: "novo pedido" / "iniciar novo" → RESETAR TUDO =====
+        const msgNormReset = normalizeForCompare(combinedMessage);
+        const wantsNewOrder = msgNormReset.includes("novo") || msgNormReset.includes("iniciar") || msgNormReset.includes("comecar") || msgNormReset.includes("do zero");
+        const lastReplyWasOpenOrder = ((sessionMemory.last_reply as string) || "").includes("pedido em aberto");
+
+        if (wantsNewOrder && lastReplyWasOpenOrder) {
+          // Cliente escolheu NOVO PEDIDO → resetar sessão + ignorar histórico antigo
+          await supabase.from("sessions").update({ memory: {}, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
+          sessionMemory = {};
+          history = []; // Ignorar histórico antigo para começar do zero
+
+          // Forçar boas-vindas limpas
+          const contextParts: string[] = [];
+          contextParts.push(`[HORA: ${nowSp}]`);
+          contextParts.push(`[NOVO_PEDIDO] O cliente escolheu iniciar um NOVO pedido. Ignore todo historico anterior. Faca a boas-vindas: "Oi! Bem-vindo(a) ao Cafe e Cafe! Aqui esta nosso cardapio: http://bit.ly/3OYW9Fw Se precisar de sugestao e so dizer! Me informa: vai ser delivery, encomenda ou retirada?"`);
+          contextParts.push(combinedMessage);
+          const enrichedMessage = contextParts.join("\n\n");
+
+          reply = await runAtendente(
+            supabase,
+            enrichedMessage,
+            pushName || "Cliente",
+            [],
+            { intent: "greeting", stage: "start", hasOrderInProgress: false }
+          );
+        } else {
+
+        // ===== DETECÇÃO: greeting + pedido em aberto → perguntar se quer continuar =====
+        const orderMem = extractOrderMemory(history as { role: "user" | "assistant"; content: string }[]);
+        const hasOpenOrder = orderMem.items.length > 0 || (sessionMemory.stage && sessionMemory.stage !== "start" && sessionMemory.stage !== "post_payment");
+
+        if (intent === "greeting" && hasOpenOrder) {
+          // Cliente mandou "Oi" mas tem pedido em aberto → NÃO continuar automaticamente
+          const itemsList = orderMem.items.length > 0 ? orderMem.items.map((i: string) => `- ${i}`).join("\n") : "(pedido anterior)";
+          const contextParts: string[] = [];
+          contextParts.push(`[HORA: ${nowSp}]`);
+          contextParts.push(`[PEDIDO_EM_ABERTO]\nO cliente tem um pedido anterior NAO finalizado:\n${itemsList}\nVoce DEVE perguntar: "Oi [Nome]! Vi que voce tem um pedido em aberto. Deseja continuar com ele ou iniciar um novo?"\nNAO continue o pedido automaticamente. PERGUNTE primeiro.`);
+          contextParts.push(combinedMessage);
+          const enrichedMessage = contextParts.join("\n\n");
+
+          const hasOrderInProgress = true;
+          reply = await runAtendente(
+            supabase,
+            enrichedMessage,
+            pushName || "Cliente",
+            history as { role: "user" | "assistant"; content: string }[],
+            { intent, stage: "start", hasOrderInProgress }
+          );
+        } else {
         // Construir contexto ENXUTO — só o essencial, sem repetir o que já está no Vault
         const contextParts: string[] = [];
 
@@ -1764,8 +1813,6 @@ serve(async (req) => {
         if (deterministicPriceReply) {
           reply = deterministicPriceReply;
         } else {
-          // ── Sistema Modular: passar intent/stage/hasOrder para prompt focado ──
-          const orderMem = extractOrderMemory(history as { role: "user" | "assistant"; content: string }[]);
           const hasOrderInProgress = orderMem.items.length > 0;
           reply = await runAtendente(
             supabase,
@@ -1775,6 +1822,8 @@ serve(async (req) => {
             { intent, stage, hasOrderInProgress }
           );
         }
+        } // fecha o else do greeting+pedido em aberto
+        } // fecha o else do wantsNewOrder
 
         // ===== DETECÇÃO AUTOMÁTICA: consulta vitrine =====
         // Se cliente pede fatia/pedaço e a IA NÃO gerou [ALERTA_EQUIPE], forçar automaticamente
@@ -1888,6 +1937,26 @@ serve(async (req) => {
         reply = guardedReplyClean || replyClean || reply;
         reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
         reply = enforceCakeContinuity(reply, combinedMessage, history as { role: "user" | "assistant"; content: string }[]);
+
+        // ===== LIMPEZA: remover tags internas que NÃO devem aparecer ao cliente =====
+        reply = reply
+          .replace(/\[HORA[^\]]*\]/gi, "")
+          .replace(/\[HORARIO\][^\n]*/gi, "")
+          .replace(/\[CALCULO\][^\n]*/gi, "")
+          .replace(/\[REFERENCIA\][^\n]*/gi, "")
+          .replace(/\[REGRA\][^\n]*/gi, "")
+          .replace(/\[SINAL\][^\n]*/gi, "")
+          .replace(/\[TOTAL\][^\n]*/gi, "")
+          .replace(/\[INFO\][^\n]*/gi, "")
+          .replace(/\[VITRINE\][^\n]*/gi, "")
+          .replace(/\[DELIVERY\][^\n]*/gi, "")
+          .replace(/\[SALGADOS\][^\n]*/gi, "")
+          .replace(/\[NOVO_PEDIDO\][^\n]*/gi, "")
+          .replace(/\[PEDIDO_EM_ABERTO\][^\n]*/gi, "")
+          .replace(/\[CONTINUIDADE\][^\n]*/gi, "")
+          .replace(/\[produto do card[aá]pio\]/gi, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico

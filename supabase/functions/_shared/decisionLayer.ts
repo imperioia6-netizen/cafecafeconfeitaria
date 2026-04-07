@@ -183,6 +183,15 @@ function preCalcular(
 
   const msgLower = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+  // ════════ DETECÇÃO DE PESO QUEBRADO (5,5kg etc) ════════
+  const pesoQuebradoMatch = msgLower.match(/(\d+)[,.](\d+)\s*kg/);
+  if (pesoQuebradoMatch) {
+    const pesoOriginal = `${pesoQuebradoMatch[1]},${pesoQuebradoMatch[2]}`;
+    const pesoInt = parseInt(pesoQuebradoMatch[1]);
+    const proximoInteiro = pesoInt + 1;
+    alertas.push(`[REGRA] Cliente pediu ${pesoOriginal}kg. NAO fazemos peso quebrado. So kg inteiro: 1, 2, 3, 4. Sugerir ${pesoInt}kg ou ${proximoInteiro}kg. Se >4kg, dividir em formas (ex: 6kg = 4+2).`);
+  }
+
   // ════════ BOLOS COM PESO ════════
   // Padrões: "bolo de brigadeiro de 2kg", "2kg de brigadeiro", "bolo brigadeiro 3kg"
   const boloPatterns = [
@@ -191,18 +200,16 @@ function preCalcular(
   ];
   const bolosDetectados: { sabor: string; peso: number; valor: number }[] = [];
 
+  // Se peso quebrado foi detectado, não calcular com o parseInt errado
+  if (pesoQuebradoMatch) {
+    // Não processar bolos — peso inválido, alertas já foram adicionados
+  } else
   for (const pattern of boloPatterns) {
     let match;
     while ((match = pattern.exec(msgLower)) !== null) {
       const sabor = (pattern === boloPatterns[0] ? match[1] : match[2]).trim();
       const peso = parseInt(pattern === boloPatterns[0] ? match[2] : match[1]);
       if (!sabor || !peso || peso <= 0 || peso > 20) continue;
-
-      // Validar peso fracionado
-      if (!Number.isInteger(peso)) {
-        alertas.push(`[REGRA] Peso ${peso}kg nao e inteiro. So fazemos 1kg, 2kg, 3kg, 4kg.`);
-        continue;
-      }
 
       // Dividir se >4kg
       if (peso > 4) {
