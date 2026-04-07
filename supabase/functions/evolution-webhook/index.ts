@@ -1712,12 +1712,18 @@ serve(async (req) => {
           }
         }
 
-        const { data: historyRows } = await supabase
+        // Usar history_cutoff da sessão para ignorar mensagens de pedidos anteriores
+        const historyCutoff = (sessionMemory.history_cutoff as string) || "";
+        let historyQuery = supabase
           .from("crm_messages")
           .select("message_type, message_content")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: false })
           .limit(20);
+        if (historyCutoff) {
+          historyQuery = historyQuery.gte("created_at", historyCutoff);
+        }
+        const { data: historyRows } = await historyQuery;
 
         let history =
           (historyRows || [])
@@ -1748,8 +1754,9 @@ serve(async (req) => {
 
         if (wantsNewOrder && lastReplyWasOpenOrder) {
           // Cliente escolheu NOVO PEDIDO → resetar sessão + ignorar histórico antigo
-          await supabase.from("sessions").update({ memory: {}, updated_at: new Date().toISOString() } as any).eq("remote_jid", remoteJid);
-          sessionMemory = {};
+          const cutoffTime = new Date().toISOString();
+          await supabase.from("sessions").update({ memory: { history_cutoff: cutoffTime }, updated_at: cutoffTime } as any).eq("remote_jid", remoteJid);
+          sessionMemory = { history_cutoff: cutoffTime };
           history = []; // Ignorar histórico antigo para começar do zero
 
           // Forçar boas-vindas limpas
@@ -1847,7 +1854,7 @@ serve(async (req) => {
           contextParts.push(`[REGRA OBRIGATORIA] Entrega SOMENTE ate 3kg. Bolo de ${pesoCliente}kg para delivery = IMPOSSIVEL. Diga: "Para entrega o maximo e 3kg. Bolo de ${pesoCliente}kg somente retirada na loja. Deseja alterar para retirada?"`);
         }
 
-        // 4e. Validar sabor do bolo contra cardápio
+        // 4e. Validar sabor do bolo contra cardápio (matching ESTRITO)
         if (!clientWantsMeio) {
           const saborExtracao = combinedMessage.match(/bolo\s+(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;|\s+meio)/i)
             || combinedMessage.match(/(?:pode ser|quero|vai ser|faz|seja)\s+(?:o\s+)?(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;)/i);
@@ -1856,10 +1863,27 @@ serve(async (req) => {
             const skipFlavors = ["um", "o", "esse", "aquele", "bolo", "meu", "nosso", "pra", "para", "com", "meio", "metade", "meia", "delivery", "encomenda", "retirada", "entrega", "kg", "novo", "dois", "duas"];
             if (saborCliente.length >= 4 && !/^\d/.test(saborCliente) && !skipFlavors.includes(saborCliente.toLowerCase())) {
               const normSabor = normalizeForCompare(saborCliente);
-              const normRecipes = recipeNames.map(n => normalizeForCompare(n));
-              const saborValido = normRecipes.some(r => r.includes(normSabor) || normSabor.includes(r));
-              if (!saborValido) {
-                contextParts.push(`[REGRA OBRIGATORIA] O sabor "${saborCliente}" NAO existe no cardapio do Cafe Cafe. NAO aceite. Diga: "Nao temos esse sabor. Veja nossos sabores no cardapio: ${CARDAPIO_PDF_URL} Posso sugerir algum?"`);
+              // Matching ESTRITO: sabor deve ser o nome COMPLETO de uma receita (não parcial)
+              const exactMatch = recipeNames.some(rn => {
+                const nr = normalizeForCompare(rn);
+                const nrClean = nr.replace(/^bolo\s+(?:de\s+)?/, "");
+                return nr === normSabor || nrClean === normSabor || normSabor === nrClean;
+              });
+              if (!exactMatch) {
+                // Verificar matches parciais — se "nutella" aparece em vários, pedir clarificação
+                const parciais = recipeNames.filter(rn => {
+                  const nr = normalizeForCompare(rn);
+                  return (nr.includes(normSabor) || normSabor.includes(nr)) && (nr.includes("bolo") || !nr.includes("cento"));
+                });
+                if (parciais.length === 0) {
+                  contextParts.push(`[REGRA OBRIGATORIA] O sabor "${saborCliente}" NAO existe no cardapio do Cafe Cafe. NAO aceite. Diga: "Nao temos esse sabor. Veja nossos sabores no cardapio: ${CARDAPIO_PDF_URL} Posso sugerir algum?"`);
+                } else if (parciais.length === 1) {
+                  // Só 1 match → aceitar como correto (ex: "brigadeiro" → "Brigadeiro")
+                } else {
+                  // Múltiplos matches → pedir clarificação (ex: "nutella" → "Ninho com Nutella" ou "Nutella com Brigadeiro Branco")
+                  const opcoes = parciais.slice(0, 5).join(", ");
+                  contextParts.push(`[REGRA OBRIGATORIA] "${saborCliente}" sozinho nao e um sabor valido. Temos: ${opcoes}. Pergunte ao cliente: "Temos ${opcoes}. Qual voce prefere?"`);
+                }
               }
             }
           }
@@ -2108,7 +2132,7 @@ serve(async (req) => {
           const replyNorm = normalizeForCompare(reply);
           let hardReplaced = false;
 
-          // HARD 1: Sabor não existe no cardápio — SUBSTITUIR se LLM aceitou
+          // HARD 1: Sabor não existe no cardápio — matching ESTRITO
           const isMeioCtx = rulesMsgNorm.includes("meio a meio") || rulesMsgNorm.includes("metade de cada");
           if (!isMeioCtx) {
             const saborPatterns = [
@@ -2122,16 +2146,28 @@ serve(async (req) => {
                 const saborIn = sMatch[1].trim();
                 if (saborIn.length >= 4 && !/^\d/.test(saborIn) && !skipWords.includes(saborIn.toLowerCase())) {
                   const ns = normalizeForCompare(saborIn);
-                  const exists = recipeNames.some(rn => {
+                  // Matching ESTRITO: precisa ser nome completo de receita
+                  const exactMatch = recipeNames.some(rn => {
                     const nr = normalizeForCompare(rn);
-                    return nr.includes(ns) || ns.includes(nr);
+                    const nrClean = nr.replace(/^bolo\s+(?:de\s+)?/, "");
+                    return nr === ns || nrClean === ns || ns === nrClean;
                   });
-                  if (!exists && !/nao temos|nao existe|nao consta|nao fazemos|nao trabalhamos|esse sabor/i.test(replyNorm)) {
-                    const topCakes = recipeNames
-                      .filter(n => { const c = normalizeForCompare(n); return !c.includes("cento") && !c.includes("coxinha") && !c.includes("kibe") && !c.includes("esfiha"); })
-                      .slice(0, 6);
-                    reply = `Não temos o sabor "${saborIn}" no nosso cardápio 😊\n\nAlguns dos nossos sabores: ${topCakes.join(", ")}\n\nVeja todos: ${CARDAPIO_PDF_URL}`;
-                    hardReplaced = true;
+                  if (!exactMatch) {
+                    const parciais = recipeNames.filter(rn => {
+                      const nr = normalizeForCompare(rn);
+                      return (nr.includes(ns) || ns.includes(nr)) && !nr.includes("cento");
+                    });
+                    if (parciais.length === 0 && !/nao temos|nao existe|nao consta|nao fazemos|esse sabor|temos.*qual/i.test(replyNorm)) {
+                      const topCakes = recipeNames
+                        .filter(n => { const c = normalizeForCompare(n); return !c.includes("cento") && !c.includes("coxinha") && !c.includes("kibe") && !c.includes("esfiha"); })
+                        .slice(0, 6);
+                      reply = `Não temos o sabor "${saborIn}" no nosso cardápio 😊\n\nAlguns dos nossos sabores: ${topCakes.join(", ")}\n\nVeja todos: ${CARDAPIO_PDF_URL}`;
+                      hardReplaced = true;
+                    } else if (parciais.length > 1 && !/qual voce prefere|qual prefere|temos.*qual/i.test(replyNorm)) {
+                      const opcoes = parciais.slice(0, 5).join(", ");
+                      reply = `Temos algumas opções com ${saborIn}: ${opcoes}\n\nQual você prefere? 😊`;
+                      hardReplaced = true;
+                    }
                   }
                   break;
                 }
@@ -2222,6 +2258,7 @@ serve(async (req) => {
             confirmed_date: dateMatch ? dateMatch[0].trim() : (sessionMemory.confirmed_date || ""),
             confirmed_time: timeMatch ? timeMatch[1]?.trim() : (sessionMemory.confirmed_time || ""),
             customer_name_full: (sessionMemory.customer_name_full || pushName || ""),
+            history_cutoff: (sessionMemory.history_cutoff as string) || "",
             updated: new Date().toISOString(),
           },
           customer_name: pushName || (sessionRow as any)?.customer_name || null,
