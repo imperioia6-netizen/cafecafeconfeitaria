@@ -490,22 +490,47 @@ export async function runAtendente(
       doce: "DOCINHOS",
       acai: "ACAI",
     };
-    const byCategory: Record<string, string[]> = {};
+    // Separar salgados em: MINI SALGADOS (cento) vs SALGADOS GRANDES vs LANCHES
+    const miniSalgados: string[] = [];
+    const salgadosGrandes: string[] = [];
+    const lanches: string[] = [];
+    const bolosList: string[] = [];
+    const outros: Record<string, string[]> = {};
+
     for (const r of allRecipes) {
       const cat = (r.category || "outro").toLowerCase();
-      if (!byCategory[cat]) byCategory[cat] = [];
       const nome = r.name;
       const preco = r.whole_price != null ? `R$${Number(r.whole_price).toFixed(2)}` :
                     r.sale_price != null ? `R$${Number(r.sale_price).toFixed(2)}` :
                     r.slice_price != null ? `R$${Number(r.slice_price).toFixed(2)}/fatia` : "";
-      byCategory[cat].push(preco ? `${nome} – ${preco}` : nome);
+      const line = preco ? `${nome} – ${preco}` : nome;
+
+      if (cat === "bolo") {
+        bolosList.push(line);
+      } else if (cat === "salgado") {
+        if (nome.includes("(cento)")) {
+          miniSalgados.push(line);
+        } else if (Number(r.sale_price) >= 17 && (nome.includes("Cheese") || nome.includes("Hambúrguer") || nome.includes("Americano") || nome.includes("Saladeiro") || nome.includes("Mix") || nome.includes("Dú"))) {
+          lanches.push(line);
+        } else {
+          salgadosGrandes.push(line);
+        }
+      } else {
+        if (!outros[cat]) outros[cat] = [];
+        outros[cat].push(line);
+      }
     }
-    let cardapioProdutosDetalhado = Object.entries(byCategory)
-      .map(([cat, items]) => {
-        const label = categoryLabels[cat] || cat.toUpperCase();
-        return `── ${label} ──\n${items.map(i => `- ${i}`).join("\n")}`;
-      })
-      .join("\n\n");
+
+    const sections: string[] = [];
+    if (bolosList.length > 0) sections.push(`── BOLOS (preco por kg — NAO sao salgados) ──\n${bolosList.map(i => `- ${i}`).join("\n")}`);
+    if (miniSalgados.length > 0) sections.push(`── MINI SALGADOS (por cento — minimo 25 unidades/sabor) ──\nSABORES DISPONIVEIS PARA MINI: SOMENTE estes abaixo. NAO existe mini de outros sabores.\n${miniSalgados.map(i => `- ${i}`).join("\n")}\n⚠️ Mini coxinha NAO tem catupiry. NAO existe mini 3 queijos, mini enroladinho, mini hamburgao.`);
+    if (salgadosGrandes.length > 0) sections.push(`── SALGADOS GRANDES (unidade — para consumo individual) ──\n${salgadosGrandes.map(i => `- ${i}`).join("\n")}`);
+    if (lanches.length > 0) sections.push(`── LANCHES E HAMBURGUERES ──\n${lanches.map(i => `- ${i}`).join("\n")}`);
+    for (const [cat, items] of Object.entries(outros)) {
+      const label = categoryLabels[cat] || cat.toUpperCase();
+      sections.push(`── ${label} ──\n${items.map(i => `- ${i}`).join("\n")}`);
+    }
+    let cardapioProdutosDetalhado = sections.join("\n\n");
     // Truncar se muito grande
     if (cardapioProdutosDetalhado.length > 6000) {
       cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 5900) + "\n...(truncado)";
