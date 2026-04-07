@@ -1827,9 +1827,11 @@ serve(async (req) => {
           contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu ${pesoCliente}kg. O MAXIMO por forma e 4kg. Voce DEVE informar: "Para ${pesoCliente}kg, dividimos em dois bolos: um de 4kg e outro de ${resto}kg (limite de 4kg por forma). Qual sabor para cada um?" Se for entrega, SOMENTE ate 3kg (um de 3kg e outro de ${resto > 3 ? 3 : resto}kg).`);
         }
 
-        // 4b. Meio a meio 1kg: bloquear
-        if (msgForRules.includes("meio a meio") && pesoCliente === 1) {
-          contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu meio a meio de 1kg. NAO FAZEMOS. Diga: "Meio a meio so a partir de 2kg. Para 1kg, escolha um sabor unico."`);
+        // 4b. Meio a meio 1kg: bloquear (verifica peso na mensagem E na sessão)
+        const meioPesoCheck = pesoCliente || parseInt(String(sessionMemory.confirmed_weight || "").replace(/\D/g, "")) || 0;
+        const clientWantsMeio = msgForRules.includes("meio a meio") || msgForRules.includes("metade de cada") || msgForRules.includes("metade cada");
+        if (clientWantsMeio && meioPesoCheck === 1) {
+          contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu meio a meio de 1kg. NAO FAZEMOS para 1kg. Diga EXATAMENTE: "Meio a meio so a partir de 2kg. Para 1kg, escolha um sabor unico. Qual sabor voce prefere?"`);
         }
 
         // 4c. Peso quebrado: bloquear
@@ -1837,6 +1839,30 @@ serve(async (req) => {
         if (pesoQuebrado) {
           const inteiro = parseInt(pesoQuebrado[1]);
           contextParts.push(`[REGRA OBRIGATORIA] Cliente pediu ${pesoQuebrado[0]}. NAO fazemos peso quebrado. Diga: "Trabalhamos so com peso inteiro. Podemos fazer ${inteiro}kg ou ${inteiro + 1}kg. Qual prefere?"`);
+        }
+
+        // 4d. Delivery > 3kg: alertar
+        const isDeliveryPreCheck = msgForRules.includes("delivery") || msgForRules.includes("entreg") || (sessionMemory.order_type === "delivery");
+        if (isDeliveryPreCheck && pesoCliente > 3) {
+          contextParts.push(`[REGRA OBRIGATORIA] Entrega SOMENTE ate 3kg. Bolo de ${pesoCliente}kg para delivery = IMPOSSIVEL. Diga: "Para entrega o maximo e 3kg. Bolo de ${pesoCliente}kg somente retirada na loja. Deseja alterar para retirada?"`);
+        }
+
+        // 4e. Validar sabor do bolo contra cardápio
+        if (!clientWantsMeio) {
+          const saborExtracao = combinedMessage.match(/bolo\s+(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;|\s+meio)/i)
+            || combinedMessage.match(/(?:pode ser|quero|vai ser|faz|seja)\s+(?:o\s+)?(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;)/i);
+          if (saborExtracao && saborExtracao[1]) {
+            const saborCliente = saborExtracao[1].trim();
+            const skipFlavors = ["um", "o", "esse", "aquele", "bolo", "meu", "nosso", "pra", "para", "com", "meio", "metade", "meia", "delivery", "encomenda", "retirada", "entrega", "kg", "novo", "dois", "duas"];
+            if (saborCliente.length >= 4 && !/^\d/.test(saborCliente) && !skipFlavors.includes(saborCliente.toLowerCase())) {
+              const normSabor = normalizeForCompare(saborCliente);
+              const normRecipes = recipeNames.map(n => normalizeForCompare(n));
+              const saborValido = normRecipes.some(r => r.includes(normSabor) || normSabor.includes(r));
+              if (!saborValido) {
+                contextParts.push(`[REGRA OBRIGATORIA] O sabor "${saborCliente}" NAO existe no cardapio do Cafe Cafe. NAO aceite. Diga: "Nao temos esse sabor. Veja nossos sabores no cardapio: ${CARDAPIO_PDF_URL} Posso sugerir algum?"`);
+              }
+            }
+          }
         }
 
         // 5. Mensagem do cliente
@@ -2065,6 +2091,101 @@ serve(async (req) => {
 
         // 7. Limpar linhas vazias extras
         reply = reply.replace(/\n{3,}/g, "\n\n").trim();
+
+        // ═══════════════════════════════════════════════════════════════
+        // HARD BUSINESS RULES — ÚLTIMAS VERIFICAÇÕES ANTES DE ENVIAR
+        // Estas regras SUBSTITUEM a resposta se o LLM violou regras.
+        // São determinísticas (código puro) — o LLM NÃO pode contornar.
+        // Checam a MENSAGEM DO CLIENTE, não só a resposta do LLM.
+        // ═══════════════════════════════════════════════════════════════
+        {
+          const rulesMsgNorm = normalizeForCompare(combinedMessage);
+          const rulesPesoMatch = combinedMessage.match(/(\d+)\s*kg/i);
+          const rulesPeso = rulesPesoMatch ? parseInt(rulesPesoMatch[1]) : 0;
+          const rulesSessionWeight = parseInt(String(sessionMemory.confirmed_weight || "").replace(/\D/g, "")) || 0;
+          const rulesEffectiveWeight = rulesPeso || rulesSessionWeight;
+          const rulesIsDelivery = rulesMsgNorm.includes("delivery") || rulesMsgNorm.includes("entreg") || sessionMemory.order_type === "delivery";
+          const replyNorm = normalizeForCompare(reply);
+          let hardReplaced = false;
+
+          // HARD 1: Sabor não existe no cardápio — SUBSTITUIR se LLM aceitou
+          const isMeioCtx = rulesMsgNorm.includes("meio a meio") || rulesMsgNorm.includes("metade de cada");
+          if (!isMeioCtx) {
+            const saborPatterns = [
+              /bolo\s+(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;|\s+meio)/i,
+              /(?:pode ser|quero|vai ser|faz|seja)\s+(?:o\s+)?(?:de\s+)?([\w\sà-úÀ-Ú]+?)(?:\s+(?:de\s+)?\d|\s+\d+\s*kg|$|,|\.|;)/i,
+            ];
+            const skipWords = ["um", "o", "esse", "aquele", "bolo", "meu", "nosso", "pra", "para", "com", "meio", "metade", "meia", "delivery", "encomenda", "retirada", "entrega", "kg", "novo", "dois", "duas", "tres", "quatro"];
+            for (const saborPat of saborPatterns) {
+              const sMatch = combinedMessage.match(saborPat);
+              if (sMatch && sMatch[1]) {
+                const saborIn = sMatch[1].trim();
+                if (saborIn.length >= 4 && !/^\d/.test(saborIn) && !skipWords.includes(saborIn.toLowerCase())) {
+                  const ns = normalizeForCompare(saborIn);
+                  const exists = recipeNames.some(rn => {
+                    const nr = normalizeForCompare(rn);
+                    return nr.includes(ns) || ns.includes(nr);
+                  });
+                  if (!exists && !/nao temos|nao existe|nao consta|nao fazemos|nao trabalhamos|esse sabor/i.test(replyNorm)) {
+                    const topCakes = recipeNames
+                      .filter(n => { const c = normalizeForCompare(n); return !c.includes("cento") && !c.includes("coxinha") && !c.includes("kibe") && !c.includes("esfiha"); })
+                      .slice(0, 6);
+                    reply = `Não temos o sabor "${saborIn}" no nosso cardápio 😊\n\nAlguns dos nossos sabores: ${topCakes.join(", ")}\n\nVeja todos: ${CARDAPIO_PDF_URL}`;
+                    hardReplaced = true;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+
+          // HARD 2: Meio a meio de 1kg — SUBSTITUIR se LLM aceitou
+          const wantsMeio = rulesMsgNorm.includes("meio a meio") || rulesMsgNorm.includes("metade de cada") || rulesMsgNorm.includes("metade cada");
+          const pesoMeio = rulesPeso || rulesSessionWeight;
+          if (!hardReplaced && wantsMeio && pesoMeio === 1) {
+            if (!/nao fazemos|nao faz|somente a partir|a partir de 2|minimo.{0,5}2|so a partir|sabor unico/i.test(replyNorm)) {
+              reply = `Meio a meio só a partir de 2kg 😊 Para 1kg, escolha um sabor único. Qual sabor você prefere?\n\nNosso cardápio: ${CARDAPIO_PDF_URL}`;
+              hardReplaced = true;
+            }
+          }
+
+          // HARD 3: Peso > 4kg aceito como forma única — SUBSTITUIR
+          if (!hardReplaced && rulesPeso > 4) {
+            const resto = rulesPeso - 4;
+            if (!/divid|duas?\s*formas?|4\s*kg.*\d+\s*kg|limite.*4|duas?\s*bolos?|\d+kg\s*\+\s*\d+kg/i.test(replyNorm)) {
+              reply = `Para ${rulesPeso}kg, dividimos em dois bolos: um de 4kg e outro de ${resto}kg (limite de 4kg por forma).\n\nQual sabor para cada um? Se for entrega, o máximo é 3kg por bolo.`;
+              hardReplaced = true;
+            }
+          }
+
+          // HARD 4: Delivery > 3kg — FORÇAR aviso de retirada obrigatória
+          if (rulesIsDelivery && rulesEffectiveWeight > 3) {
+            if (!/retirada|retirar|somente ate 3|maximo.{0,3}3|ate 3\s*kg/i.test(replyNorm)) {
+              reply += `\n\n⚠️ Para entrega, bolos somente até 3kg. Bolo de ${rulesEffectiveWeight}kg é retirada obrigatória na loja. Deseja alterar para retirada?`;
+            }
+          }
+
+          // SOFT: Dados obrigatórios — perguntar se faltam (só quando pedido em andamento)
+          const rulesStage = (sessionMemory.stage as string) || stage;
+          const isOrderActive = ["collecting_items", "awaiting_order_type"].includes(rulesStage) || intent === "start_order";
+          const hasItems = Array.isArray(sessionMemory.order_items) && (sessionMemory.order_items as string[]).length > 0;
+          if (!hardReplaced && isOrderActive && hasItems && reply.length > 30) {
+            const missingQuestions: string[] = [];
+            const hasName = sessionMemory.customer_name_full && String(sessionMemory.customer_name_full) !== "Cliente" && String(sessionMemory.customer_name_full) !== (pushName || "");
+            if (!hasName && !/nome completo|seu nome|qual.{0,5}nome/i.test(reply)) {
+              missingQuestions.push("Qual seu nome completo para o pedido?");
+            }
+            if (!sessionMemory.confirmed_date && !/quando|data|dia|que dia|pra quando/i.test(reply)) {
+              missingQuestions.push("Para quando seria?");
+            }
+            if (!sessionMemory.confirmed_time && !/horario|hora|que horas|periodo/i.test(reply)) {
+              missingQuestions.push("Qual horário?");
+            }
+            if (missingQuestions.length > 0 && !/deseja mais alguma coisa|mais algum|algo mais/i.test(reply)) {
+              reply += "\n\n" + missingQuestions.join(" ");
+            }
+          }
+        }
 
         // ===== MELHORIA 1: Salvar sessão de conversa =====
         // Extrair e persistir dados confirmados do pedido para não depender apenas de regex no histórico

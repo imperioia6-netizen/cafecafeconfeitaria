@@ -300,16 +300,16 @@ function preCalcular(
   // ════════ DECORAÇÃO ════════
   if (msgLower.includes("decoracao") || msgLower.includes("decorar") || msgLower.includes("decorado")) {
     if (msgLower.includes("colorida") || msgLower.includes("cor")) {
-      calculos.push(`[CALCULO] Decoracao colorida: +R$25,00`);
-      totalGeral += 25;
+      calculos.push(`[CALCULO] Decoracao colorida: +R$30,00`);
+      totalGeral += 30;
     } else if (msgLower.includes("escrita") || msgLower.includes("personalizada") || msgLower.includes("escrever")) {
       calculos.push(`[CALCULO] Escrita personalizada: +R$15,00`);
       totalGeral += 15;
     } else if (msgLower.includes("papel de arroz") || msgLower.includes("arroz")) {
-      calculos.push(`[CALCULO] Papel de arroz (cliente traz): +R$25,00`);
-      totalGeral += 25;
+      calculos.push(`[CALCULO] Papel de arroz (cliente traz): +R$30,00`);
+      totalGeral += 30;
     } else {
-      calculos.push(`[INFO] Cliente quer decoracao — perguntar tipo: escrita (R$15), colorida (R$25) ou papel de arroz (R$25, cliente traz).`);
+      calculos.push(`[INFO] Cliente quer decoracao — perguntar tipo: escrita (R$15), colorida (R$30) ou papel de arroz (R$30, cliente traz).`);
     }
   }
 

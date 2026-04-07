@@ -12,7 +12,7 @@ REGRAS:
 DECORACAO:
 - Decoracao colorida: R$30
 - Escrita personalizada: R$15
-- Papel de arroz: R$25 (NAO fazemos. Cliente TRAZ de casa.)
+- Papel de arroz: R$30 (NAO fazemos. Cliente TRAZ de casa.)
 
 TABELA DE PRECOS POR KG:
 
