@@ -269,31 +269,52 @@ export function validarAntecedenciaEncomenda(
  * Verifica se está dentro do horário de funcionamento.
  * Segunda a sábado, 7h30 às 19h30.
  */
+/** Retorna Date ajustada para fuso de São Paulo (UTC-3). */
+function nowSaoPaulo(): Date {
+  // Supabase Edge roda em UTC. Converter para SP.
+  const utc = new Date();
+  const spStr = utc.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  return new Date(spStr);
+}
+
 export function verificarHorarioFuncionamento(
-  data: Date = new Date()
-): { aberto: boolean; mensagem: string } {
-  const dia = data.getDay(); // 0=dom, 6=sab
-  const hora = data.getHours();
-  const minuto = data.getMinutes();
+  data?: Date
+): { aberto: boolean; horaSp: string; mensagem: string } {
+  const sp = data || nowSaoPaulo();
+  const dia = sp.getDay(); // 0=dom, 6=sab
+  const hora = sp.getHours();
+  const minuto = sp.getMinutes();
   const minutosTotal = hora * 60 + minuto;
+  const horaStr = `${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`;
 
   // Domingo
   if (dia === 0) {
     return {
       aberto: false,
-      mensagem: "Domingo não abrimos. Posso agendar pro próximo dia útil a partir das 12h!",
+      horaSp: horaStr,
+      mensagem: "Domingo não abrimos. Posso agendar pro próximo dia útil a partir das 7h30!",
     };
   }
 
-  // Antes das 7:30 ou depois das 19:30
-  if (minutosTotal < 7 * 60 + 30 || minutosTotal > 19 * 60 + 30) {
+  // Antes das 7:30
+  if (minutosTotal < 7 * 60 + 30) {
     return {
       aberto: false,
-      mensagem: "Estamos fora do horário (7h30–19h30). Posso anotar seu pedido e agendar!",
+      horaSp: horaStr,
+      mensagem: `Agora são ${horaStr} e estamos fora do horário de funcionamento (7h30–19h30). Posso anotar seu pedido! A produção começa às 7h30. Qual horário a partir das 12h fica bom pra você?`,
     };
   }
 
-  return { aberto: true, mensagem: "" };
+  // Depois das 19:30
+  if (minutosTotal > 19 * 60 + 30) {
+    return {
+      aberto: false,
+      horaSp: horaStr,
+      mensagem: `Agora são ${horaStr} e estamos fora do horário (7h30–19h30). Posso anotar seu pedido para amanhã! A produção começa às 7h30. Qual horário fica bom?`,
+    };
+  }
+
+  return { aberto: true, horaSp: horaStr, mensagem: "" };
 }
 
 /**
@@ -301,9 +322,10 @@ export function verificarHorarioFuncionamento(
  * Delivery começa às 9h.
  */
 export function verificarHorarioDelivery(
-  data: Date = new Date()
+  data?: Date
 ): { disponivel: boolean; mensagem: string } {
-  const hora = data.getHours();
+  const sp = data || nowSaoPaulo();
+  const hora = sp.getHours();
   if (hora < 9) {
     return {
       disponivel: false,

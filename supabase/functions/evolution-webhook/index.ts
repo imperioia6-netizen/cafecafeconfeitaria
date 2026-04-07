@@ -16,6 +16,7 @@ import {
   isPdfMimetype,
   isPdfFileName,
 } from "../_shared/pdfExtract.ts";
+import { verificarHorarioFuncionamento } from "../_shared/calculator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1746,6 +1747,10 @@ serve(async (req) => {
         const orderMemoryHint = buildOrderMemoryHint(history as { role: "user" | "assistant"; content: string }[], sessionMemory);
         const previousQuestionHint = buildPreviousQuestionHint(history as { role: "user" | "assistant"; content: string }[], combinedMessage);
         const nowSp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+        const horarioInfo = verificarHorarioFuncionamento();
+        const horarioContexto = horarioInfo.aberto
+          ? `[HORA: ${nowSp}] Horario de funcionamento (7h30-19h30).`
+          : `[HORA: ${nowSp}] FORA DO HORARIO (7h30-19h30). ${horarioInfo.mensagem} Pedidos feitos agora serao produzidos a partir das 7h30. Sugerir horario a partir das 12h para retirada/entrega.`;
 
         // ===== DETECÇÃO: "novo pedido" / "iniciar novo" → RESETAR TUDO =====
         const msgNormReset = normalizeForCompare(combinedMessage);
@@ -1761,7 +1766,7 @@ serve(async (req) => {
 
           // Forçar boas-vindas limpas
           const contextParts: string[] = [];
-          contextParts.push(`[HORA: ${nowSp}]`);
+          contextParts.push(horarioContexto);
           contextParts.push(`[NOVO_PEDIDO] O cliente escolheu iniciar um NOVO pedido. Ignore todo historico anterior. Faca a boas-vindas: "Oi! Bem-vindo(a) ao Cafe e Cafe! Aqui esta nosso cardapio: http://bit.ly/3OYW9Fw Se precisar de sugestao e so dizer! Me informa: vai ser delivery, encomenda ou retirada?"`);
           contextParts.push(combinedMessage);
           const enrichedMessage = contextParts.join("\n\n");
@@ -1783,7 +1788,7 @@ serve(async (req) => {
           // Cliente mandou "Oi" mas tem pedido em aberto → NÃO continuar automaticamente
           const itemsList = orderMem.items.length > 0 ? orderMem.items.map((i: string) => `- ${i}`).join("\n") : "(pedido anterior)";
           const contextParts: string[] = [];
-          contextParts.push(`[HORA: ${nowSp}]`);
+          contextParts.push(horarioContexto);
           contextParts.push(`[PEDIDO_EM_ABERTO]\nO cliente tem um pedido anterior NAO finalizado:\n${itemsList}\nVoce DEVE perguntar: "Oi [Nome]! Vi que voce tem um pedido em aberto. Deseja continuar com ele ou iniciar um novo?"\nNAO continue o pedido automaticamente. PERGUNTE primeiro.`);
           contextParts.push(combinedMessage);
           const enrichedMessage = contextParts.join("\n\n");
@@ -1882,7 +1887,7 @@ serve(async (req) => {
                 } else {
                   // Múltiplos matches → pedir clarificação (ex: "nutella" → "Ninho com Nutella" ou "Nutella com Brigadeiro Branco")
                   const opcoes = parciais.slice(0, 5).join(", ");
-                  contextParts.push(`[REGRA OBRIGATORIA] "${saborCliente}" sozinho nao e um sabor valido. Temos: ${opcoes}. Pergunte ao cliente: "Temos ${opcoes}. Qual voce prefere?"`);
+                  contextParts.push(`[REGRA OBRIGATORIA] Bolo so de ${saborCliente} nao temos. Diga EXATAMENTE: "Bolo so de ${saborCliente} nao temos, mas temos: ${opcoes}. Qual voce prefere?"`);
                 }
               }
             }
@@ -1916,6 +1921,13 @@ serve(async (req) => {
         const pedeFatiaVitrine = msgNormForVitrine.includes("fatia") || msgNormForVitrine.includes("pedaco") || msgNormForVitrine.includes("vitrine") || msgNormForVitrine.includes("bolo do dia");
         if (pedeFatiaVitrine && !reply.includes("[ALERTA_EQUIPE]")) {
           reply = reply + "\n[ALERTA_EQUIPE]Cliente pediu fatia/pedaço de bolo. Quais sabores temos na vitrine hoje?[/ALERTA_EQUIPE]";
+        }
+
+        // ===== DETECÇÃO AUTOMÁTICA: pronta entrega =====
+        // Se cliente pede "pronta entrega" / "apronta entrega" / "tem pronto" → consultar equipe
+        const pedeProntaEntrega = msgNormForVitrine.includes("pronta entrega") || msgNormForVitrine.includes("apronta entrega") || msgNormForVitrine.includes("tem pronto") || msgNormForVitrine.includes("ja tem pronto") || msgNormForVitrine.includes("pra agora") || msgNormForVitrine.includes("pra ja") || (msgNormForVitrine.includes("pronto") && (msgNormForVitrine.includes("bolo") || msgNormForVitrine.includes("tem")));
+        if (pedeProntaEntrega && !reply.includes("[ALERTA_EQUIPE]")) {
+          reply = "Vou verificar com a equipe o que temos de pronta entrega e já te retorno! 😊\n[ALERTA_EQUIPE]Cliente perguntou sobre pronta entrega/bolos prontos. Quais temos disponíveis agora?[/ALERTA_EQUIPE]";
         }
 
         const { replyClean, pedidoJson, encomendaJson, quitarEncomendaJson, atualizarClienteJson, alertaEquipeText } = parseCreateBlocks(reply);
@@ -2165,7 +2177,7 @@ serve(async (req) => {
                       hardReplaced = true;
                     } else if (parciais.length > 1 && !/qual voce prefere|qual prefere|temos.*qual/i.test(replyNorm)) {
                       const opcoes = parciais.slice(0, 5).join(", ");
-                      reply = `Temos algumas opções com ${saborIn}: ${opcoes}\n\nQual você prefere? 😊`;
+                      reply = `Bolo só de ${saborIn} não temos, mas temos: ${opcoes} 😊\n\nQual você prefere?`;
                       hardReplaced = true;
                     }
                   }
