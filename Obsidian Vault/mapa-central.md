@@ -4,6 +4,8 @@
 - [[sistema/identidade-da-marca]]
 - [[sistema/tom-de-voz]]
 - [[sistema/regras-de-ouro]]
+- [[sistema/fluxo-conversacional]]
+- [[sistema/regras-do-proprietario]]
 
 ## Cardápio
 - [[cardapio/bolos]]
@@ -19,7 +21,7 @@
 - [[operacao/retirada]]
 - [[operacao/pix]]
 - [[operacao/formas-de-pagamento]]
-- [[operacao/taxas]]
+- [[restricoes/taxas]]
 
 ## Fluxos
 - [[fluxos/fluxo-pedido-completo]]
@@ -27,13 +29,15 @@
 - [[fluxos/fluxo-delivery]]
 - [[fluxos/fluxo-retirada]]
 - [[fluxos/fluxo-pix]]
+- [[fluxos/fluxo-cliente-retornando]]
+- [[fluxos/fluxo-cancelamento]]
 
-## Restrições
+## Restrições e Memória de Erros
 - [[restricoes/produtos-que-nao-fazemos]]
-- [[restricoes/erros-comuns]]
+- [[restricoes/erros-comuns]] ← casos reais que NUNCA devem se repetir
 
 ## Apoio
 - [[memoria-operacional]]
-- [[modelos/respostas]]
+- [[operacao/modelos/respostas]]
 - [[vendas/estrategia]]
 - [[admin/controle]]

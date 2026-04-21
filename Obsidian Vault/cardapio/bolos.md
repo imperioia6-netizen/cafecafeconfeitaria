@@ -138,9 +138,43 @@
 
 ## ⚠️ REGRAS IMPORTANTES
 
-- Personalização: +R$30
-- NÃO trabalhamos com papel de arroz
+- Decoração COLORIDA (temas: Homem Aranha, Princesa, Patrulha Canina etc.): +R$30 — SIM FAZEMOS! NUNCA dizer que não fazemos decoração de personagem/tema.
+- Escrita personalizada: +R$15
+- Papel de arroz: +R$30 — NÃO FAZEMOS. Cliente TRAZ de casa a arte pronta.
 - Bolos com frutas → não recomendado ficar +24h
+- Bolos de frutas precisam de mínimo 1 dia de antecedência
+- Bolo de 4kg = SOMENTE RETIRADA! NUNCA oferecer delivery.
+
+---
+
+## BOLO MEIO A MEIO
+
+- Peso dividido igualmente entre os sabores
+- Exemplos: 2kg → 1kg de cada | 3kg → 1,5kg de cada | 4kg → 2kg de cada
+- Divisão desigual NÃO é permitida
+- CÁLCULO: verificar preço/kg de cada sabor. Se forem diferentes, usar o MAIOR preço
+- Fórmula: valor_total = peso_total × preço_utilizado (o maior dos dois)
+- Exemplo: Brigadeiro (R$102/kg) + Maracujá c/ Brigadeiro Branco (R$137/kg) → 2kg × R$137 = R$274
+
+---
+
+## DECORAÇÃO
+
+- Decoração COLORIDA (temas: Homem Aranha, Princesa, etc.): R$30,00 — SIM FAZEMOS!
+- Escrita personalizada: R$15,00
+- Papel de arroz: R$30,00 — NÃO fazemos. Cliente TRAZ de casa.
+- Só informar e somar se o cliente pedir
+- Anotar exatamente a descrição da decoração nas observações (sem resumir, sem picotar, sem inventar)
+- Usar o texto original do cliente — NUNCA abreviar
+
+---
+
+## BOLOS DO DIA (R$25,00 A FATIA)
+
+- Massa branca: Chocomix, Ninho, Ninho com Morango, Cocada, Bem Casado, Casadinho, Frutas, Ameixa
+- Massa chocolate: Brigadeiro, Prestígio, Dois Amores, Maracujá com Brigadeiro
+- Outros sabores podem variar: Trufado, Jufeh, Trufado com Ninho, Napolitano, Tentação, Floresta, Delícia de Coco, Nozes, Mia, Ouro Branco
+- Se o cliente quiser o bolo inteiro/por kg → aplicar regras normais de preço
 
 ---
 

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sanitizeMessage, sanitizeHistory, MAX_MESSAGE_LENGTH } from "./security.ts";
-import { buildAtendenteBasePrompt } from "./atendentePromptBase.ts";
+// buildAtendenteBasePrompt import removido — era usado apenas pelo dead code buildAtendentePrompt()
 import {
   buildModularAtendentePrompt,
   type PromptIntent,
@@ -19,9 +19,6 @@ const FALLBACK_ASSISTENTE = "No momento não consegui processar. Pode repetir em
 
 /** Resposta padrão quando a IA falha (atendente). */
 const FALLBACK_ATENDENTE = "Obrigado pela mensagem! Nossa equipe já foi avisada e em breve retorna. Qualquer dúvida, estamos à disposição.";
-
-/** Link fixo do cardápio completo em PDF (Drive). */
-const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
 
 /**
  * Capacidades de dados que o agente pode usar.
@@ -142,40 +139,57 @@ export async function buildDataContext(
   return ctx;
 }
 
-export function buildAssistentePrompt(
+/**
+ * Monta o prompt do assistente do dono.
+ * Tenta buscar do knowledge_base (vault) e usa fallback hardcoded se necessário.
+ */
+export async function buildAssistentePrompt(
+  supabase: SupabaseClient,
   dataContext: Record<string, unknown>,
   customInstructions?: string | null
-): string {
+): Promise<string> {
   const ctxStr = JSON.stringify(dataContext, null, 2);
   const truncated = ctxStr.length > 12000 ? ctxStr.slice(0, 11900) + "\n...(dados truncados)" : ctxStr;
   const safeCustom = (customInstructions || "").trim().slice(0, 2000).replace(/\n/g, " ");
   const customBlock = safeCustom
     ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (siga também aqui):\n${safeCustom}\n`
     : "";
-  return `Você é o assistente pessoal do dono do Café Café Confeitaria — um parceiro de confiança que conhece o negócio e fala como pessoa real. Você atua como assistente de gestão quando o dono pergunta por vendas, pedidos, estoque ou relatórios.${customBlock}
+
+  // Buscar prompt do vault (knowledge_base)
+  let basePrompt = "";
+  try {
+    const { data } = await supabase
+      .from("knowledge_base")
+      .select("conteudo")
+      .eq("caminho", "sistema/assistente-dono")
+      .eq("ativa", true)
+      .maybeSingle();
+    if (data?.conteudo) {
+      basePrompt = data.conteudo;
+    }
+  } catch (e) {
+    console.warn("Vault fetch for assistente-dono failed:", (e as Error).message);
+  }
+
+  // Fallback hardcoded se vault estiver vazio
+  if (!basePrompt) {
+    basePrompt = `Você é o assistente pessoal do dono do Café Café Confeitaria — um parceiro de confiança que conhece o negócio e fala como pessoa real. Você atua como assistente de gestão quando o dono pergunta por vendas, pedidos, estoque ou relatórios.
 
 PERSONALIDADE E TOM:
 - Fale em português brasileiro, de forma natural e calorosa, como numa conversa de WhatsApp com o dono.
 - Com o dono você pode ser mais objetivo e usar listas quando for relatório ou muitos números.
 - Use "você" e "a gente"; evite linguagem corporativa ou robótica.
-- Quando fizer sentido, faça uma pergunta de follow-up ou um comentário breve.
-- Se os dados forem positivos, reconheça de forma genuína; se houver algo para atenção, seja direto mas empático.
 
 FUNÇÕES PARA O PROPRIETÁRIO:
-- Relatórios: se o dono pedir relatório e não indicar período, use últimos 7 dias. Informe: total vendido, número de pedidos, ticket médio, produtos mais vendidos.
-- Estoque: quando pedir estoque, mostrar produtos com estoque baixo e estoque crítico.
-- Alertas: você pode avisar o dono quando houver estoque baixo, produto acabando, aumento de vendas ou produto com baixa saída (ex.: "O bolo de prestígio está quase acabando no estoque.").
-- Sugestões: pode sugerir produzir mais de um produto, fazer promoção ou retirar produto com pouca saída — sempre como sugestão.
-- Análise de vendas: organize de forma clara (total vendido, pedidos, ticket médio; produtos mais vendidos; produtos com pouca saída). Pode apontar tendências (ex.: "O bolo de brigadeiro está vendendo muito mais que os outros sabores.").
+- Relatórios, estoque, alertas, sugestões e análise de vendas.
 
 REGRAS DE DADOS:
 - Use APENAS os dados fornecidos abaixo. Nunca invente números, nomes ou fatos.
-- Se não houver dado para o que foi perguntado, diga isso de forma natural.
+- Se não houver dado para o que foi perguntado, diga isso de forma natural.`;
+    console.warn("Usando fallback hardcoded para assistente-dono (vault vazio ou indisponível)");
+  }
 
-PDF E DOCUMENTOS:
-- A mensagem do dono pode incluir "[Conteúdo do PDF anexado]" com texto extraído de um PDF.
-- Analise esse conteúdo quando o dono pedir para registrar algo, conferir comprovante ou usar informações do documento.
-- Resuma, extraia dados relevantes (valores, datas, nomes) e responda com base no que está no PDF quando fizer sentido.
+  return `${basePrompt}${customBlock}
 
 DADOS ATUAIS DA PLATAFORMA (use só isso para responder):
 ${truncated}`;
@@ -192,90 +206,8 @@ function getPaymentInfoFromSettings(settings: { key: string; value: string }[]):
   return parts.join(". ");
 }
 
-export function buildAtendentePrompt(
-  contactName: string,
-  promoSummary: string,
-  paymentInfo: string,
-  customInstructions?: string | null,
-  cardapioAcai?: string | null,
-  cardapioProdutos?: string | null,
-  cardapioProdutosDetalhado?: string | null
-): string {
-  const safeName = contactName.slice(0, 100).replace(/\n/g, " ");
-  const safePromo = promoSummary.slice(0, 500).replace(/\n/g, " ");
-  const safePayment = paymentInfo.slice(0, 800).replace(/\n/g, " ");
-  // Mantém quase todo o texto das instruções do proprietário (até 6000 caracteres) e preserva quebras de linha
-  const safeCustom = (customInstructions || "").trim().slice(0, 6000);
-  const customBlock = safeCustom
-    ? `\n\nINSTRUÇÕES DO PROPRIETÁRIO (PRIORIDADE MÁXIMA):\n${safeCustom}\n`
-    : "";
-  const acaiBlock = (cardapioAcai || "").trim()
-    ? `
-
-AÇAÍ (MONTAR) E COMPLEMENTOS:
-${cardapioAcai}
-- Pergunte quais complementos o cliente deseja e anote na observação do pedido.
-- Para entrega, confirme os complementos antes de fechar.`
-    : "";
-
-  const cardapioDetalhado = (cardapioProdutosDetalhado || "").trim();
-  const cardapioBlock = cardapioDetalhado
-    ? `
-
-CARDÁPIO E PREÇOS (FONTE DE VERDADE PARA VALORES):
-${cardapioDetalhado}
-
-REGRA DE BOLOS POR KG:
-- valor_total = preço_por_kg × quantidade_em_kg. NUNCA informe o preço de 1kg para 2kg ou mais.
-- Encomenda acima de R$300: entrada de 50%. Até R$300: pagamento integral.
-`
-    : "";
-
-  const createBlock = (cardapioProdutos || "").trim()
-    ? `
-
-REGISTRO AUTOMÁTICO NA PLATAFORMA:
-- Quando o cliente finalizar o pedido E enviar comprovante, inclua no FINAL da resposta o bloco correspondente (o cliente não vê).
-
-1) PEDIDO NORMAL: [CRIAR_PEDIDO] com JSON. Nomes exatos: ${(cardapioProdutos ?? "").replace(/\n/g, ", ")}.
-Exemplo: [CRIAR_PEDIDO]{"customer_name":"Nome","customer_phone":"5511999999999","channel":"delivery","order_number":"","table_number":"","payment_method":"pix","items":[{"recipe_name":"Abacaxi com Creme","quantity":1,"unit_type":"whole","notes":""}]}[/CRIAR_PEDIDO]
-- Se o cliente pedir decoração, escreva no campo "notes" do item a descrição EXATA que o cliente falou.
-
-2) ENCOMENDA acima de R$300 (50% entrada): [CRIAR_ENCOMENDA] com paid_50_percent=true.
-Exemplo: [CRIAR_ENCOMENDA]{"customer_name":"Nome","customer_phone":"5511999999999","product_description":"Bolo 1kg","quantity":1,"total_value":320,"address":"Rua X 123","payment_method":"pix","paid_50_percent":true,"observations":"","delivery_date":"2025-03-15","delivery_time_slot":"14h às 18h"}[/CRIAR_ENCOMENDA]
-- Se houver decoração, coloque a descrição EXATA do cliente no campo "observations".
-
-3) QUITAR ENCOMENDA (restante dos 50%): [QUITAR_ENCOMENDA] com customer_phone, payment_value, payment_date.
-Exemplo: [QUITAR_ENCOMENDA]{"customer_phone":"5511999999999","payment_value":60,"payment_date":"2025-03-20"}[/QUITAR_ENCOMENDA]
-
-4) CADASTRO DO CLIENTE: [ATUALIZAR_CLIENTE] quando tiver nome, telefone, email, endereço e aniversário.
-Formato: [ATUALIZAR_CLIENTE]{"name":"Nome","phone":"5511999999999","email":"email@exemplo.com","address":"Rua, número, bairro, cidade","birthday":"1990-05-15"}[/ATUALIZAR_CLIENTE]
-
-5) DÚVIDA / ACIONAR EQUIPE: [ALERTA_EQUIPE]Texto curto explicando a dúvida.[/ALERTA_EQUIPE]`
-    : "";
-
-  const basePrompt = buildAtendenteBasePrompt();
-  return `REGRA #1 — SÓ PRODUTOS DO CARDÁPIO:
-Você SÓ pode citar, recomendar ou mencionar produtos que estejam na lista "CARDÁPIO E PREÇOS" deste prompt. Se não está na lista, NÃO EXISTE. Nunca invente sabores.
-
-REGRA #2 — CONVERSA CONTÍNUA:
-Leia o histórico inteiro antes de responder. Mantenha coerência. Não repita perguntas já respondidas.
-
-${basePrompt}
-${customBlock}
-${acaiBlock}
-${cardapioBlock}
-${createBlock}
-
-INFORMAÇÕES DO CONTATO:
-- Nome: ${safeName || "não informado"}
-- Promoções: ${safePromo || "nenhuma"}
-- Pagamento: ${safePayment}
-
-CARDÁPIO COMPLETO EM PDF: ${CARDAPIO_PDF_URL}
-- Envie o link quando pedirem o cardápio completo. Se perguntarem preço específico, informe o valor direto.
-`;
-}
+// buildAtendentePrompt removido — era dead code (exportado mas nunca importado).
+// Instruções de CRIAR_PEDIDO/ENCOMENDA agora vivem no vault: sistema/registro-pedido-automatico
 
 export type LlmConfig = { apiKey: string; baseUrl: string; model: string };
 
@@ -372,7 +304,7 @@ export async function runAssistente(
     ]);
     const instructionsRow = (settingsRes.data || []).find((s: { key: string; value: string }) => s.key === "atendente_instructions");
     const customInstructions = instructionsRow?.value ?? null;
-    const systemPrompt = buildAssistentePrompt(dataContext, customInstructions);
+    const systemPrompt = await buildAssistentePrompt(supabase, dataContext, customInstructions);
     const config = await getLlmConfig(supabase);
     if (config) {
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
@@ -524,51 +456,27 @@ export async function runAtendente(
         allRecipes as RecipeInfo[]
       );
 
-      // 3. Se encontrou notas → usar prompt inteligente
-      if (decisionCtx.notasRelevantes) {
-        systemPrompt = buildSmartPrompt(decisionCtx);
-      } else if (modularOpts) {
-        // Fallback: prompt modular hardcoded
-        console.warn("knowledge_base vazio — usando prompt modular hardcoded");
-        systemPrompt = buildModularAtendentePrompt({
-          intent: modularOpts.intent,
-          stage: modularOpts.stage,
-          hasOrderInProgress: modularOpts.hasOrderInProgress,
-          contactName,
-          promoSummary,
-          paymentInfo,
-          customInstructions,
-          cardapioAcai: cardapioAcai || null,
-          cardapioProdutos: cardapioProdutos || null,
-          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
-          deliveryZonesText: deliveryZonesText || null,
-        });
-      } else {
-        systemPrompt = buildAtendentePrompt(
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
-        );
+      // 3. SEMPRE usar buildSmartPrompt (vault-based)
+      // Mesmo se vault estiver vazio, o smartPrompt é enxuto e correto
+      systemPrompt = buildSmartPrompt(decisionCtx);
+
+      // Se vault estava vazio, logar para debug (mas NÃO usar fallback pesado)
+      if (!decisionCtx.notasRelevantes) {
+        console.warn("knowledge_base retornou vazio — usando smartPrompt mínimo (sem fallback hardcoded)");
       }
     } catch (e) {
       console.error("decisionLayer falhou:", (e as Error).message);
-      // Fallback total
-      if (modularOpts) {
-        systemPrompt = buildModularAtendentePrompt({
-          intent: modularOpts.intent,
-          stage: modularOpts.stage,
-          hasOrderInProgress: modularOpts.hasOrderInProgress,
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai: cardapioAcai || null,
-          cardapioProdutos: cardapioProdutos || null,
-          cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
-          deliveryZonesText: deliveryZonesText || null,
-        });
-      } else {
-        systemPrompt = buildAtendentePrompt(
-          contactName, promoSummary, paymentInfo, customInstructions,
-          cardapioAcai || null, cardapioProdutos || null, cardapioProdutosDetalhado || null
-        );
-      }
+      // Fallback MÍNIMO — nunca mais usar buildModularAtendentePrompt pesado
+      systemPrompt = buildModularAtendentePrompt({
+        intent: modularOpts?.intent || "other",
+        stage: modularOpts?.stage || "start",
+        hasOrderInProgress: modularOpts?.hasOrderInProgress || false,
+        contactName, promoSummary, paymentInfo, customInstructions,
+        cardapioAcai: cardapioAcai || null,
+        cardapioProdutos: cardapioProdutos || null,
+        cardapioProdutosDetalhado: cardapioProdutosDetalhado || null,
+        deliveryZonesText: deliveryZonesText || null,
+      });
     }
 
     const config = await getLlmConfig(supabase);

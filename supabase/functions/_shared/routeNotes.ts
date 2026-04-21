@@ -8,6 +8,8 @@
 
 export type Intent =
   | "greeting"
+  | "returning_customer"
+  | "cancel"
   | "hours"
   | "address"
   | "payment"
@@ -45,8 +47,20 @@ const NOTE_ROUTES: Record<Intent, string[]> = {
     "sistema/identidade-da-marca",
     "sistema/tom-de-voz"
   ],
+  returning_customer: [
+    "fluxos/fluxo-cliente-retornando",
+    "sistema/tom-de-voz",
+    "sistema/identidade-da-marca",
+    "operacao/status-pedido"
+  ],
+  cancel: [
+    "fluxos/fluxo-cancelamento",
+    "sistema/tom-de-voz"
+  ],
   hours: [
-    "operacao/horarios"
+    "operacao/horarios",
+    "sistema/horario-sistema",
+    "operacao/delivery"
   ],
   address: [
     "operacao/retirada",
@@ -56,7 +70,8 @@ const NOTE_ROUTES: Record<Intent, string[]> = {
   payment: [
     "operacao/formas-de-pagamento",
     "operacao/pix",
-    "fluxos/fluxo-pix"
+    "fluxos/fluxo-pix",
+    "sistema/registro-pedido-automatico"
   ],
   delivery: [
     "operacao/delivery",
@@ -69,14 +84,18 @@ const NOTE_ROUTES: Record<Intent, string[]> = {
   ],
   cakes: [
     "cardapio/bolos",
-    "restricoes/produtos-que-nao-fazemos"
+    "restricoes/produtos-que-nao-fazemos",
+    "operacao/encomenda",
+    "operacao/delivery"
   ],
   cake_slice: [
     "cardapio/fatias",
     "memoria-op/memoria-operacional"
   ],
   savories: [
-    "cardapio/salgados"
+    "cardapio/salgados",
+    "operacao/delivery",
+    "operacao/formas-de-pagamento"
   ],
   mini_savories: [
     "cardapio/mini-salgados",
@@ -94,17 +113,34 @@ const NOTE_ROUTES: Record<Intent, string[]> = {
   order_now: [
     "fluxos/fluxo-pedido-completo",
     "sistema/validacao-do-pedido",
+    "sistema/registro-pedido-automatico",
     "operacao/formas-de-pagamento",
+    "operacao/delivery",
+    "operacao/retirada",
+    "operacao/encomenda",
+    "operacao/taxas",
     "modelos/perguntas",
     "modelos/respostas",
+    "restricoes/produtos-que-nao-fazemos",
+    "cardapio/salgados",
+    "cardapio/mini-salgados",
+    "cardapio/bolos",
     "vendas/upsell"
   ],
   pre_order: [
     "operacao/encomenda",
+    "operacao/delivery",
+    "operacao/retirada",
+    "operacao/taxas",
     "fluxos/fluxo-encomenda",
     "sistema/validacao-do-pedido",
+    "sistema/registro-pedido-automatico",
     "modelos/perguntas",
-    "modelos/respostas"
+    "modelos/respostas",
+    "restricoes/produtos-que-nao-fazemos",
+    "cardapio/salgados",
+    "cardapio/mini-salgados",
+    "cardapio/bolos"
   ],
   pricing: [
     "cardapio/bolos",
@@ -138,7 +174,20 @@ function pushIfMissing(target: string[], value: string) {
 }
 
 export function routeNotes(intent: Intent, entities: Entities): string[] {
-  const notes = [...(NOTE_ROUTES[intent] || NOTE_ROUTES.unknown)];
+  // SEMPRE carregar regras conversacionais, tom de voz e informações operacionais críticas
+  const notes = [
+    "sistema/fluxo-conversacional",
+    "sistema/fluxo-geral-atendimento",
+    "sistema/tom-de-voz",
+    "sistema/regras-do-proprietario",
+    "sistema/regras-de-ouro",
+    "restricoes/regras-fluxo-conversa",
+    "restricoes/erros-comuns",
+    "restricoes/produtos-que-nao-fazemos",
+    "operacao/horarios",
+    "sistema/horario-sistema",
+    ...(NOTE_ROUTES[intent] || NOTE_ROUTES.unknown),
+  ];
 
   if (entities.mentionsCake) {
     pushIfMissing(notes, "cardapio/bolos");
