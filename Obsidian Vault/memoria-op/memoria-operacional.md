@@ -1,33 +1,17 @@
-# Memória Operacional
+MEMORIA OPERACIONAL
 
-## Usar para:
+CONSULTAR ANTES DE RESPONDER:
 
-- Produtos em falta
-- Avisos do dia
-- Problemas temporários
-- Mudanças no dia
-- Problemas internos
-- Avisos da equipe
-## Regra
+PRODUTOS INDISPONIVEIS HOJE:
+- (consultar equipe diariamente)
 
-Sempre consultar antes de responder
-⚠️ Sempre prioridade máxima
+BOLOS DA VITRINE HOJE:
+- (consultar equipe — sabores variam diariamente)
 
-# Memória Operacional
+ALTERACOES DO DIA:
+- (verificar se ha avisos)
 
-## Atualizar diariamente
+AVISOS INTERNOS:
+- (verificar se ha problemas temporarios)
 
-### Produtos indisponíveis
-- (preencher)
-
-### Alterações do dia
-- (preencher)
-
-### Avisos internos
-- (preencher)
-
----
-
-## Regra
-
-Sempre consultar antes de responder cliente
+REGRA: Sempre consultar equipe para informacoes do dia via [ALERTA_EQUIPE]. NAO inventar disponibilidade.

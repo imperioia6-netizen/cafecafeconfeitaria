@@ -1,12 +1,8 @@
-# Fatias
+FATIAS DE BOLO
 
-## Regras
-
-- Vendidas apenas do que está na vitrine (sempre consultar)
-- Não fazemos fatia sob encomenda
-
----
-
-## Resposta padrão
-
-"Temos fatias sim, mas são apenas dos bolos disponíveis na vitrine no momento. Vou verificar quais temos hoje pra você 😊"
+- Preco: R$25 por fatia
+- Vendidas SOMENTE do que esta na vitrine
+- NAO fazemos fatia sob encomenda
+- SEMPRE consultar equipe quais sabores tem disponiveis antes de informar
+- "Vou ver com a equipe quais sabores temos hoje!" + [ALERTA_EQUIPE]
+- Quando equipe retornar: "A equipe me retornou e hoje temos: [sabores]"

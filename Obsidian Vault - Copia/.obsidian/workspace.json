@@ -1,0 +1,218 @@
+{
+  "main": {
+    "id": "0f3791fa106926f7",
+    "type": "split",
+    "children": [
+      {
+        "id": "88ca3566aece69ba",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "cb5b5cf6492c96cd",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Visualização em gráfico"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "0b4086a20ba0a5a9",
+    "type": "split",
+    "children": [
+      {
+        "id": "6b0d59ccd88da796",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "09cc8c835d3db550",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "65d7cc149410786c",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "02a711eb7e40bb47",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "0a27e3cf004a26c9",
+    "type": "split",
+    "children": [
+      {
+        "id": "1e9433cf82562b25",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "817a9c0f0586f204",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos"
+            }
+          },
+          {
+            "id": "9044ac113cc8d0fd",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída"
+            }
+          },
+          {
+            "id": "90334b84a272f49a",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "49c2eaa76a2a2f80",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "cbc5fd57c389e956",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "cb5b5cf6492c96cd",
+  "lastOpenFiles": [
+    "fluxos/fluxo-pedido-completo.md",
+    "sistema/fluxo-conversacional.md",
+    "operacao/taxas.md",
+    "restricoes/erros-comuns.md",
+    "cardapio/mini-salgados.md",
+    "cardapio/fatias.md",
+    "cardapio/doces.md",
+    "cardapio/bebidas.md",
+    "fluxos/fluxo-cliente-retornando.md",
+    "fluxos/fluxo-cancelamento.md",
+    "mapa-central.md",
+    "memoria-op/memoria-operacional.md",
+    "sistema/excecoes.md",
+    "restricoes/erros-comuns.md.tmp.5.1774118402362",
+    "sistema/regras-do-proprietario.md.tmp.5.1774118392147",
+    "sistema/regras-do-proprietario.md.tmp.5.1774118377268",
+    "fluxos/fluxo-cliente-retornando.md.tmp.5.1774118370549",
+    "sistema/fluxo-conversacional.md.tmp.5.1774118355863",
+    "sistema/regras-do-proprietario.md.tmp.5.1774116319514",
+    "sistema/fluxo-conversacional.md.tmp.5.1774116305241",
+    "restricoes/erros-comuns.md.tmp.5.1774116269400",
+    "mapa-central.md.tmp.5.1774114857825",
+    "sistema/regras-do-proprietario.md.tmp.5.1774114851283",
+    "sistema/regras-do-proprietario.md",
+    "operacao/modelos/respostas.md",
+    "operacao/horarios.md",
+    "sistema/horario-sistema.md",
+    "fluxos/fluxo-encomenda.md",
+    "operacao/status-pedido.md",
+    "sistema/validacao-do-pedido.md",
+    "vendas/upsell.md",
+    "vendas/estrategia.md",
+    "sistema/tom-de-voz.md",
+    "sistema/regras-de-ouro.md",
+    "sistema/identidade-de-marca.md",
+    "sistema/fluxo-geral-atendimento.md"
+  ]
+}

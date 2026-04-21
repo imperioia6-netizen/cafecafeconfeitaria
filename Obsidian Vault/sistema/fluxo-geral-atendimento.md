@@ -1,37 +1,37 @@
-# Fluxo Geral de Atendimento
+FLUXO GERAL DE ATENDIMENTO
 
-## Ordem obrigatória
+ORDEM OBRIGATORIA:
 
-1. Entender o cliente
-2. Identificar intenção:
-   - informação
-   - pedido
-   - encomenda
+1. IDENTIFICAR SITUACAO:
+   - Cliente novo? -> Boas-vindas + cardapio + perguntar tipo
+   - Cliente com pedido em aberto? -> Perguntar se continua ou novo
+   - Cliente retornando? -> Usar nome, dar contexto
 
-3. Consultar:
-   - cardápio
-   - operação
-   - restrições
+2. ENTENDER INTENCAO:
+   - Informacao/duvida -> responder ou consultar equipe
+   - Pedido novo -> seguir fluxo (delivery/encomenda/retirada)
+   - Continuar pedido -> retomar de onde parou
 
-4. Responder com clareza
+3. COLETAR INFORMACOES:
+   - Produto, quantidade/peso, sabor
+   - Data e horario
+   - Tipo (delivery/encomenda/retirada)
+   - Nome completo e sobrenome
+   - Endereco com CEP (se entrega)
 
-5. Se for pedido:
-   - seguir fluxo completo
-   - registrar
+4. CALCULAR E CONFIRMAR:
+   - Calcular total correto
+   - Informar sinal se necessario
+   - Resumir pedido UMA VEZ
+   - Confirmar com cliente
 
-## Regras
+5. FINALIZAR:
+   - Forma de pagamento
+   - Aguardar comprovante (se PIX)
+   - Registrar na plataforma
 
+REGRAS:
 - Nunca pular etapas
-- Nunca assumir informação
+- Nunca assumir informacao
 - Sempre validar antes de confirmar
-
-## Situações especiais
-
-### Cliente indeciso
-→ sugerir opções
-
-### Produto indisponível
-→ oferecer alternativa
-
-### Pedido urgente fora da regra
-→ acionar responsável
+- Consultar equipe para duvidas

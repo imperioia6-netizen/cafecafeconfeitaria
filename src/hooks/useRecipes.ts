@@ -99,36 +99,15 @@ export function useDeleteRecipe() {
       await supabase.from('auto_promotions').delete().eq('recipe_id', id);
       await supabase.from('alerts').delete().eq('recipe_id', id);
 
-      // Tenta exclusão física primeiro.
-      const { data, error } = await supabase
-        .from('recipes')
-        .delete()
-        .eq('id', id)
-        .select('id');
-
-      if (!error && (data?.length || 0) > 0) {
-        return { mode: 'deleted' as const };
+      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      if (error) {
+        if (error.code === '23503') {
+          throw new Error('Este produto possui vendas ou pedidos associados e não pode ser excluído. Use o botão de desativar.');
+        }
+        throw error;
       }
-
-      // Se não excluiu (RLS/relacionamentos), tenta desativação segura.
-      const { data: updated, error: updErr } = await supabase
-        .from('recipes')
-        .update({ active: false })
-        .eq('id', id)
-        .select('id')
-        .single();
-
-      if (updErr || !updated?.id) {
-        const msg = error?.message || updErr?.message || 'Não foi possível excluir nem desativar o produto.';
-        throw new Error(msg);
-      }
-
-      return { mode: 'deactivated' as const };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['recipes'] });
-      qc.invalidateQueries({ queryKey: ['recipes', 'active'] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
   });
 }
 

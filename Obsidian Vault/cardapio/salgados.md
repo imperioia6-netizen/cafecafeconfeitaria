@@ -1,28 +1,17 @@
-# Salgados
+SALGADOS GRANDES — CARDAPIO
 
-## Tradicionais (R$13)
-- Coxinha
-- Risoles
-- Bolinho de carne
-- Esfiha carne
-- Esfiha frango
-- Esfiha calabresa
-- 3 queijos
-- Enroladinho
-- Hamburgão
+TRADICIONAIS (R$13 cada):
+- Coxinha, Risoles, Bolinho de carne, Esfiha (carne/frango/calabresa), 3 queijos, Enroladinho, Hamburgao
 
-## Outros (R$15)
-- Coxinha com catupiry
-- Kibe
-- Pão de batata
+ESPECIAIS (R$15 cada):
+- Coxinha com catupiry, Kibe, Pao de batata
 
-## Empadas (R$17)
-- Palmito
-- Frango com catupiry
-- Carne seca
-- 3 queijos
+EMPADAS (R$17 cada):
+- Palmito, Frango com catupiry, Carne seca, 3 queijos
 
-## Quiche (R$17)
-- Brócolis
-- Alho poró
-- Queijo
+QUICHE (R$17 cada):
+- Brocolis, Alho poro, Queijo
+
+IMPORTANTE:
+- Hamburgao e SOMENTE salgado grande, NAO e mini salgado
+- Coxinha com catupiry e SOMENTE salgado grande, NAO existe mini

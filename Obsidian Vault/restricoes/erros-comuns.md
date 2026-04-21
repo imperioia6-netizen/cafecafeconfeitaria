@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Erros Reais Observados — NUNCA REPETIR
 
 > Casos REAIS que o proprietário flagou. Cada erro aqui aconteceu de verdade.
@@ -150,3 +151,24 @@ Os prints de ícone branco (08:22-08:33) mostraram melhora de 80%:
 ## Regra de ouro
 
 A memória de erros só cresce — nunca se apaga. Cada erro novo é adicionado com número, data e caso real.
+=======
+ERROS QUE NUNCA PODE COMETER
+
+ERROS CRITICOS:
+- Inventar sabor, preco ou disponibilidade
+- Confundir bolo com salgado (sugerir Coxinha como sabor de bolo)
+- Colocar lista de salgados no final de mensagem sobre bolos SEM MOTIVO
+- Aceitar 90, 30, 60 docinhos/salgados (so multiplo de 25)
+- Aceitar delivery de bolo 4kg+ (so ate 3kg)
+- Aceitar meio a meio de 1kg (so a partir de 2kg)
+- Ignorar pergunta do cliente e responder sobre outro assunto
+- Mostrar tags internas ([HORARIO], [CALCULO] etc)
+- Aceitar forma de pagamento diferente sem consultar equipe
+- Mini coxinha com catupiry (nao existe)
+- Mini 3 queijos, mini enroladinho, mini hamburgao (nao existem)
+- Peso quebrado (1,5kg, 2,5kg, 5,5kg)
+- Decoracao sem especificar tipo e valor
+- Dizer que fazemos papel de arroz (cliente traz de casa)
+
+REGRA: Se nao tem certeza, consultar equipe via [ALERTA_EQUIPE].
+>>>>>>> cd4102b2f4a9c865d356e9abc225b15584703818

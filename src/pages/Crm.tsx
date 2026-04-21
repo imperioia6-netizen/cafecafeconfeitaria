@@ -17,7 +17,8 @@ import N8nSettingsPanel from '@/components/crm/N8nSettingsPanel';
 import LeadsKanban from '@/components/crm/LeadsKanban';
 import CustomerForm from '@/components/crm/CustomerForm';
 import CustomerFichaCard from '@/components/crm/CustomerFichaCard';
-import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, Plus, ContactRound } from 'lucide-react';
+import { Search, Users, Cake, AlertTriangle, Settings, ArrowUpDown, Columns3, MessageCircle, MessageSquare, Plus, ContactRound } from 'lucide-react';
+import LiveChatsPanel from '@/components/crm/LiveChatsPanel';
 
 type SortKey = 'name' | 'total_spent' | 'last_purchase_at' | 'created_at';
 
@@ -58,7 +59,13 @@ const Crm = () => {
         case 'total_spent': return Number(b.total_spent) - Number(a.total_spent);
         case 'last_purchase_at': return (b.last_purchase_at || '').localeCompare(a.last_purchase_at || '');
         case 'created_at': return (b.created_at || '').localeCompare(a.created_at || '');
-        default: return a.name.localeCompare(b.name);
+        default: {
+          const aIsNum = /^\d+$/.test(a.name.replace(/[~*\s]/g, ''));
+          const bIsNum = /^\d+$/.test(b.name.replace(/[~*\s]/g, ''));
+          if (aIsNum && !bIsNum) return 1;
+          if (!aIsNum && bIsNum) return -1;
+          return a.name.localeCompare(b.name);
+        }
       }
     });
 
@@ -77,6 +84,7 @@ const Crm = () => {
     { value: 'pipeline', label: 'Pipeline', icon: Columns3 },
     { value: 'aniversarios', label: 'Aniversários', icon: Cake },
     { value: 'reativacao', label: 'Reativação', icon: AlertTriangle },
+    { value: 'conversas', label: 'Conversas', icon: MessageSquare },
     { value: 'config', label: 'Config', icon: Settings },
   ];
 
@@ -266,6 +274,11 @@ const Crm = () => {
           {/* ─── Reativação Tab ─── */}
           <TabsContent value="reativacao">
             <ReactivationPanel />
+          </TabsContent>
+
+          {/* ─── Conversas Tab ─── */}
+          <TabsContent value="conversas">
+            <LiveChatsPanel />
           </TabsContent>
 
           {/* ─── Config Tab ─── */}
