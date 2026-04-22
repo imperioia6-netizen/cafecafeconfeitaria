@@ -243,13 +243,44 @@ export async function callLlm(
   signal?: AbortSignal | null
 ): Promise<string> {
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
-  const recentHistory = history.slice(-20).map((m) => ({
+  const recentHistoryRaw = history.slice(-20).map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content.slice(0, 2000),
   }));
 
   // ── Detecta provider pela baseUrl ──
   const isAnthropic = /api\.anthropic\.com/i.test(config.baseUrl);
+
+  // Anthropic exige que mensagens ALTERNEM role (user → assistant → user …),
+  // que comecem com 'user' e NUNCA repitam duas do mesmo role em sequência.
+  // OpenAI é mais tolerante, mas normalizar não atrapalha.
+  // Normalização:
+  //  1. Descarta primeiras mensagens até achar a 1ª 'user'.
+  //  2. Colapsa mensagens consecutivas do mesmo role (junta conteúdo).
+  const normalizedHistory: { role: "user" | "assistant"; content: string }[] = [];
+  let skippedInitialAssistant = false;
+  for (const m of recentHistoryRaw) {
+    if (!skippedInitialAssistant) {
+      if (m.role !== "user") continue;
+      skippedInitialAssistant = true;
+    }
+    const last = normalizedHistory[normalizedHistory.length - 1];
+    if (last && last.role === m.role) {
+      // Mesmo role seguido — colapsa em uma só mensagem.
+      last.content = `${last.content}\n${m.content}`.slice(0, 4000);
+    } else {
+      normalizedHistory.push({ role: m.role, content: m.content });
+    }
+  }
+  // Se a última mensagem do histórico normalizado é 'user', precisamos
+  // juntá-la à safeMessage pra não mandar duas 'user' seguidas.
+  let finalUserContent = safeMessage;
+  const lastNorm = normalizedHistory[normalizedHistory.length - 1];
+  if (lastNorm && lastNorm.role === "user") {
+    finalUserContent = `${lastNorm.content}\n${safeMessage}`.slice(0, 4000);
+    normalizedHistory.pop();
+  }
+  const recentHistory = normalizedHistory;
 
   if (isAnthropic) {
     // Endpoint, header e body formato Anthropic.
@@ -297,7 +328,7 @@ export async function callLlm(
               system: systemPrompt,
               messages: [
                 ...recentHistory,
-                { role: "user", content: safeMessage },
+                { role: "user", content: finalUserContent },
               ],
             }),
           });
@@ -339,7 +370,7 @@ export async function callLlm(
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
     ...recentHistory,
-    { role: "user", content: safeMessage },
+    { role: "user", content: finalUserContent },
   ];
   const url = `${config.baseUrl}/chat/completions`;
   const candidates = new Set<string>([config.model]);
