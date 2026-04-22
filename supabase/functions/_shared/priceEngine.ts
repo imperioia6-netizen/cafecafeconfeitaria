@@ -467,6 +467,34 @@ export function enforceIntentAlignment(
     }
   }
 
+  // 10) start_order + resposta já enviando PIX/sinal/chave = pular etapas.
+  //     O correto é: anotar item + perguntar "mais alguma coisa?".
+  if (
+    ctx.intent === "start_order" &&
+    !ctx.client_short_affirmation
+  ) {
+    const sendsPix =
+      r.includes("chave pix") ||
+      r.includes("pix no banco") ||
+      r.includes("sinal de 50") ||
+      /\b50\s*%/.test(r) ||
+      r.includes("11998287836") ||
+      r.includes("sandra regina") ||
+      r.includes("nubank");
+    if (sendsPix) {
+      const item: string[] = [];
+      if (ctx.entities.flavor && ctx.entities.weight_kg) {
+        item.push(`bolo de ${ctx.entities.flavor} ${ctx.entities.weight_kg}kg`);
+      } else if (ctx.entities.flavor) {
+        item.push(`bolo de ${ctx.entities.flavor}`);
+      } else if (ctx.entities.weight_kg) {
+        item.push(`bolo de ${ctx.entities.weight_kg}kg`);
+      }
+      const anotado = item.length > 0 ? `Anotado: ${item.join(", ")}!` : "Anotado!";
+      return `${anotado} Gostaria de mais alguma coisa ou podemos finalizar? 😊`;
+    }
+  }
+
   return replyText;
 }
 
@@ -1576,6 +1604,21 @@ export function enforceAskBeforePayment(
   if (asksPaymentMethod.test(replyText)) {
     // Substitui por pergunta de continuidade — SÓ depois que cliente fechar
     // é que perguntamos forma de pagamento.
+    return "Anotei! Antes de fechar, gostaria de mais alguma coisa ou podemos finalizar? 😊";
+  }
+
+  // 2.5 A resposta já manda CHAVE PIX / sinal / dados bancários (agent pulou
+  //     direto pra fechamento) — cliente ainda nem disse que era só isso.
+  //     Substitui por pergunta de continuidade.
+  const sendsPixData =
+    /\bchave\s*pix\b/i.test(replyText) ||
+    /pix\s+no\s+banco/i.test(replyText) ||
+    /sinal\s+de\s+50/i.test(replyText) ||
+    /\b50\s*%\b/.test(replyText) ||
+    /\b11998287836\b/.test(replyText) ||
+    /\bsandra\s+regina\b/i.test(replyText) ||
+    /\bnubank\b/i.test(replyText);
+  if (sendsPixData) {
     return "Anotei! Antes de fechar, gostaria de mais alguma coisa ou podemos finalizar? 😊";
   }
 
