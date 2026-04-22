@@ -12,7 +12,11 @@ import type { Intent } from "./routeNotes.ts";
 import type { RecipeInfo } from "./calculator.ts";
 
 /** Timeout para chamada ao LLM (ms). */
-const LLM_TIMEOUT_MS = 28000;
+const LLM_TIMEOUT_MS = 45000;
+/** Quantas tentativas (incluindo a primeira) antes de desistir. */
+const LLM_MAX_ATTEMPTS = 2;
+/** Delay entre tentativas (ms). */
+const LLM_RETRY_DELAY_MS = 1200;
 
 /** Resposta padrão quando a IA falha (assistente). */
 const FALLBACK_ASSISTENTE = "No momento não consegui processar. Pode repetir em poucos segundos ou ver os dados direto no painel.";
@@ -239,12 +243,88 @@ export async function callLlm(
   signal?: AbortSignal | null
 ): Promise<string> {
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
-  // Enviar histórico completo ao LLM (até 20 mensagens, que é o que vem do banco)
-  // Mensagens muito grandes são truncadas para economizar tokens
   const recentHistory = history.slice(-20).map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content.slice(0, 2000),
   }));
+
+  // ── Detecta provider pela baseUrl ──
+  const isAnthropic = /api\.anthropic\.com/i.test(config.baseUrl);
+
+  if (isAnthropic) {
+    // Endpoint, header e body formato Anthropic.
+    // Docs: https://docs.anthropic.com/en/api/messages
+    const url = `${config.baseUrl.replace(/\/$/, "")}/messages`;
+    // Modelos Anthropic oficiais (nomeação 2025). Aceita sinônimos curtos.
+    const MODEL_MAP: Record<string, string> = {
+      "claude-opus-4-6": "claude-opus-4-5-20250929",
+      "claude-opus-4-5": "claude-opus-4-5-20250929",
+      "claude-opus": "claude-opus-4-5-20250929",
+      "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
+      "claude-sonnet": "claude-sonnet-4-5-20250929",
+      "claude-haiku-4-5": "claude-haiku-4-5-20251001",
+      "claude-haiku": "claude-haiku-4-5-20251001",
+    };
+    const resolvedModel = MODEL_MAP[config.model] || config.model;
+    const candidatesA = [resolvedModel, "claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001"];
+    let lastErrA = "";
+    for (const model of candidatesA) {
+      for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            signal,
+            headers: {
+              "x-api-key": config.apiKey,
+              "anthropic-version": "2023-06-01",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 1500,
+              temperature: 0.1,
+              system: systemPrompt,
+              messages: [
+                ...recentHistory,
+                { role: "user", content: safeMessage },
+              ],
+            }),
+          });
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            lastErrA = `anthropic model=${model} attempt=${attempt} status=${res.status} body=${text.slice(0, 300)}`;
+            console.warn("callLlm:", lastErrA);
+            if ((res.status === 429 || res.status >= 500) && attempt < LLM_MAX_ATTEMPTS) {
+              await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
+              continue;
+            }
+            break;
+          }
+          const data = await res.json();
+          const content = data?.content?.[0]?.text;
+          if (typeof content !== "string" || !content.trim()) {
+            lastErrA = `anthropic model=${model} attempt=${attempt} vazio: ${JSON.stringify(data).slice(0, 300)}`;
+            console.warn("callLlm:", lastErrA);
+            break;
+          }
+          return content.slice(0, 4096).trim();
+        } catch (e) {
+          const err = e as Error;
+          lastErrA = `anthropic model=${model} attempt=${attempt} exception=${err.name}:${err.message}`;
+          console.warn("callLlm:", lastErrA);
+          if (err.name === "AbortError") break;
+          if (attempt < LLM_MAX_ATTEMPTS) {
+            await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
+            continue;
+          }
+          break;
+        }
+      }
+    }
+    throw new Error(`Anthropic error: ${lastErrA || "sem resposta"}`);
+  }
+
+  // ── Formato OpenAI (padrão + gateway Lovable) ──
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
     ...recentHistory,
@@ -253,35 +333,67 @@ export async function callLlm(
   const url = `${config.baseUrl}/chat/completions`;
   const candidates = new Set<string>([config.model]);
   if (config.baseUrl.includes("lovable.dev")) {
-    // Gateway pode exigir provider/model. Mantemos fallback para evitar indisponibilidade total.
     candidates.add("openai/gpt-4o");
     candidates.add("gpt-4o");
     candidates.add("google/gemini-3-flash-preview");
   }
 
   let lastErr = "";
+  const promptSize = JSON.stringify(messages).length;
+
+  // Tenta cada modelo, com retry para erros transientes (5xx, 429, timeout).
   for (const model of candidates) {
-    const res = await fetch(url, {
-      method: "POST",
-      signal,
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model, messages, temperature: 0.05, max_tokens: 1500 }),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      lastErr = `model=${model} status=${res.status} ${text.slice(0, 200)}`;
-      continue;
+    for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          signal,
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.05,
+            max_tokens: 1500,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          lastErr = `model=${model} attempt=${attempt} status=${res.status} body=${text.slice(0, 300)} promptSize=${promptSize}`;
+          console.warn("callLlm:", lastErr);
+          // 5xx / 429 → tenta de novo. 4xx diferente → sem retry, vai pro próximo modelo.
+          const transient = res.status === 429 || res.status >= 500;
+          if (transient && attempt < LLM_MAX_ATTEMPTS) {
+            await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
+            continue;
+          }
+          break; // próximo modelo
+        }
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) {
+          lastErr = `model=${model} attempt=${attempt} resposta vazia data=${JSON.stringify(data).slice(0, 300)}`;
+          console.warn("callLlm:", lastErr);
+          break; // próximo modelo — vazio raramente melhora com retry
+        }
+        return content.slice(0, 4096).trim();
+      } catch (e) {
+        const err = e as Error;
+        lastErr = `model=${model} attempt=${attempt} exception=${err.name}:${err.message}`;
+        console.warn("callLlm:", lastErr);
+        if (err.name === "AbortError") {
+          // Timeout — não tenta de novo com mesmo controller; vai pro próximo modelo.
+          break;
+        }
+        if (attempt < LLM_MAX_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
+          continue;
+        }
+        break;
+      }
     }
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.trim()) {
-      lastErr = `model=${model} resposta vazia`;
-      continue;
-    }
-    return content.slice(0, 4096).trim();
   }
 
   throw new Error(`LLM error: ${lastErr || "sem resposta válida dos modelos"}`);
@@ -496,13 +608,31 @@ export async function runAtendente(
     }
 
     const config = await getLlmConfig(supabase);
-    if (config) {
+    if (!config) {
+      console.error(
+        "runAtendente: SEM CONFIG DE LLM (nem agent_api_key em crm_settings, nem LOVABLE_API_KEY env). Cliente vai receber fallback."
+      );
+      return FALLBACK_ATENDENTE;
+    }
+    try {
       const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
       return reply || FALLBACK_ATENDENTE;
+    } catch (llmErr) {
+      console.error(
+        "runAtendente: callLlm FALHOU após retries:",
+        (llmErr as Error).message,
+        "| modelo=",
+        config.model,
+        "baseUrl=",
+        config.baseUrl
+      );
+      return FALLBACK_ATENDENTE;
     }
-    return "Olá! Obrigado pelo contato. Em breve nossa equipe retorna. Qual seu nome?";
   } catch (e) {
-    if ((e as Error).name === "AbortError") return FALLBACK_ATENDENTE;
+    if ((e as Error).name === "AbortError") {
+      console.error("runAtendente: AbortError (timeout geral)");
+      return FALLBACK_ATENDENTE;
+    }
     console.error("runAtendente error:", (e as Error).message);
     return FALLBACK_ATENDENTE;
   } finally {
