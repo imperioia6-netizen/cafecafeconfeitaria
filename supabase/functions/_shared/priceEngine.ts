@@ -470,6 +470,23 @@ export function enforceIntentAlignment(
   return replyText;
 }
 
+// ── Guardrail: placeholders literais não podem sair ao cliente ──
+
+/**
+ * Se o LLM devolveu texto com placeholders literais (ex.: "[produto do
+ * cardápio]", "[sabor]", "[peso]", "[nome]"), é sinal de que ele não
+ * entendeu o contexto. Substituímos por uma mensagem pedindo o cliente
+ * reformular. Evita enviar placeholders do prompt na cara do cliente.
+ */
+export function enforceNoTemplatePlaceholders(replyText: string): string {
+  if (!replyText) return replyText;
+  const PLACEHOLDER_RE =
+    /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|bolo|nome|endere[cç]o|valor|total|cliente|pedido|kg|quantidade|data|hora|hor[aá]rio|cep|bairro|frase|escrita)\s*[^\]]*\]/i;
+  if (!PLACEHOLDER_RE.test(replyText)) return replyText;
+  console.warn("enforceNoTemplatePlaceholders: placeholder detectado, substituindo");
+  return "Opa, me confundi aqui 😅 Pode me dizer novamente o que você quer? Assim anoto certinho.";
+}
+
 // ── Guardrail: saudação do cliente NÃO reativa pedido antigo ──
 
 /**
@@ -502,13 +519,24 @@ export function enforceGreetingReset(
     replyNorm.includes("desculpa a confusao") ||
     replyNorm.includes("pedido atualizado") ||
     replyNorm.includes("seu pedido") ||
+    replyNorm.includes("vejo que voce pediu") ||
+    replyNorm.includes("vi que voce pediu") ||
+    replyNorm.includes("voce pediu") ||
+    replyNorm.includes("seu bolo") ||
+    replyNorm.includes("sua encomenda") ||
     replyNorm.includes("resumo do pedido") ||
     replyNorm.includes("resumo do seu pedido") ||
     replyNorm.includes("pedimos 50") ||
     replyNorm.includes("chave pix") ||
+    replyNorm.includes("mais alguma coisa") ||
+    replyNorm.includes("podemos finalizar") ||
     /\btotal\s*[:r$]/.test(replyNorm) ||
     (replyNorm.match(/r\$\s*\d/g) || []).length >= 2 ||
-    /pix\s+no\s+banco/.test(replyNorm);
+    /pix\s+no\s+banco/.test(replyNorm) ||
+    // Placeholder literal do prompt (ex.: "[produto do cardápio]", "[sabor]") — erro grave.
+    /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|bolo|nome|endere[cç]o|valor|total|cliente)\s*[^\]]*\]/i.test(
+      replyText
+    );
   // Também detecta mensagens de "equipe foi avisada" / "em breve retorna" —
   // são fallbacks inadequados para uma saudação simples.
   const looksLikeFallback =

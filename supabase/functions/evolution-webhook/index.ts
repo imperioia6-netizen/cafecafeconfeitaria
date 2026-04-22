@@ -77,6 +77,7 @@ import {
   enforceIntentAlignment,
   enforceSignalWhenLargeOrder,
   enforceSmartFallback,
+  enforceNoTemplatePlaceholders,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -967,6 +968,10 @@ async function handleCustomerMessage(
 
   // ── Aplicar guardrails finais ──
   reply = guardedReplyClean || replyClean || reply;
+
+  // Placeholder literal ("[produto do cardápio]", etc.) nunca sai pro cliente.
+  // Roda bem cedo no pipeline.
+  reply = enforceNoTemplatePlaceholders(reply);
 
   // Se o LLM retornou FALLBACK_ATENDENTE por timeout/erro, substituímos por
   // uma resposta determinística baseada na intent interpretada. Roda ANTES
