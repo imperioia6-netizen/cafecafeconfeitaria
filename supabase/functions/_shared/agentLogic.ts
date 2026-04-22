@@ -565,7 +565,15 @@ export async function runAtendente(
       supabase.from("crm_settings").select("key, value").in("key", ["payment_pix_key", "payment_instructions", "atendente_instructions"]),
       supabase.from("recipes").select("id, name, sale_price, slice_price, complementos").eq("active", true).eq("category", "acai"),
       supabase.from("recipes").select("id, name, sale_price, slice_price, whole_price").eq("active", true).order("name"),
-      supabase.from("delivery_zones_disponibilidade").select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel").order("bairro").catch(() => ({ data: [] })),
+      // .then no query builder resolve a Promise e aí conseguimos encadear catch.
+      // .catch direto em .order() não existe — por isso o runAtendente quebrava
+      // com "supabase.from(...).order(...).catch is not a function".
+      Promise.resolve(
+        supabase
+          .from("delivery_zones_disponibilidade")
+          .select("bairro, cidade, taxa, taxa_max, distancia_km, max_pedidos_dia, pedidos_hoje, vagas_restantes, disponivel")
+          .order("bairro")
+      ).catch(() => ({ data: [] })),
     ]);
     const promos = (promosRes.data || []) as { discount_percent?: number; promo_price?: number }[];
     const promoSummary = promos.length
