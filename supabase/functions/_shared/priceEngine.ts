@@ -470,6 +470,60 @@ export function enforceIntentAlignment(
   return replyText;
 }
 
+// ── Guardrail: primeira saudação segue template fixo ──
+
+/**
+ * Quando o cliente manda uma saudação e é a PRIMEIRA mensagem da
+ * conversa (ou não há histórico relevante), a resposta deve seguir o
+ * template canônico: "Oi! Bem-vindo(a) à Café Café Confeitaria 😊
+ * Aqui está nosso cardápio: http://bit.ly/3OYW9Fw — se precisar de
+ * ajuda é só me dizer! E já pode me informar por favor: é delivery,
+ * encomenda ou retirada?"
+ *
+ * Se há pedido em aberto (histórico sinaliza), usa "Oi novamente" +
+ * pergunta de continuar ou iniciar novo.
+ */
+export interface WelcomeContext {
+  clientIsGreeting: boolean;
+  isFirstInteraction: boolean;
+  hasOpenOrderPending: boolean;
+  clientName?: string;
+}
+
+const CARDAPIO_URL = "http://bit.ly/3OYW9Fw";
+
+export function enforceWelcomeTemplate(
+  replyText: string,
+  ctx: WelcomeContext
+): string {
+  if (!ctx.clientIsGreeting) return replyText;
+
+  const nameBit = ctx.clientName ? ` ${ctx.clientName}` : "";
+
+  if (ctx.hasOpenOrderPending) {
+    const r = normalizeForCompare(replyText);
+    const alreadyAsksContinue =
+      r.includes("continuar") && (r.includes("pedido") || r.includes("novo"));
+    if (!alreadyAsksContinue) {
+      return `Oi novamente${nameBit}! 😊 Você ainda tem um pedido em aberto — quer continuar com ele ou iniciar um novo?`;
+    }
+    return replyText;
+  }
+
+  if (ctx.isFirstInteraction) {
+    const r = normalizeForCompare(replyText);
+    const alreadyHasCardapio = r.includes("cardapio") || r.includes("bit.ly");
+    const alreadyAsksModality =
+      (r.includes("delivery") || r.includes("entrega")) &&
+      (r.includes("encomenda") || r.includes("retirada"));
+    if (!alreadyHasCardapio || !alreadyAsksModality) {
+      return `Oi${nameBit}! Bem-vindo(a) à Café Café Confeitaria 😊 Aqui está nosso cardápio: ${CARDAPIO_URL} — se precisar de ajuda é só me dizer! E já pode me informar por favor: é delivery, encomenda ou retirada?`;
+    }
+  }
+
+  return replyText;
+}
+
 // ── Guardrail: placeholders literais não podem sair ao cliente ──
 
 /**

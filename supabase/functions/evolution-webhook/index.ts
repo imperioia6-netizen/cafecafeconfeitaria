@@ -78,6 +78,7 @@ import {
   enforceSignalWhenLargeOrder,
   enforceSmartFallback,
   enforceNoTemplatePlaceholders,
+  enforceWelcomeTemplate,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -972,6 +973,27 @@ async function handleCustomerMessage(
   // Placeholder literal ("[produto do cardápio]", etc.) nunca sai pro cliente.
   // Roda bem cedo no pipeline.
   reply = enforceNoTemplatePlaceholders(reply);
+
+  // Saudação inicial: força template canônico (bem-vindo + cardápio + modalidade).
+  // Se há pedido em aberto, força "Oi novamente, tem pedido aberto...".
+  try {
+    const clientIsGreetingNow = intent === "greeting";
+    // "Primeira interação": histórico antes desta mensagem tem <=1 turno do atendente.
+    const prevAssistantCount = history.filter(
+      (h) => (h as { role?: string }).role === "assistant"
+    ).length;
+    const isFirstInteraction = prevAssistantCount <= 1;
+    // Pedido em aberto: checkOpenOrders já rodou anteriormente (openOrderHint != "").
+    const hasOpenOrderPending = !!openOrderHint;
+    reply = enforceWelcomeTemplate(reply, {
+      clientIsGreeting: clientIsGreetingNow,
+      isFirstInteraction,
+      hasOpenOrderPending,
+      clientName: pushName || undefined,
+    });
+  } catch (e) {
+    console.error("enforceWelcomeTemplate error:", (e as Error).message);
+  }
 
   // Se o LLM retornou FALLBACK_ATENDENTE por timeout/erro, substituímos por
   // uma resposta determinística baseada na intent interpretada. Roda ANTES
