@@ -46,6 +46,7 @@ import {
   extractOrderMemory,
   buildOrderMemoryHint,
   enforceCakeContinuity,
+  enforceOrderSummaryCompleteness,
   buildPreviousQuestionHint,
 } from "../_shared/conversationMemory.ts";
 
@@ -63,6 +64,16 @@ import type { ConversationIntent } from "../_shared/intentDetection.ts";
 import {
   detectCakePriceIntent,
   enforceReplyGuardrails,
+  enforceAskBeforePayment,
+  enforcePhantomWritingRemoval,
+  enforceEncomendaDeliveryQuestion,
+  enforceNoRepeatAfterPix,
+  enforceNoFragmentAsFlavor,
+  enforceSanePrices,
+  enforceNoExactRepeat,
+  enforceGreetingReset,
+  enforceAskMoreBeforeClosure,
+  messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
   applyDecorationToEncomendaPayload,
@@ -70,6 +81,7 @@ import {
 
 // ── Módulos de API ──
 import { sendEvolutionMessage } from "../_shared/evolutionApi.ts";
+import { buildTeamSummary } from "../_shared/teamSummary.ts";
 
 // ── Módulos de cliente/lead ──
 import { findOrCreateCustomer, findOrCreateLead } from "../_shared/customerManager.ts";
@@ -243,8 +255,13 @@ serve(async (req) => {
     if (messageId) {
       try {
         await supabase.from("webhook_processed_events").insert({ id: messageId });
-      } catch (_) {
-        /* ignore duplicate */
+      } catch (e) {
+        // Duplicata (chave primária) é esperada e não bloqueia o fluxo;
+        // logamos em debug para permitir auditoria se necessário.
+        console.debug(
+          "webhook_processed_events insert ignorado:",
+          (e as Error)?.message || "duplicate"
+        );
       }
     }
 
@@ -641,7 +658,10 @@ async function handleCustomerMessage(
     smartIntentOverride = "returning_customer";
 
     if (hasOpenOrder) {
-      openOrderHint = `[DADOS_PEDIDO_ABERTO]\n${orderSummary}\n\n⚠️ INSTRUÇÃO OBRIGATÓRIA: O cliente tem um pedido em aberto. Você DEVE cumprimentar e PERGUNTAR:\n"Oi, [Nome]! Tudo bem? Vi que você tem um pedido em aberto. Quer continuar com ele ou prefere fazer um novo?"\nNÃO continue o pedido automaticamente. ESPERE o cliente responder.\n[/DADOS_PEDIDO_ABERTO]`;
+      // "Aberto" aqui = pedido/encomenda REALMENTE PENDENTE de finalização
+      // (checkOpenOrders já filtra: ignora 50_pago/em_producao/entregue).
+      // Só nesse caso perguntamos se quer continuar o pedido anterior.
+      openOrderHint = `[DADOS_PEDIDO_PENDENTE]\n${orderSummary}\n\n⚠️ INSTRUÇÃO: O cliente tem um pedido AINDA NÃO FINALIZADO (falta concluir). Cumprimente e PERGUNTE uma vez:\n"Oi, [Nome]! Tudo bem? Vi que seu pedido anterior ficou sem finalizar. Quer continuar de onde parou ou começar um novo?"\nNÃO continue o pedido automaticamente. ESPERE o cliente responder.\n[/DADOS_PEDIDO_PENDENTE]`;
     }
 
     if (sessionExpired) {
@@ -776,6 +796,26 @@ async function handleCustomerMessage(
   // ── Salvar payment_confirmations ──
   if (pedidoJsonWithDecoration) {
     try {
+      const summary = buildTeamSummary({
+        customerName:
+          (pedidoJsonWithDecoration.customer_name as string) || pushName || "Cliente",
+        customerPhone: normalizedPhone,
+        orderType: (pedidoJsonWithDecoration.channel as string) || "pedido",
+        items:
+          (pedidoJsonWithDecoration.items as Array<{
+            recipe_name?: string;
+            quantity?: number;
+            unit_type?: string;
+            notes?: string;
+          }>) || [],
+        observations:
+          (pedidoJsonWithDecoration.observations as string) || "",
+        paymentMethod:
+          (pedidoJsonWithDecoration.payment_method as string) || "",
+        history: history as { role: "user" | "assistant"; content: string }[],
+        currentMessage: combinedMessage,
+        recipeNames,
+      });
       await supabase.from("payment_confirmations").insert({
         customer_name:
           (pedidoJsonWithDecoration.customer_name as string) ||
@@ -783,9 +823,7 @@ async function handleCustomerMessage(
           "Cliente",
         customer_phone: normalizedPhone,
         remote_jid: remoteJid,
-        description: JSON.stringify(
-          pedidoJsonWithDecoration.items || []
-        ).slice(0, 500),
+        description: summary.slice(0, 800),
         type: "pedido",
         channel: "whatsapp",
         status: "pending",
@@ -801,6 +839,36 @@ async function handleCustomerMessage(
 
   if (encomendaJsonWithDecoration) {
     try {
+      const summary = buildTeamSummary({
+        customerName:
+          (encomendaJsonWithDecoration.customer_name as string) ||
+          pushName ||
+          "Cliente",
+        customerPhone: normalizedPhone,
+        orderType: "encomenda",
+        // Modalidade explícita quando a IA preenche; se não, a função infere
+        // via endereço/histórico.
+        deliveryMethod:
+          (encomendaJsonWithDecoration.delivery_method as string) ||
+          (encomendaJsonWithDecoration.modality as string) ||
+          "",
+        totalValue: Number(encomendaJsonWithDecoration.total_value) || 0,
+        signalPaid: !!encomendaJsonWithDecoration.paid_50_percent,
+        deliveryDate:
+          (encomendaJsonWithDecoration.delivery_date as string) || "",
+        deliveryTimeSlot:
+          (encomendaJsonWithDecoration.delivery_time_slot as string) || "",
+        address: (encomendaJsonWithDecoration.address as string) || "",
+        paymentMethod:
+          (encomendaJsonWithDecoration.payment_method as string) || "",
+        observations:
+          (encomendaJsonWithDecoration.observations as string) || "",
+        productDescription:
+          (encomendaJsonWithDecoration.product_description as string) || "",
+        history: history as { role: "user" | "assistant"; content: string }[],
+        currentMessage: combinedMessage,
+        recipeNames,
+      });
       await supabase.from("payment_confirmations").insert({
         customer_name:
           (encomendaJsonWithDecoration.customer_name as string) ||
@@ -808,9 +876,7 @@ async function handleCustomerMessage(
           "Cliente",
         customer_phone: normalizedPhone,
         remote_jid: remoteJid,
-        description:
-          (encomendaJsonWithDecoration.product_description as string) ||
-          "Encomenda",
+        description: summary.slice(0, 800),
         type: "encomenda",
         channel: "whatsapp",
         status: "pending",
@@ -851,16 +917,73 @@ async function handleCustomerMessage(
     combinedMessage,
     history as { role: "user" | "assistant"; content: string }[]
   );
+  // Se o agente "rejeitou" um fragmento funcional/temporal/escrita como
+  // se fosse sabor (ex.: "sabor 'ser as' não temos", "sabor 'amo voce'
+  // não temos"), trocamos por pergunta aberta. Passa a mensagem atual e
+  // o cardápio real para validar se o "sabor rejeitado" é plausível.
+  reply = enforceNoFragmentAsFlavor(reply, combinedMessage, recipeNames);
+  // Remove "escrita personalizada / +R$15" fantasma (cliente não pediu).
+  reply = enforcePhantomWritingRemoval(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Sinaliza se o resumo do pedido "esqueceu" bolo/salgados/docinhos do histórico.
+  reply = enforceOrderSummaryCompleteness(
+    reply,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Em encomendas, antes de pedir endereço garante que o cliente escolheu
+  // entrega ou retirada. Se o pedido tem bolo de 4kg, força retirada.
+  reply = enforceEncomendaDeliveryQuestion(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Impede a resposta de misturar "Gostaria de mais alguma coisa?" com
+  // instruções de Pix/sinal 50% antes do cliente confirmar o fechamento.
+  reply = enforceAskBeforePayment(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Se mesmo assim a resposta contém "Total:" / "Anotei + valor" sem pedir
+  // "mais alguma coisa?", anexa a pergunta (cliente ainda não disse "só isso").
+  reply = enforceAskMoreBeforeClosure(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Após mandar o PIX e receber só um "ok"/"beleza"/"vou pagar" do cliente,
+  // não repetir o resumo do pedido — só aguardar o comprovante.
+  reply = enforceNoRepeatAfterPix(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Bloqueia preços malformados ("R$15,008,00") ou absurdamente altos.
+  reply = enforceSanePrices(reply);
+  // Bloqueia repetição exata/quase-exata da última resposta do atendente.
+  reply = enforceNoExactRepeat(
+    reply,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Se o cliente só mandou uma SAUDAÇÃO nova, não reativa pedido antigo —
+  // responde com cumprimento simples.
+  reply = enforceGreetingReset(
+    reply,
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
 
   // ── Guardrail: remover "Oi" repetido no início (exceto primeira saudação) ──
+  // \b garante que "Oitavo", "Oito" e palavras maiores não sejam mutiladas —
+  // só remove quando "Oi" é palavra isolada seguida de pontuação, emoji ou espaço.
   const isFirstMessage = history.length <= 1;
   if (!isFirstMessage && intent !== "greeting") {
-    // Remove "Oi! 😊 " or "Oi! " or "Oi, " from start
-    reply = reply.replace(/^Oi!?\s*😊?\s*/i, "").trim();
-    // Also remove "Oi! 😊 " variants with emoji
-    reply = reply.replace(/^Oi!\s*😊\s*/i, "").trim();
-    // Capitalize first letter after removal
-    if (reply.length > 0) {
+    const before = reply;
+    reply = reply.replace(/^\s*oi\b\s*[!,.]?\s*(?:😊|🙂|👋)?\s*[\n-]*\s*/i, "").trim();
+    if (reply.length > 0 && reply !== before) {
       reply = reply.charAt(0).toUpperCase() + reply.slice(1);
     }
   }
@@ -880,16 +1003,61 @@ async function handleCustomerMessage(
       "\n" +
       combinedMessage;
 
+  // Apenas extraímos peso/sabor da ÚLTIMA mensagem do cliente (ou um reset recente).
+  // Se pegarmos do histórico inteiro, mudanças de ideia ("quero 2kg... na verdade 3kg")
+  // sempre tomariam o último kg como "confirmado" — o que pode não refletir o estado
+  // combinado com o atendente. Só sobrescrevemos o valor já salvo na sessão quando a
+  // mensagem atual traz um novo peso/sabor.
   const sessionWeights = [
-    ...clientTextForSession.matchAll(/(\d+)\s*kg/gi),
+    ...combinedMessage.matchAll(/(\d+)\s*kg/gi),
   ].map((m) => `${m[1]}kg`);
-  const sessionFlavors = [
-    ...clientTextForSession.matchAll(
-      /(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç\s]+)/gi
-    ),
-  ]
-    .map((m) => m[1].trim())
-    .filter((f) => f.length > 2 && !f.match(/^\d/));
+  // Se a mensagem atual é sobre ESCRITA no bolo ("escrita em cima do bolo
+  // amo voce"), NÃO extraímos sabor dela — a frase é conteúdo da escrita.
+  const currentIsWriting = messageIsAboutWriting(combinedMessage);
+  // Palavras que indicam DECORAÇÃO e que NÃO devem entrar em "confirmed_flavor".
+  // Também cortamos tokens temporais ("amanhã", "hoje", "horas", "segunda",
+  // "as", "às", etc.) — frases como "pode ser as 9" NÃO geram sabor "ser as".
+  const DECO_BOUNDARY =
+    /\b(com\s+(?:decorac|decora|flores?|florzinhas?|bolinhas?|cores?|colorid|confeit|granulad|topo|chantininho|pasta\s*americana|papel\s*de\s*arroz|personaliz|tematic|tema\s+|escrita|homem\s+aranha|princesa|patrulha|frozen|minnie|mickey|super\s+heroi)|decorac|decora(?:da|do)\b|colorid|florid|flores?\b|bolinhas?\b|confeito|granulad|personaliz|tematic|chantininho|pasta\s*americana|papel\s*de\s*arroz)/i;
+  const BAD_FLAVOR_TOKEN =
+    /\b(?:as|às|pra|para|com|de|do|da|dos|das|ate|até|por|em|no|na|hoje|amanha|amanhã|manha|manhã|tarde|noite|hora|horas|horario|horário|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo)\b/;
+  const cleanFlavor = (raw: string): string => {
+    let f = raw.trim();
+    const decoIdx = f.search(DECO_BOUNDARY);
+    if (decoIdx >= 0) f = f.slice(0, decoIdx).trim();
+    // Remove filler: "um/uma bolo de", "bolo de", artigos, peso inicial.
+    f = f.replace(/^(?:um\s+|uma\s+)?bolo\s+(?:de\s+)?/i, "").trim();
+    f = f.replace(/^(?:um|uma|o|a)\s+/i, "").trim();
+    f = f.replace(/^\d+\s*(?:kg|quilos?|kilos?)\s+(?:de\s+)?/i, "").trim();
+    const parts = f.split(/\s+/);
+    const firstBad = parts.findIndex((p) => BAD_FLAVOR_TOKEN.test(p));
+    if (firstBad === 0) return "";
+    if (firstBad > 0) f = parts.slice(0, firstBad).join(" ");
+    return f.replace(/\s{2,}/g, " ").trim();
+  };
+  // Padrão explícito: "sabor do bolo é X" / "sabor é X" / "sabor: X"
+  const explicitFlavor =
+    combinedMessage.match(
+      /(?:o\s+)?sabor\s+(?:do\s+bolo\s+)?(?:é|e|eh|sera|será|vai\s+ser|ficou|escolhi|fica|escolho)\s*[:\-]?\s*([a-záàâãéèêíïóôõúüç][a-záàâãéèêíïóôõúüç\s]*)/i
+    ) ||
+    combinedMessage.match(/\bsabor\s*[:\-]\s*([a-záàâãéèêíïóôõúüç][a-záàâãéèêíïóôõúüç\s]*)/i);
+  let explicitFlavorClean = "";
+  if (explicitFlavor && explicitFlavor[1]) {
+    explicitFlavorClean = cleanFlavor(explicitFlavor[1]);
+  }
+  // Em mensagens que são sobre ESCRITA no bolo, NÃO extraímos sabor do texto:
+  // a string que vem junto é o conteúdo da escrita, não sabor.
+  const sessionFlavors = currentIsWriting
+    ? []
+    : explicitFlavorClean
+      ? [explicitFlavorClean]
+      : [
+          ...combinedMessage.matchAll(
+            /(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç0-9\s]+)/gi
+          ),
+        ]
+          .map((m) => cleanFlavor(m[1]))
+          .filter((f) => f.length > 2 && !f.match(/^\d/));
   const sessionOrderType = clientTextForSession.toLowerCase().includes("delivery")
     ? "delivery"
     : clientTextForSession.toLowerCase().includes("encomenda")

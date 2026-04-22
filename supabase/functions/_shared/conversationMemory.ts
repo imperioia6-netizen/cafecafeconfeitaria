@@ -8,6 +8,7 @@
  */
 
 import { normalizeForCompare } from "./webhookUtils.ts";
+import { messageIsAboutWriting } from "./priceEngine.ts";
 
 // ── Tipos ──
 
@@ -106,9 +107,13 @@ export function buildOrderMemoryHint(
 ): string {
   const mem = extractOrderMemory(history);
 
+  // Para cada mensagem do cliente, ignoramos aquelas que são sobre ESCRITA
+  // no bolo — essas frases trazem TEXTO, não sabor ("escrita em cima do bolo
+  // amo voce" NÃO dá sabor "amo voce").
   const clientText = history
     .filter((h) => h.role === "user")
     .map((h) => h.content || "")
+    .filter((c) => !messageIsAboutWriting(c))
     .join("\n");
 
   // Pesos mencionados
@@ -116,16 +121,49 @@ export function buildOrderMemoryHint(
   const regexWeight = allWeights.length > 0 ? allWeights[allWeights.length - 1] : "";
   const confirmedWeight = regexWeight || (sessionMemory?.confirmed_weight as string) || "";
 
-  // Sabores
+  // Sabores — cortamos na primeira palavra de DECORAÇÃO para não misturar
+  // descrição visual com sabor. "morango com decoração de flores" → "morango".
+  const DECO_BOUNDARY =
+    /\b(com\s+(?:decorac|decora|flores?|florzinhas?|bolinhas?|cores?|colorid|confeit|granulad|topo|chantininho|pasta\s*americana|papel\s*de\s*arroz|personaliz|tematic|tema\s+|escrita|homem\s+aranha|princesa|patrulha|frozen|minnie|mickey|super\s+heroi)|decorac|decora(?:da|do)\b|colorid|florid|flores?\b|bolinhas?\b|confeito|granulad|personaliz|tematic|chantininho|pasta\s*americana|papel\s*de\s*arroz)/i;
+  // Frase "o sabor do bolo é X" / "o sabor é X" / "sabor: X" é sinal forte e
+  // vem em PRIMEIRO lugar — se existir, ganha das outras capturas.
+  const explicitFlavorMatch = clientText.match(
+    /(?:o\s+)?sabor\s+(?:do\s+bolo\s+)?(?:é|e|eh|sera|será|vai\s+ser|ficou|escolhi|fica|escolho)\s*[:\-]?\s*([a-záàâãéèêíïóôõúüç][a-záàâãéèêíïóôõúüç\s]*)/i
+  ) || clientText.match(/\bsabor\s*[:\-]\s*([a-záàâãéèêíïóôõúüç][a-záàâãéèêíïóôõúüç\s]*)/i);
   const flavorMatches = [
     ...clientText.matchAll(
-      /(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç\s]+)/gi
+      /(?:bolo\s+(?:de\s+)?|pode\s+ser\s+(?:de\s+)?|vai\s+ser\s+(?:de\s+)?|quero\s+(?:de\s+)?|o\s+de\s+)([a-záàâãéèêíïóôõúüç0-9\s]+)/gi
     ),
   ];
-  const flavors = flavorMatches
-    .map((m) => m[1].trim())
-    .filter((f) => f.length > 2 && !f.match(/^\d/));
-  const regexFlavor = flavors.length > 0 ? flavors[flavors.length - 1] : "";
+  // Palavras funcionais/temporais que NÃO podem ser sabor.
+  const BAD_FLAVOR_TOKEN =
+    /\b(?:as|às|pra|para|com|de|do|da|dos|das|ate|até|por|em|no|na|hoje|amanha|amanhã|manha|manhã|tarde|noite|hora|horas|horario|horário|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo)\b/;
+  const clean = (s: string): string => {
+    let f = s.trim();
+    const i = f.search(DECO_BOUNDARY);
+    if (i >= 0) f = f.slice(0, i).trim();
+    // Remove "filler" inicial: artigos e "bolo de" que não fazem parte do sabor.
+    // Ex.: "um bolo de brigadeiro" → "brigadeiro".
+    f = f.replace(/^(?:um\s+|uma\s+)?bolo\s+(?:de\s+)?/i, "").trim();
+    f = f.replace(/^(?:um|uma|o|a)\s+/i, "").trim();
+    // Peso no início ("4kg trufado" → "trufado").
+    f = f.replace(/^\d+\s*(?:kg|quilos?|kilos?)\s+(?:de\s+)?/i, "").trim();
+    const parts = f.split(/\s+/);
+    const firstBad = parts.findIndex((p) => BAD_FLAVOR_TOKEN.test(p));
+    if (firstBad === 0) return "";
+    if (firstBad > 0) f = parts.slice(0, firstBad).join(" ");
+    return f.replace(/\s{2,}/g, " ").trim();
+  };
+  let regexFlavor = "";
+  if (explicitFlavorMatch && explicitFlavorMatch[1]) {
+    regexFlavor = clean(explicitFlavorMatch[1]);
+  }
+  if (!regexFlavor) {
+    const flavors = flavorMatches
+      .map((m) => clean(m[1]))
+      .filter((f) => f.length > 2 && !f.match(/^\d/));
+    regexFlavor = flavors.length > 0 ? flavors[flavors.length - 1] : "";
+  }
   const confirmedFlavor = regexFlavor || (sessionMemory?.confirmed_flavor as string) || "";
 
   // Quantidade de salgados
@@ -187,6 +225,60 @@ ${pendingQuestions.length > 0 ? `\nPERGUNTAS PENDENTES (última resposta do aten
 
 REGRA DE OURO: Antes de fazer QUALQUER pergunta, verifique se a resposta já está nos detalhes acima. Se estiver, USE a informação e NÃO pergunte.
 [/MEMORIA_DO_PEDIDO_EM_ANDAMENTO]`;
+}
+
+// ── Guardrail: resumo do pedido precisa conter todos os itens mencionados ──
+
+/**
+ * Detecta se a resposta parece ser um RESUMO de pedido (lista de itens, total)
+ * e valida que bolo/salgados/docinhos mencionados no histórico estão presentes.
+ * Se algum item do histórico sumir do resumo, anexa uma nota visível para o
+ * atendente corrigir, em vez de enviar uma lista errada ao cliente.
+ *
+ * Abordagem conservadora: NÃO reescreve o resumo (preserva texto da LLM), mas
+ * ADICIONA uma nota "⚠️ conferir itens" quando detecta omissão clara. Isso
+ * cobre o caso "esqueci o bolo no resumo" sem arriscar criar um item novo.
+ */
+export function enforceOrderSummaryCompleteness(
+  replyText: string,
+  history: { role: "user" | "assistant"; content: string }[]
+): string {
+  if (!replyText) return replyText;
+
+  const rep = normalizeForCompare(replyText);
+
+  // 1. A resposta parece um resumo/fechamento do pedido?
+  const looksLikeSummary =
+    /\btotal\b/.test(rep) ||
+    /resumo\s+(?:do\s+)?pedido/.test(rep) ||
+    /pedido\s+(?:completo|ficou|resumindo)/.test(rep) ||
+    /\bfechou\b/.test(rep);
+  if (!looksLikeSummary) return replyText;
+
+  // 2. Quais categorias de item o cliente mencionou no histórico?
+  const mem = extractOrderMemory(history);
+  const missing: string[] = [];
+  if (mem.hasCake && !/\bbolo[s]?\b/.test(rep)) missing.push("bolo");
+  if (
+    mem.hasSalgados &&
+    !/\b(mini|salgad|coxinha|quibe|kibe|risole|empada|bolinha)/.test(rep)
+  )
+    missing.push("salgados");
+  // Docinhos
+  const hasSweetsInHistory = mem.items.some((i) =>
+    /\b(brigadeiro|beijinho|cajuzinho|docinho)/i.test(i)
+  );
+  if (hasSweetsInHistory && !/\b(docinho|brigadeiro|beijinho|cajuzinho)/.test(rep)) {
+    missing.push("docinhos");
+  }
+
+  if (missing.length === 0) return replyText;
+
+  // 3. Injetar aviso no final para o cliente/atendente perceber.
+  const nota = `\n\n⚠️ Opa, parece que esqueci de listar ${missing.join(
+    " e "
+  )} no resumo — deixa eu conferir seus itens antes de fechar. Pode me confirmar se todos estão aí?`;
+  return `${replyText.trimEnd()}${nota}`;
 }
 
 /**

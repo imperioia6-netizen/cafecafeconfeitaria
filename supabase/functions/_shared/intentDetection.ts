@@ -56,7 +56,7 @@ export function detectIntent(fullMessage: string): ConversationIntent {
   )
     return "greeting";
   if (
-    /^(oi+|ola|bom dia|boa tarde|boa noite)\s*(tudo\s*(bem|bom|certo|joia))?\s*[!.,?😊]*\s*$/i.test(
+    /^(oi+|ola|bom dia|boa tarde|boa noite)[\s,!.]*(tudo\s*(bem|bom|certo|joia|beleza))?\s*[!.,?😊]*\s*$/i.test(
       msg
     )
   )
@@ -90,9 +90,19 @@ export function detectIntent(fullMessage: string): ConversationIntent {
     msg.includes("pix") &&
     (msg.includes("fiz") ||
       msg.includes("enviei") ||
-      msg.includes("mandei") ||
-      msg.includes("pronto") ||
-      msg.includes("feito"))
+      msg.includes("mandei"))
+  )
+    return "payment_proof";
+  // "pix pronto" / "pix feito" só viram comprovante se a mensagem é bem curta
+  // e sem marcadores de dúvida — evita pegar "quando o pix estiver pronto?" etc.
+  if (
+    msg.includes("pix") &&
+    (msg.includes("pronto") || msg.includes("feito")) &&
+    msg.length <= 40 &&
+    !msg.includes("?") &&
+    !msg.includes("quando") &&
+    !msg.includes("como") &&
+    !msg.includes("depois")
   )
     return "payment_proof";
 
@@ -133,6 +143,18 @@ export function detectIntent(fullMessage: string): ConversationIntent {
     return "delivery_urgency";
 
   // ── Início de pedido ──
+  // "me manda/me envia" só é pedido quando NÃO é solicitação de cardápio/tabela.
+  const asksCardapioOuTabela =
+    msg.includes("cardapio") ||
+    msg.includes("cardápio") ||
+    msg.includes("tabela") ||
+    msg.includes("catalogo") ||
+    msg.includes("catálogo") ||
+    msg.includes("preco") ||
+    msg.includes("preço") ||
+    msg.includes("precos") ||
+    msg.includes("preços") ||
+    msg.includes("valor");
   if (
     msg.includes("quero pedir") ||
     msg.includes("fazer um pedido") ||
@@ -142,7 +164,7 @@ export function detectIntent(fullMessage: string): ConversationIntent {
     msg.includes("vou querer") ||
     msg.includes("me vê") ||
     msg.includes("me ve") ||
-    msg.includes("me manda") ||
+    ((msg.includes("me manda") || msg.includes("me envia")) && !asksCardapioOuTabela) ||
     msg.includes("preciso de") ||
     msg.includes("precisando de")
   )

@@ -16,6 +16,7 @@ import { normalizePhone } from "./getOwner.ts";
 import { sanitizeName, sanitizePhone } from "./security.ts";
 import { sendTicketFlowOrder } from "./ticketflow.ts";
 import { sendEvolutionMessage } from "./evolutionApi.ts";
+import { normalizeForCompare } from "./webhookUtils.ts";
 
 // ── Tipos ──
 
@@ -265,7 +266,16 @@ export async function getBotOperatorId(
 }
 
 /**
- * Verifica se o cliente tem pedidos/encomendas abertos nas últimas 72h.
+ * Verifica se o cliente tem pedidos/encomendas REALMENTE pendentes de
+ * finalização nas últimas 72h.
+ *
+ * IMPORTANTE: "em aberto" aqui significa que o pedido AINDA NÃO foi aceito
+ * pela equipe (aguardando sinal ou aprovação do comprovante). Encomendas
+ * já aceitas ("50_pago" = sinal aprovado, "em_producao", "entregue") NÃO
+ * entram — essas são pedidos já fechados, do ponto de vista da conversa.
+ * Se o cliente retornar depois de ter um pedido aceito, o atendente
+ * cumprimenta normalmente e abre um novo atendimento, sem perguntar "quer
+ * continuar com o pedido anterior?".
  */
 export async function checkOpenOrders(
   supabase: SupabaseClient,
@@ -285,11 +295,14 @@ export async function checkOpenOrders(
     .limit(3);
 
   if (!openOrders || openOrders.length === 0) {
+    // Apenas encomendas ainda PENDENTES (sem sinal aprovado) contam como
+    // "em aberto". Status como "50_pago" / "em_producao" significam que a
+    // equipe já aceitou — pedido em fluxo normal, não precisa perguntar.
     const { data: openEncomendas } = await supabase
       .from("encomendas")
       .select("id, product_description, total_value, status, created_at")
       .eq("customer_phone", customerPhone)
-      .in("status", ["pendente", "em_producao", "50_pago"])
+      .eq("status", "pendente")
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(3);
@@ -378,7 +391,8 @@ export async function createOrderFromPayload(
     }
   >();
   for (const r of (recipes as Record<string, unknown>[]) || []) {
-    const name = ((r.name as string) || "").trim().toLowerCase();
+    // Normaliza sem acentos/espaços extras para matching robusto com o que a IA devolve.
+    const name = normalizeForCompare(((r.name as string) || ""));
     if (name)
       recipeMap.set(name, {
         id: r.id as string,
@@ -401,11 +415,9 @@ export async function createOrderFromPayload(
   }[] = [];
 
   for (const item of items) {
-    const name = String(item.recipe_name || "")
-      .trim()
-      .toLowerCase();
+    const name = normalizeForCompare(String(item.recipe_name || ""));
     let recipeEntry = recipeMap.get(name) ?? null;
-    // Fuzzy match: parcial nos dois sentidos
+    // Fuzzy match: parcial nos dois sentidos (já normalizado).
     if (!recipeEntry && name) {
       for (const [k, v] of recipeMap.entries()) {
         if (k.includes(name) || name.includes(k)) {
@@ -414,7 +426,13 @@ export async function createOrderFromPayload(
         }
       }
     }
-    if (!recipeEntry) continue;
+    if (!recipeEntry) {
+      console.warn(
+        "createOrderFromPayload: recipe_name inválido ignorado:",
+        item.recipe_name
+      );
+      continue;
+    }
 
     const unitType =
       (item.unit_type || "slice").toLowerCase() === "whole" ? "whole" : "slice";

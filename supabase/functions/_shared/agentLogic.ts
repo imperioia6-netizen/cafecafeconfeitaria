@@ -385,19 +385,35 @@ export async function runAtendente(
     }
     const allRecipes = (allRecipesRes.data || []) as { id: string; name: string; sale_price?: number | null; slice_price?: number | null; whole_price?: number | null }[];
     const cardapioProdutos = allRecipes.map((r) => r.name).join("\n");
-    let cardapioProdutosDetalhado = allRecipes
-      .map((r) => {
-        const nome = r.name;
-        const inteiro = r.whole_price != null ? `inteiro: R$ ${Number(r.whole_price).toFixed(2)}` : "";
-        const fatia = r.slice_price != null ? `fatia: R$ ${Number(r.slice_price).toFixed(2)}` : "";
-        const unidade = r.sale_price != null ? `unidade: R$ ${Number(r.sale_price).toFixed(2)}` : "";
-        const partes = [inteiro, fatia, unidade].filter(Boolean).join(" | ");
-        return partes ? `- ${nome} – ${partes}` : `- ${nome}`;
-      })
-      .join("\n");
-    // Truncar cardápio se ultrapassar 4000 caracteres para economizar tokens
+    const cardapioDetalhadoLinhas = allRecipes.map((r) => {
+      const inteiro = r.whole_price != null ? `inteiro: R$ ${Number(r.whole_price).toFixed(2)}` : "";
+      const fatia = r.slice_price != null ? `fatia: R$ ${Number(r.slice_price).toFixed(2)}` : "";
+      const unidade = r.sale_price != null ? `unidade: R$ ${Number(r.sale_price).toFixed(2)}` : "";
+      const partes = [inteiro, fatia, unidade].filter(Boolean).join(" | ");
+      return partes ? `- ${r.name} – ${partes}` : `- ${r.name}`;
+    });
+    let cardapioProdutosDetalhado = cardapioDetalhadoLinhas.join("\n");
+    // Se o cardápio detalhado for muito grande, não descarte produtos:
+    // mantenha TODAS as linhas detalhadas que couberem em ~3500 chars e
+    // anexe os nomes dos restantes (sem preço) — assim nenhum produto
+    // some do conhecimento do agente.
     if (cardapioProdutosDetalhado.length > 4000) {
-      cardapioProdutosDetalhado = cardapioProdutosDetalhado.slice(0, 3950) + "\n...(cardápio truncado)";
+      const MAX_DETAIL = 3500;
+      const kept: string[] = [];
+      const overflow: string[] = [];
+      let usado = 0;
+      for (let i = 0; i < cardapioDetalhadoLinhas.length; i++) {
+        const linha = cardapioDetalhadoLinhas[i];
+        if (usado + linha.length + 1 <= MAX_DETAIL) {
+          kept.push(linha);
+          usado += linha.length + 1;
+        } else {
+          overflow.push(allRecipes[i].name);
+        }
+      }
+      cardapioProdutosDetalhado = overflow.length > 0
+        ? `${kept.join("\n")}\n(Também disponíveis — consultar preço com a equipe: ${overflow.join(", ")})`
+        : kept.join("\n");
     }
 
     // ── Montar tabela de zonas de delivery com disponibilidade ──

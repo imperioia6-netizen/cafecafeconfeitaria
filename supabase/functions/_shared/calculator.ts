@@ -23,6 +23,19 @@ export interface RecipeInfo {
   whole_price?: number | null;  // preço inteiro
 }
 
+/**
+ * Normaliza nome para comparação: lowercase, sem acentos, sem espaços duplos.
+ * Matching do cardápio é sempre feito nessa forma para não falhar com typos, acentuação ou espaços extras.
+ */
+function normalizeName(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export interface ItemCalculado {
   descricao: string;
   quantidade: number;
@@ -59,10 +72,17 @@ const MINIMO_DELIVERY = 50;
  * Retorna null se não encontrar.
  */
 export function buscarPrecoKg(sabor: string, recipes: RecipeInfo[]): number | null {
-  const normalizado = sabor.toLowerCase().trim();
-  const recipe = recipes.find(
-    (r) => r.name.toLowerCase().trim() === normalizado
-  );
+  const normalizado = normalizeName(sabor);
+  if (!normalizado) return null;
+  // 1. Match exato (insensível a acentos, case e espaços extras).
+  let recipe = recipes.find((r) => normalizeName(r.name) === normalizado);
+  // 2. Match parcial em ambos os sentidos (ex.: sabor="ninho" → nome do cardápio "Bolo Ninho").
+  if (!recipe) {
+    recipe = recipes.find((r) => {
+      const n = normalizeName(r.name);
+      return n.includes(normalizado) || normalizado.includes(n);
+    });
+  }
   if (!recipe) return null;
   // sale_price = preço por kg para bolos
   return recipe.sale_price != null ? Number(recipe.sale_price) : null;
