@@ -255,18 +255,29 @@ export async function callLlm(
     // Endpoint, header e body formato Anthropic.
     // Docs: https://docs.anthropic.com/en/api/messages
     const url = `${config.baseUrl.replace(/\/$/, "")}/messages`;
-    // Modelos Anthropic oficiais (nomeação 2025). Aceita sinônimos curtos.
+    // Modelos Anthropic. Opus-4-5-20250929 NÃO está liberado em todas as
+    // contas — o fallback automático cobre 404/model_not_found.
     const MODEL_MAP: Record<string, string> = {
-      "claude-opus-4-6": "claude-opus-4-5-20250929",
-      "claude-opus-4-5": "claude-opus-4-5-20250929",
-      "claude-opus": "claude-opus-4-5-20250929",
+      "claude-opus-4-6": "claude-opus-4-1-20250805",
+      "claude-opus-4-5": "claude-opus-4-1-20250805",
+      "claude-opus-4-1": "claude-opus-4-1-20250805",
+      "claude-opus": "claude-opus-4-1-20250805",
       "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
       "claude-sonnet": "claude-sonnet-4-5-20250929",
       "claude-haiku-4-5": "claude-haiku-4-5-20251001",
       "claude-haiku": "claude-haiku-4-5-20251001",
     };
     const resolvedModel = MODEL_MAP[config.model] || config.model;
-    const candidatesA = [resolvedModel, "claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001"];
+    // Ordem de fallback: modelo resolvido → sonnet 4.5 → opus 4.1 → haiku 4.5.
+    // Sonnet é o default por ser rápido e ter acesso garantido.
+    const candidatesA = Array.from(
+      new Set([
+        resolvedModel,
+        "claude-sonnet-4-5-20250929",
+        "claude-opus-4-1-20250805",
+        "claude-haiku-4-5-20251001",
+      ])
+    );
     let lastErrA = "";
     for (const model of candidatesA) {
       for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
