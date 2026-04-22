@@ -75,6 +75,7 @@ import {
   enforceAskMoreBeforeClosure,
   enforceOrderSummarySanity,
   enforceIntentAlignment,
+  enforceSignalWhenLargeOrder,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -912,6 +913,57 @@ async function handleCustomerMessage(
     }
   }
 
+  // ── Auto-registro de comprovante (PDF) quando o LLM não emitiu bloco ──
+  // Se o cliente mandou comprovante (PDF) e o LLM não gerou [CRIAR_PEDIDO]
+  // nem [CRIAR_ENCOMENDA], ainda assim precisamos registrar na tela da equipe.
+  // Garante que nenhum comprovante se perde.
+  try {
+    const gotPdf = hasPdfDocument(payload);
+    if (
+      gotPdf &&
+      !pedidoJsonWithDecoration &&
+      !encomendaJsonWithDecoration &&
+      !quitarEncomendaJson
+    ) {
+      // Verifica se já existe um registro pendente recente pra este cliente
+      // (evita duplicação quando cliente manda múltiplos PDFs).
+      const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: existing } = await supabase
+        .from("payment_confirmations")
+        .select("id")
+        .eq("customer_phone", normalizedPhone)
+        .eq("status", "pending")
+        .gte("created_at", since)
+        .limit(1);
+      if (!existing || existing.length === 0) {
+        const summary = buildTeamSummary({
+          customerName: pushName || "Cliente",
+          customerPhone: normalizedPhone,
+          orderType: "encomenda",
+          items: [],
+          history: history as { role: "user" | "assistant"; content: string }[],
+          currentMessage: combinedMessage,
+          recipeNames,
+        });
+        await supabase.from("payment_confirmations").insert({
+          customer_name: pushName || "Cliente",
+          customer_phone: normalizedPhone,
+          remote_jid: remoteJid,
+          description: `📎 COMPROVANTE RECEBIDO (auto-registrado)\n\n${summary.slice(0, 700)}`,
+          type: "encomenda",
+          channel: "whatsapp",
+          status: "pending",
+          order_payload: null,
+        } as Record<string, unknown>);
+        console.log(
+          "evolution-webhook: comprovante PDF auto-registrado para aprovação manual"
+        );
+      }
+    }
+  } catch (e) {
+    console.error("auto-registro de PDF falhou:", (e as Error).message);
+  }
+
   // ── Aplicar guardrails finais ──
   reply = guardedReplyClean || replyClean || reply;
   reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
@@ -1008,6 +1060,9 @@ async function handleCustomerMessage(
   );
   // Bloqueia preços malformados ("R$15,008,00") ou absurdamente altos.
   reply = enforceSanePrices(reply);
+  // Se a resposta manda PIX com valor total > R$300 sem mencionar sinal 50%,
+  // adiciona a linha do sinal.
+  reply = enforceSignalWhenLargeOrder(reply);
   // Bloqueia repetição exata/quase-exata da última resposta do atendente.
   reply = enforceNoExactRepeat(
     reply,

@@ -340,6 +340,55 @@ export function preCalcular(
     );
   }
 
+  // ── Estimar TOTAL do pedido a partir dos cálculos DE ITEM gerados ──
+  // Só soma linhas [CÁLCULO] Bolo / mini salgados / fatia (valores FINAIS),
+  // ignorando [REFERÊNCIA] que lista múltiplas faixas de preço.
+  const parseMoneyString = (s: string): number => {
+    let n = s.replace(/R\$\s*/i, "").trim();
+    if (n.includes(",")) {
+      // BR: pontos = milhar, vírgula = decimal.
+      n = n.replace(/\./g, "").replace(",", ".");
+    } else {
+      // US/sem separador: só ponto com 2 dígitos após = decimal; múltiplos = milhares.
+      const parts = n.split(".");
+      if (parts.length === 2 && parts[1].length === 2) {
+        // Decimal US — mantém.
+      } else {
+        n = n.replace(/\./g, "");
+      }
+    }
+    return parseFloat(n);
+  };
+  const totalEstimado = calculos.reduce((acc, linha) => {
+    const isRef = linha.startsWith("[REFERÊNCIA]");
+    const isCalc = linha.startsWith("[CÁLCULO]");
+    if (!isCalc || isRef) return acc;
+    // Ignora linhas auxiliares (de entrada 50%, divisão em formas, etc.)
+    if (/\b(entrada|dividir|decora)/i.test(linha)) return acc;
+    // Pega o ÚLTIMO R$ da linha (que é o total do item).
+    const matches = linha.match(/R\$\s*[\d.,]+/gi) || [];
+    if (matches.length === 0) return acc;
+    const last = matches[matches.length - 1];
+    const n = parseMoneyString(last);
+    return Number.isFinite(n) && n > 0 ? acc + n : acc;
+  }, 0);
+  if (totalEstimado > 300) {
+    const sinal = Math.round((totalEstimado / 2) * 100) / 100;
+    calculos.push(
+      `[CÁLCULO] Total estimado do pedido: R$${totalEstimado.toFixed(2)} → sinal 50%: R$${sinal.toFixed(2)}`
+    );
+    alertas.push(
+      `[SINAL_50] Total acima de R$300 — OBRIGATÓRIO cobrar sinal de 50% (R$${sinal.toFixed(2)}) antes de fechar. NÃO mande a chave PIX com o valor TOTAL; mande com o valor do SINAL (R$${sinal.toFixed(2)}).`
+    );
+  }
+
+  // ── Salgados (mini) sempre exigem sinal 50% ──
+  if (/mini\s+salgados/i.test(calculos.join(" "))) {
+    alertas.push(
+      `[SINAL_SALGADOS] Mini salgados SEMPRE exigem sinal de 50% (independente do valor). Calcule e informe ao cliente.`
+    );
+  }
+
   // ── Verificar horário ──
   const horario = verificarHorarioFuncionamento();
   if (!horario.aberto) {
@@ -610,6 +659,20 @@ DECORAÇÃO DE BOLO (REGRA CRÍTICA — NÃO ERRAR!):
 - NUNCA escreva item com quantidade diferente da que o cliente pediu. Se cliente disse "50 empadas", o resumo É "50 empadas" — jamais "13 empadas" ou "30 empadas".
 - Antes de enviar o resumo, confira cada item: (a) nome completo presente, (b) quantidade EXATA do histórico, (c) valor na mesma linha.
 - Se você perceber que faltou um item, REESCREVA o resumo inteiro — NÃO emende em cima.
+
+⛔⛔ SINAL 50% É OBRIGATÓRIO quando:
+- TOTAL DO PEDIDO > R$300 (bolos/doces)
+- Encomenda tem MINI SALGADOS (SEMPRE, qualquer valor)
+
+Regra: ao invés de cobrar o valor TOTAL via PIX, você cobra 50% do total como SINAL. O restante é pago na entrega/retirada.
+
+Ex: total R$578,75 → sinal 50% = R$289,38. Mande a chave PIX com o valor do SINAL: R$289,38, NÃO com R$578,75.
+
+No fluxo:
+1. Liste os itens com valores e TOTAL.
+2. Diga: "Para esse pedido pedimos sinal de 50%: R$XXX,XX. Chave PIX: 11998287836 (Nubank, Sandra Regina). Quando fizer, me manda o comprovante!"
+
+⛔ COMPROVANTE: ao receber PDF/imagem de comprovante do cliente, responda CURTO: "Comprovante recebido ✅ Nossa equipe vai verificar em instantes!" — a plataforma já registra automaticamente.
 
 ⛔ PREÇOS — NUNCA INVENTE, SEMPRE USE O QUE ESTÁ NO CONTEXTO:
 - Todo preço que você escrever deve vir do [CARDÁPIO E PREÇOS] ou dos [CÁLCULOS PRÉ-FEITOS]. ZERO de memória, ZERO de chute.

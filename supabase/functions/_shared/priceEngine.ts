@@ -280,6 +280,57 @@ export function messageIsAboutTime(fullMessage: string): boolean {
   return hasTimeWord;
 }
 
+// ── Guardrail: sinal 50% obrigatório quando total > R$300 ──
+
+/**
+ * Se a resposta tem chave PIX + valor alto (> R$300) mas NÃO menciona
+ * "sinal" / "50%" / "entrada", adiciona linha do sinal. Evita o bug de
+ * o agente pedir o valor TOTAL via PIX quando o correto é só o sinal.
+ */
+export function enforceSignalWhenLargeOrder(replyText: string): string {
+  if (!replyText) return replyText;
+  const rNorm = normalizeForCompare(replyText);
+  const hasPix =
+    /\bpix\b/.test(rNorm) ||
+    rNorm.includes("chave pix") ||
+    /\d{10,}/.test(replyText); // chave PIX telefone tem 11+ dígitos
+
+  if (!hasPix) return replyText;
+
+  // Já menciona sinal/entrada? Passa intacto.
+  if (/\b(sinal|entrada|50\s*%|50%)\b/i.test(replyText)) return replyText;
+
+  // Extrai valores R$ da resposta e pega o maior (heurística para "Total").
+  const parseBRorUS = (s: string): number => {
+    let n = s.replace(/R\$\s*/i, "").trim();
+    if (n.includes(",")) {
+      n = n.replace(/\./g, "").replace(",", ".");
+    } else {
+      const parts = n.split(".");
+      if (parts.length === 2 && parts[1].length === 2) {
+        // decimal US mantém
+      } else {
+        n = n.replace(/\./g, "");
+      }
+    }
+    return parseFloat(n);
+  };
+  const moneyMatches = replyText.match(/R\$\s*[\d.,]+/gi) || [];
+  const values = moneyMatches
+    .map((s) => parseBRorUS(s))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (values.length === 0) return replyText;
+  const maxValue = Math.max(...values);
+
+  if (maxValue <= 300) return replyText;
+
+  const sinal = Math.round((maxValue / 2) * 100) / 100;
+  const aviso = `\n\n⚠️ Para pedidos acima de R$300 pedimos sinal de 50%: R$${sinal.toFixed(
+    2
+  ).replace(".", ",")}. Quando fizer o PIX do sinal, me manda o comprovante!`;
+  return `${replyText.trimEnd()}${aviso}`;
+}
+
 // ── Guardrail: alinhar resposta do LLM com a intent interpretada ──
 
 /**
