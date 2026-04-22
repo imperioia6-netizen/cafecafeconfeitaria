@@ -74,6 +74,7 @@ import {
   enforceGreetingReset,
   enforceAskMoreBeforeClosure,
   enforceOrderSummarySanity,
+  enforceIntentAlignment,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -83,6 +84,7 @@ import {
 // ── Módulos de API ──
 import { sendEvolutionMessage } from "../_shared/evolutionApi.ts";
 import { buildTeamSummary } from "../_shared/teamSummary.ts";
+import { interpretMessage } from "../_shared/agentInterpreter.ts";
 
 // ── Módulos de cliente/lead ──
 import { findOrCreateCustomer, findOrCreateLead } from "../_shared/customerManager.ts";
@@ -961,6 +963,42 @@ async function handleCustomerMessage(
     reply,
     history as { role: "user" | "assistant"; content: string }[]
   );
+
+  // ── Interpretação determinística + alinhamento com resposta ──
+  // Rede final de segurança: se a intent detectada prevê uma next_action
+  // mas a resposta do LLM vai em outra direção, substituímos por algo
+  // alinhado. Isto tira do LLM a decisão sobre o fluxo principal.
+  try {
+    const interp = interpretMessage({
+      message: combinedMessage,
+      history: history as { role: "user" | "assistant"; content: string }[],
+      recipes: recipeRowsTyped,
+      hasPdfAttachment: hasPdfDocument(payload),
+    });
+    const lastA = [...(history as { role: string; content: string }[])]
+      .reverse()
+      .find((h) => h.role === "assistant");
+    const lastANorm = lastA
+      ? (lastA.content || "").toLowerCase()
+      : "";
+    reply = enforceIntentAlignment(reply, {
+      intent: interp.intent,
+      next_action: interp.next_action,
+      entities: {
+        flavor: interp.entities.flavor,
+        weight_kg: interp.entities.weight_kg,
+        writing_phrase: interp.entities.writing_phrase,
+      },
+      client_short_affirmation: interp.intent === "confirm_more" || interp.intent === "payment_done",
+      last_assistant_had_pix:
+        /\bpix\b/.test(lastANorm) ||
+        lastANorm.includes("chave pix") ||
+        lastANorm.includes("comprovante") ||
+        /\b50\s*%/.test(lastANorm),
+    });
+  } catch (e) {
+    console.error("interpretMessage error:", (e as Error).message);
+  }
   // Após mandar o PIX e receber só um "ok"/"beleza"/"vou pagar" do cliente,
   // não repetir o resumo do pedido — só aguardar o comprovante.
   reply = enforceNoRepeatAfterPix(

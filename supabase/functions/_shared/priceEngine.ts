@@ -280,6 +280,108 @@ export function messageIsAboutTime(fullMessage: string): boolean {
   return hasTimeWord;
 }
 
+// ── Guardrail: alinhar resposta do LLM com a intent interpretada ──
+
+/**
+ * Verifica se a resposta do LLM está coerente com a classificação
+ * determinística da mensagem do cliente. Se o cliente enviou comprovante
+ * (PDF) e a resposta tá listando itens com preço, algo quebrou — substitui
+ * por mensagem apropriada.
+ *
+ * Este guardrail resolve casos onde os guardrails específicos não pegaram:
+ * é a REDE final de segurança baseada na `next_action` esperada.
+ */
+export interface InterpretedContext {
+  intent: string;
+  next_action: string;
+  entities: { flavor?: string; weight_kg?: number; writing_phrase?: string };
+  client_short_affirmation: boolean;
+  last_assistant_had_pix: boolean;
+}
+
+export function enforceIntentAlignment(
+  replyText: string,
+  ctx: InterpretedContext
+): string {
+  if (!replyText) return replyText;
+  const r = normalizeForCompare(replyText);
+  const hasPixData =
+    /\bpix\b/.test(r) ||
+    r.includes("chave pix") ||
+    r.includes("pedimos 50") ||
+    /pix\s+no\s+banco/.test(r);
+  const hasSummary =
+    r.includes("seu pedido") ||
+    r.includes("resumo do pedido") ||
+    /\btotal\s*[:r$]/.test(r) ||
+    (r.match(/r\$\s*\d/g) || []).length >= 2;
+  const asksContinuidade =
+    r.includes("mais alguma coisa") ||
+    r.includes("podemos finalizar") ||
+    r.includes("podemos fechar") ||
+    r.includes("quer adicionar") ||
+    r.includes("deseja mais");
+
+  // 1) Cliente mandou comprovante (PDF) — resposta deve ser confirmação curta,
+  //    não resumo, não PIX de novo.
+  if (ctx.intent === "send_proof" && ctx.next_action === "confirm_proof_received") {
+    if (hasPixData || hasSummary) {
+      return "Comprovante recebido ✅ Nossa equipe vai verificar e confirmar seu pedido em instantes!";
+    }
+  }
+
+  // 2) Cliente só cumprimentou — resposta não pode listar preços / Pix.
+  if (ctx.intent === "greeting" && ctx.next_action === "greet") {
+    if (hasPixData || hasSummary) {
+      return "Oi! 😊 Como posso te ajudar?";
+    }
+  }
+
+  // 3) Cliente confirmou "só isso"/"pode fechar" (confirm_more → ask_payment_method)
+  //    → resposta deve perguntar forma de pagamento, sem mandar PIX ainda.
+  if (
+    ctx.intent === "confirm_more" &&
+    ctx.next_action === "ask_payment_method" &&
+    hasPixData
+  ) {
+    // PIX só depois que cliente escolher a forma. Remover dados de pagamento.
+    return "Perfeito! Como prefere pagar: PIX, dinheiro ou cartão na loja? 😊";
+  }
+
+  // 4) Cliente pagou/afirmou depois do PIX — resposta curta de espera.
+  if (
+    ctx.intent === "payment_done" &&
+    ctx.next_action === "wait_for_proof" &&
+    (hasSummary || hasPixData)
+  ) {
+    return "Beleza! Fico no aguardo do seu comprovante 😊";
+  }
+
+  // 5) Cliente informou novo pedido — não deve reciclar pedido anterior.
+  if (ctx.intent === "new_order" && ctx.next_action === "reset_for_new_order") {
+    if (hasSummary && !r.includes("novo pedido")) {
+      return "Show! Vamos começar um novo pedido do zero. Me diz: o que você quer? 😊";
+    }
+  }
+
+  // 6) Cliente cancelou — não deve seguir com pedido.
+  if (ctx.intent === "cancel" && ctx.next_action === "handle_cancel") {
+    if (hasSummary || hasPixData) {
+      return "Tranquilo, cancelei por aqui. Quando quiser, é só chamar! 😊";
+    }
+  }
+
+  // 7) Próxima ação é perguntar mais itens — resposta não pode ir pra pagamento.
+  if (ctx.next_action === "ask_more_items" && hasPixData) {
+    // Remove bloco de pagamento, mantém o anotado + pergunta.
+    // (cobertura extra além do enforceAskBeforePayment existente)
+    const keepUntilPix = replyText.split(/\bpix\b/i)[0].trimEnd();
+    return `${keepUntilPix}\n\nGostaria de mais alguma coisa ou podemos finalizar? 😊`.trim();
+  }
+
+  return replyText;
+}
+
 // ── Guardrail: saudação do cliente NÃO reativa pedido antigo ──
 
 /**
