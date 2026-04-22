@@ -16,6 +16,8 @@ import {
   messageMentionsDecoration,
   messageIsAboutWriting,
 } from "./priceEngine.ts";
+import { BOLOS, MINI_SALGADOS, SALGADOS_GRANDES, DOCES } from "./catalog.ts";
+import { fuzzyFindBest, canonicalize, normalize } from "./fuzzyMatch.ts";
 
 // ── Tipos ──
 
@@ -107,16 +109,39 @@ function matchFlavorInMenu(
   msg: string,
   recipes: RecipeLite[]
 ): { name: string; raw: string } | null {
-  if (!recipes || recipes.length === 0) return null;
   const msgN = normalizeForCompare(msg);
-  // Ordena por nome mais longo primeiro (evita "Brigadeiro" bater em "Brigadeiro Belga")
-  const sorted = [...recipes]
-    .map((r) => ({ orig: r.name, norm: normalizeForCompare(r.name) }))
+
+  // 1) Match exato contra nomes do CARDÁPIO CANÔNICO + banco (recipes).
+  //    Ordem por comprimento: "Ninho com Nutella" ganha de "Ninho".
+  const allNames: string[] = [
+    ...BOLOS.map((b) => b.name),
+    ...(recipes || []).map((r) => r.name),
+  ];
+  const deduped = Array.from(new Set(allNames));
+  const sorted = deduped
+    .map((orig) => ({ orig, norm: normalizeForCompare(orig) }))
     .filter((r) => r.norm.length >= 3)
     .sort((a, b) => b.norm.length - a.norm.length);
-  for (const { orig, norm } of sorted) {
-    if (msgN.includes(norm)) {
-      return { name: orig, raw: norm };
+  for (const { orig, norm: nn } of sorted) {
+    if (msgN.includes(nn)) return { name: orig, raw: nn };
+  }
+
+  // 2) Fuzzy — tolera typo, sinônimo, abreviação ("brigadero", "prest", "truf").
+  //    Threshold alto pra evitar overmatch em "nutella" → "delicia de coco".
+  //    Além disso, SEMPRE exige que ao menos um token significativo bate.
+  const fuzzy = fuzzyFindBest(
+    msg,
+    deduped.map((n) => ({ name: n })),
+    (it) => it.name,
+    0.7
+  );
+  if (fuzzy && fuzzy.score >= 0.7 && fuzzy.matchedTokens.length > 0) {
+    // Evitar match trivial (só "de", "com" etc.)
+    const significant = fuzzy.matchedTokens.filter(
+      (t) => t.length >= 4 && !["com", "sem", "para", "de"].includes(t)
+    );
+    if (significant.length > 0) {
+      return { name: fuzzy.item.name, raw: normalize(fuzzy.item.name) };
     }
   }
   return null;
@@ -210,10 +235,23 @@ function extractOrderType(
   text: string
 ): "encomenda" | "delivery" | "retirada" | null {
   const n = normalizeForCompare(text);
-  if (/\bdelivery\b|\bentrega\w*\b/.test(n)) return "delivery";
-  if (/\bretirad\w*\b|\bbusco\b|\bbuscar\b|\bpego\s+na\s+loja\b|\bbalc[aã]o\b/.test(n))
+  // Canoniza cada token pra capturar sinônimos ("passo ai" → retirada,
+  // "reservar" → encomenda, "entregar em casa" → delivery, "bora" + ...).
+  const canonicalJoined = n.split(/\s+/).map((t) => canonicalize(t)).join(" ");
+  if (/\bdelivery\b|\bentrega\w*\b|\bentregar\s+em\s+casa\b/.test(canonicalJoined))
+    return "delivery";
+  if (
+    /\bretirada\b|\bretirar\b|\bretiro\b|\bbusc\w*\b|\bpego\s+na\s+loja\b|\bpegar\s+na\s+loja\b|\bbalc[aã]o\b|\bpasso\s+(?:ai|la|na\s+loja)\b|\bvou\s+(?:ai|la|pegar)\b/.test(
+      canonicalJoined
+    )
+  )
     return "retirada";
-  if (/\bencomenda\w*\b/.test(n)) return "encomenda";
+  if (
+    /\bencomenda\w*\b|\bencomendar\b|\breservar\b|\breserva\b|\bagendar\w*\b|\bpra\s+amanha\b|\bpra\s+depois\b|\bpra\s+semana\b/.test(
+      canonicalJoined
+    )
+  )
+    return "encomenda";
   return null;
 }
 
