@@ -430,6 +430,43 @@ export function enforceIntentAlignment(
     return `${keepUntilPix}\n\nGostaria de mais alguma coisa ou podemos finalizar? 😊`.trim();
   }
 
+  // 8) Cliente escolheu forma de pagamento (payment_method_choice) e agente
+  //    pede sabor/peso/item → ERRO GRAVE. Substituir por envio de PIX ou
+  //    resposta apropriada.
+  if (ctx.intent === "payment_method_choice" && ctx.next_action === "send_pix") {
+    const asksForProductInfo =
+      r.includes("preciso de um sabor") ||
+      r.includes("precisa de um sabor") ||
+      r.includes("qual o sabor") ||
+      r.includes("qual sabor quer") ||
+      r.includes("escolher um sabor") ||
+      r.includes("sabor valido") ||
+      r.includes("sabor válido") ||
+      r.includes("me diz um sabor") ||
+      r.includes("qual o peso") ||
+      r.includes("quantos kg") ||
+      /\bcard[aá]pio\b.*\?/.test(r);
+    if (asksForProductInfo) {
+      return "Perfeito! Vou te mandar a chave do PIX agora e o valor do sinal. Um momento 😊";
+    }
+  }
+
+  // 9) Saudação simples + resposta de fallback "equipe já foi avisada" →
+  //    cumprimento humano.
+  if (ctx.intent === "greeting" && ctx.next_action === "greet") {
+    const looksLikeFallback =
+      r.includes("equipe ja foi avisada") ||
+      r.includes("equipe já foi avisada") ||
+      r.includes("em breve retorna") ||
+      r.includes("obrigado pela mensagem") ||
+      r.includes("estamos a disposicao") ||
+      r.includes("estamos à disposição") ||
+      r.includes("equipe retorna");
+    if (looksLikeFallback) {
+      return "Oi! 😊 Como posso te ajudar?";
+    }
+  }
+
   return replyText;
 }
 
@@ -472,8 +509,17 @@ export function enforceGreetingReset(
     /\btotal\s*[:r$]/.test(replyNorm) ||
     (replyNorm.match(/r\$\s*\d/g) || []).length >= 2 ||
     /pix\s+no\s+banco/.test(replyNorm);
-  if (!looksLikePedidoRetomada) return replyText;
-  if (replyText.trim().length <= 60) return replyText;
+  // Também detecta mensagens de "equipe foi avisada" / "em breve retorna" —
+  // são fallbacks inadequados para uma saudação simples.
+  const looksLikeFallback =
+    replyNorm.includes("equipe ja foi avisada") ||
+    replyNorm.includes("equipe foi avisada") ||
+    replyNorm.includes("em breve retorna") ||
+    replyNorm.includes("obrigado pela mensagem") ||
+    replyNorm.includes("estamos a disposicao") ||
+    replyNorm.includes("equipe retorna");
+  if (!looksLikePedidoRetomada && !looksLikeFallback) return replyText;
+  if (replyText.trim().length <= 60 && !looksLikeFallback) return replyText;
 
   // Tem pedido ABERTO confirmado na sessão? (se tiver, avisa; senão só saúda).
   // Como não temos acesso à sessão aqui, cumprimentamos e perguntamos.
@@ -664,13 +710,37 @@ export function enforceNoFragmentAsFlavor(
 ): string {
   if (!replyText) return replyText;
 
-  // Captura padrões "sabor X não temos", "sabor 'X' não existe", "Bolo de X não temos", etc.
-  // Aceita aspas retas (" '), curly (“ ” ‘ ’), francesas («»), crase e *asteriscos*.
+  // Padrões de rejeição (regex literais — aceita aspas retas, curly e asteriscos).
   const patterns: RegExp[] = [
     /(?:o\s+)?sabor\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+(?:a\s+gente\s+)?n[a\u00E3]o\s+(?:temos|tem|existe|consta)/i,
     /bolo\s+(?:s[o\u00F3]\s+)?de\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+(?:a\s+gente\s+)?n[a\u00E3]o\s+(?:temos|tem|existe|consta)/i,
     /(?:esse|esta?)\s+sabor\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+n[a\u00E3]o/i,
   ];
+
+  // Padrão especial: "preciso de um sabor válido" / "me diz um sabor válido"
+  // não captura fragmento, mas indica que o LLM não entendeu a mensagem do
+  // cliente (geralmente ele disse algo tipo "pix", "ok", "amanhã", que não
+  // é sabor, e o LLM insiste em sabor). Só dispara se o cliente NÃO está
+  // falando de sabor (current message claramente sobre outra coisa).
+  const saysNeedValidFlavor = /\b(preciso|precisa)\s+(?:de\s+)?(?:um\s+)?sabor\s+v[aá]lid/i.test(
+    replyText
+  );
+  if (saysNeedValidFlavor && currentMessage) {
+    const cN = normalizeForCompare(currentMessage);
+    const clientLikelyTalkingAboutOther =
+      /^(?:pix|picse|dinheiro|cartao|cart[aã]o|credito|cr[eé]dito|debito|d[eé]bito|na\s+loja|balcao|balc[aã]o)[\s.,!?]*$/i.test(
+        cN
+      ) ||
+      /^(?:oi+|ola|ol[áa]|bom\s*dia|boa\s*tarde|boa\s*noite|ok|beleza|vou\s*fazer|valeu)[\s.,!?]*$/i.test(
+        cN
+      ) ||
+      /\b(amanha|amanhã|hoje|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|\d+\s*hrs?|\d+\s*h\b)\b/.test(
+        cN
+      );
+    if (clientLikelyTalkingAboutOther) {
+      return "Opa, me confundi! Vou retomar seu pedido — me dá um segundo 😊";
+    }
+  }
 
   // Palavras funcionais que NÃO podem ser sabor (prep/verbo/conector/tempo).
   const FUNCTIONAL = new Set([
