@@ -727,8 +727,10 @@ export function enforceNoExactRepeat(
   const a = collapseForSimilarity(replyText);
   const b = collapseForSimilarity(lastAssistant.content);
   if (!a || !b) return replyText;
-  // Respostas curtas ("ok", "obrigado") podem repetir legitimamente — ignoramos.
-  if (a.length <= 40) return replyText;
+  // Respostas curtas (saudações, perguntas diretas) podem repetir naturalmente.
+  // Só consideramos repetição "ruim" em respostas LONGAS (que indicam resumo
+  // ou lista). Antes: 40 chars — muito agressivo. Agora: 120 chars.
+  if (a.length < 120) return replyText;
   if (a === b) {
     return "Tudo certo! Vou prosseguir com o seu pedido 😊";
   }
@@ -748,10 +750,9 @@ export function enforceNoExactRepeat(
   const union = tokensA.size + tokensB.size - inter;
   const jaccard = union === 0 ? 0 : inter / union;
 
-  // Considera repetição se prefixo longo (>70%) OU jaccard alto (>85%) E
-  // o texto tem tamanho razoável (>40 chars, evita falso positivo em "ok").
-  const isRepeat =
-    a.length > 40 && (prefixRatio > 0.7 || jaccard > 0.85);
+  // Considera repetição em TEXTO LONGO (>= 120 chars) com prefixo longo
+  // (>85%) OU jaccard muito alto (>90%).
+  const isRepeat = prefixRatio > 0.85 || jaccard > 0.9;
   if (!isRepeat) return replyText;
   console.warn(
     "enforceNoExactRepeat: resposta muito similar à anterior do atendente — substituindo"
