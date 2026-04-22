@@ -73,6 +73,7 @@ import {
   enforceNoExactRepeat,
   enforceGreetingReset,
   enforceAskMoreBeforeClosure,
+  enforceOrderSummarySanity,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -952,6 +953,12 @@ async function handleCustomerMessage(
   reply = enforceAskMoreBeforeClosure(
     reply,
     combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
+  // Detecta resumos com itens picotados ("R$545" sozinho sem item) e
+  // quantidades trocadas vs. histórico do cliente ("50 empadas" → "13").
+  reply = enforceOrderSummarySanity(
+    reply,
     history as { role: "user" | "assistant"; content: string }[]
   );
   // Após mandar o PIX e receber só um "ok"/"beleza"/"vou pagar" do cliente,

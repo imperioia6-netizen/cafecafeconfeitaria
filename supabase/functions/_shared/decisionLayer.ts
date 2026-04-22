@@ -605,6 +605,12 @@ DECORAÇÃO DE BOLO (REGRA CRÍTICA — NÃO ERRAR!):
 - Se o cliente pediu bolo e você esqueceu o bolo no resumo, é ERRO GRAVÍSSIMO. Cheque o resumo item a item.
 - Se calcular subtotais, a soma aritmética TEM QUE BATER com o total. Ex.: R$545 + R$30 ≠ R$390.
 
+⛔⛔ RESUMO DO PEDIDO — CADA LINHA TEM QUE TER ITEM + VALOR JUNTOS:
+- NUNCA escreva uma linha só com o valor ("R$545,00" sozinho). Cada item precisa vir com seu nome completo na MESMA linha: "Bolo Trufado 5kg — R$545,00".
+- NUNCA escreva item com quantidade diferente da que o cliente pediu. Se cliente disse "50 empadas", o resumo É "50 empadas" — jamais "13 empadas" ou "30 empadas".
+- Antes de enviar o resumo, confira cada item: (a) nome completo presente, (b) quantidade EXATA do histórico, (c) valor na mesma linha.
+- Se você perceber que faltou um item, REESCREVA o resumo inteiro — NÃO emende em cima.
+
 ⛔ PREÇOS — NUNCA INVENTE, SEMPRE USE O QUE ESTÁ NO CONTEXTO:
 - Todo preço que você escrever deve vir do [CARDÁPIO E PREÇOS] ou dos [CÁLCULOS PRÉ-FEITOS]. ZERO de memória, ZERO de chute.
 - Para bolo: valor total = preço_por_kg × peso. Bolo Trufado 2kg com R$129/kg = R$258,00 (não R$15.008).

@@ -945,6 +945,108 @@ export function enforceEncomendaDeliveryQuestion(
   return replyText;
 }
 
+// ── Guardrail: detectar resumo com itens picotados ou quantidades trocadas ──
+
+/**
+ * Verifica se o resumo do pedido tem:
+ *   1) linha de valor sem item (ex.: "R$545,00" sozinho, sem "Bolo ... kg" antes)
+ *   2) quantidade trocada comparada ao histórico do cliente
+ *      (ex.: cliente pediu "50 empadas" mas resumo lista "13 empadas")
+ *
+ * Quando detecta, ANEXA um aviso visível ao final da resposta para forçar
+ * verificação manual em vez de enviar resumo errado. Preserva o restante do
+ * texto pra não piorar mais.
+ */
+export function enforceOrderSummarySanity(
+  replyText: string,
+  history: { role: "user" | "assistant"; content: string }[]
+): string {
+  if (!replyText) return replyText;
+
+  const issues: string[] = [];
+
+  // ─── 1. Itens picotados: linha começando com R$ sem item textual antes ───
+  // Ex.: "Anotado:\n- R$545,00\n- 25 mini coxinhas..." — o "R$545" está sem item.
+  const lines = replyText.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    // Linha começando com bullet + R$ diretamente (sem rótulo): "- R$545,00".
+    const bulletMoneyOnly = /^[\-•*·]\s*R\$\s*[\d.,]+\s*$/i;
+    // Linha isolada que é só um valor R$...
+    const onlyMoney = /^R\$\s*[\d.,]+\s*$/i;
+    if (bulletMoneyOnly.test(line) || onlyMoney.test(line)) {
+      issues.push(`linha só com valor ("${line}") — faltou o item`);
+      break; // um caso já basta pra sinalizar
+    }
+  }
+
+  // ─── 2. Quantidades trocadas vs. histórico do cliente ───
+  // Pega pares (qtd, item) mencionados pelo cliente nos últimos turnos e
+  // verifica se o resumo da resposta mantém a MESMA quantidade pra cada item.
+  const clientText = history
+    .filter((h) => h.role === "user")
+    .map((h) => h.content || "")
+    .join("\n");
+  // Itens de interesse: mini coxinhas, coxinhas, empadas, kibes, brigadeiros,
+  // beijinhos, docinhos, risoles, bolinhas, pasteis, esfihas.
+  const ITEM_RE =
+    /(\d+)\s*(?:de\s+)?(mini\s*coxinh\w*|coxinh\w*|empad\w*|kibe\w*|quibe\w*|brigadeir\w*|beijinh\w*|docinh\w*|risol\w*|bolinh\w*|pasteis?\w*|esfih\w*)\b/gi;
+  interface QtyItem { qty: number; kind: string }
+  const parseAll = (text: string): QtyItem[] => {
+    const out: QtyItem[] = [];
+    const re = new RegExp(ITEM_RE.source, "gi");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const q = parseInt(m[1], 10);
+      const kind = normalizeItemKind(m[2]);
+      if (Number.isFinite(q) && q > 0 && kind) out.push({ qty: q, kind });
+    }
+    return out;
+  };
+  const clientItems = parseAll(clientText);
+  const replyItems = parseAll(replyText);
+  if (clientItems.length > 0 && replyItems.length > 0) {
+    // Última quantidade mencionada pelo cliente para cada tipo.
+    const lastClientByKind = new Map<string, number>();
+    for (const it of clientItems) lastClientByKind.set(it.kind, it.qty);
+    for (const r of replyItems) {
+      const expected = lastClientByKind.get(r.kind);
+      if (expected != null && expected !== r.qty) {
+        issues.push(
+          `quantidade de "${r.kind}" ficou ${r.qty} no resumo mas o cliente pediu ${expected}`
+        );
+      }
+    }
+  }
+
+  if (issues.length === 0) return replyText;
+
+  // Sinaliza pra revisão manual — não envia resumo errado sem aviso.
+  console.warn("enforceOrderSummarySanity: problemas detectados:", issues);
+  const nota = `\n\n⚠️ Opa, acho que confundi algo no resumo (${issues
+    .slice(0, 2)
+    .join("; ")}) — me confirma: qual o pedido completo mesmo? Assim refaço certinho 😊`;
+  return `${replyText.trimEnd()}${nota}`;
+}
+
+/** Normaliza o tipo de item para comparação consistente. */
+function normalizeItemKind(raw: string): string {
+  const n = raw.toLowerCase();
+  if (/^mini\s*coxinh/.test(n)) return "mini coxinha";
+  if (/^coxinh/.test(n)) return "coxinha";
+  if (/^empad/.test(n)) return "empada";
+  if (/^(kibe|quibe)/.test(n)) return "kibe";
+  if (/^brigadeir/.test(n)) return "brigadeiro";
+  if (/^beijinh/.test(n)) return "beijinho";
+  if (/^docinh/.test(n)) return "docinho";
+  if (/^risol/.test(n)) return "risole";
+  if (/^bolinh/.test(n)) return "bolinha";
+  if (/^past/.test(n)) return "pastel";
+  if (/^esfih/.test(n)) return "esfiha";
+  return n.replace(/s$/, "");
+}
+
 // ── Guardrail: sempre perguntar "mais alguma coisa?" antes de fechar ──
 
 /**
