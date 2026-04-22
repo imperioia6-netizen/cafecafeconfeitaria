@@ -530,6 +530,98 @@ export function enforceGreetingReset(
   return greet;
 }
 
+// ── Guardrail: fallback inteligente (quando LLM falha) ──
+
+/**
+ * Quando o LLM falha (timeout / erro / resposta vazia), o webhook devolve
+ * a mensagem FALLBACK_ATENDENTE "Obrigado pela mensagem! Nossa equipe...".
+ * Essa mensagem é inadequada em quase todo contexto. Substituímos por uma
+ * resposta determinística baseada na intent detectada — o cliente sempre
+ * recebe algo útil mesmo quando o LLM falha.
+ */
+export interface FallbackContext {
+  intent: string;
+  next_action: string;
+  entities: {
+    flavor?: string;
+    weight_kg?: number;
+    mini_savory_qty?: number;
+    writing_phrase?: string;
+    order_type?: string;
+  };
+}
+
+export function enforceSmartFallback(
+  replyText: string,
+  ctx: FallbackContext
+): string {
+  if (!replyText) return replyText;
+  const r = normalizeForCompare(replyText);
+  const isFallback =
+    r.includes("equipe ja foi avisada") ||
+    r.includes("equipe foi avisada") ||
+    r.includes("nossa equipe ja") ||
+    r.includes("em breve retorna") ||
+    r.includes("obrigado pela mensagem") ||
+    r.includes("estamos a disposicao") ||
+    r.includes("nao consegui processar") ||
+    r.includes("não consegui processar");
+  if (!isFallback) return replyText;
+
+  // Resposta determinística por intent/next_action.
+  switch (ctx.next_action) {
+    case "greet":
+      return "Oi! 😊 Como posso te ajudar?";
+    case "answer_menu_or_price":
+      return "Claro! Me diz de qual produto você quer saber o preço — ou posso te mandar o cardápio completo: http://bit.ly/3OYW9Fw 😊";
+    case "ask_weight":
+      return `Anotado${ctx.entities.flavor ? ` — bolo de ${ctx.entities.flavor}` : ""}! Qual o peso? A gente trabalha com 1kg, 2kg, 3kg ou 4kg 😊`;
+    case "ask_flavor":
+      return `Perfeito${ctx.entities.weight_kg ? `, ${ctx.entities.weight_kg}kg` : ""}! Qual sabor você prefere? Posso te mandar o cardápio: http://bit.ly/3OYW9Fw 😊`;
+    case "ask_order_type":
+      return "Vai ser pra encomenda, delivery ou retirada? 😊";
+    case "ask_entrega_ou_retirada":
+      return "Sua encomenda vai ser com entrega ou retirada na loja? 😊";
+    case "inform_4kg_only_retirada":
+      return "Bolo de 4kg é somente para retirada na loja 😊";
+    case "ask_more_items":
+      return "Anotado! Gostaria de mais alguma coisa ou podemos finalizar? 😊";
+    case "ask_payment_method":
+      return "Perfeito! Como prefere pagar: PIX, dinheiro ou cartão na loja?";
+    case "send_pix":
+      return "Show! Chave PIX: 11998287836 (Nubank — Sandra Regina). Assim que fizer o pagamento, me envia o comprovante aqui! 😊";
+    case "wait_for_proof":
+      return "Beleza! Fico no aguardo do seu comprovante 😊";
+    case "confirm_proof_received":
+      return "Comprovante recebido ✅ Nossa equipe vai verificar e confirmar seu pedido em instantes!";
+    case "handle_cancel":
+      return "Tranquilo, cancelei por aqui. Quando quiser, é só chamar! 😊";
+    case "reset_for_new_order":
+      return "Show! Vamos começar um pedido novo. Me diz o que você quer? 😊";
+    case "ask_what_client_wants":
+      return "Me conta: o que você vai querer? 😊";
+    default:
+      // Se tem info parcial de bolo, monta confirmação.
+      if (ctx.entities.flavor || ctx.entities.weight_kg || ctx.entities.mini_savory_qty) {
+        const partes = [];
+        if (ctx.entities.flavor && ctx.entities.weight_kg)
+          partes.push(`bolo de ${ctx.entities.flavor} ${ctx.entities.weight_kg}kg`);
+        else if (ctx.entities.flavor)
+          partes.push(`bolo de ${ctx.entities.flavor}`);
+        else if (ctx.entities.weight_kg)
+          partes.push(`bolo de ${ctx.entities.weight_kg}kg`);
+        if (ctx.entities.mini_savory_qty)
+          partes.push(`${ctx.entities.mini_savory_qty} mini salgados`);
+        if (ctx.entities.writing_phrase)
+          partes.push(`escrita "${ctx.entities.writing_phrase}" (+R$15)`);
+        if (partes.length > 0) {
+          return `Anotado: ${partes.join(", ")}! Posso te ajudar com mais alguma coisa? 😊`;
+        }
+      }
+      return "Opa, me conta de novo o que você precisa? 😊";
+  }
+}
+
 // ── Guardrail: bloquear preços absurdos / inventados ──
 
 /**

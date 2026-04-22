@@ -76,6 +76,7 @@ import {
   enforceOrderSummarySanity,
   enforceIntentAlignment,
   enforceSignalWhenLargeOrder,
+  enforceSmartFallback,
   messageIsAboutWriting,
   extractDecorationRequestFromMessage,
   applyDecorationToPedidoPayload,
@@ -966,6 +967,32 @@ async function handleCustomerMessage(
 
   // ── Aplicar guardrails finais ──
   reply = guardedReplyClean || replyClean || reply;
+
+  // Se o LLM retornou FALLBACK_ATENDENTE por timeout/erro, substituímos por
+  // uma resposta determinística baseada na intent interpretada. Roda ANTES
+  // dos demais guardrails pra que eles atuem sobre a resposta substituída.
+  try {
+    const interpEarly = interpretMessage({
+      message: combinedMessage,
+      history: history as { role: "user" | "assistant"; content: string }[],
+      recipes: recipeRowsTyped,
+      hasPdfAttachment: hasPdfDocument(payload),
+    });
+    reply = enforceSmartFallback(reply, {
+      intent: interpEarly.intent,
+      next_action: interpEarly.next_action,
+      entities: {
+        flavor: interpEarly.entities.flavor,
+        weight_kg: interpEarly.entities.weight_kg,
+        mini_savory_qty: interpEarly.entities.mini_savory_qty,
+        writing_phrase: interpEarly.entities.writing_phrase,
+        order_type: interpEarly.entities.order_type,
+      },
+    });
+  } catch (e) {
+    console.error("enforceSmartFallback error:", (e as Error).message);
+  }
+
   reply = enforceOrderTypeQuestion(reply, intent, stage, combinedMessage);
   reply = enforceCakeContinuity(
     reply,
