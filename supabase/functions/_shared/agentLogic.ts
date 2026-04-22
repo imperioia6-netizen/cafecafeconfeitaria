@@ -235,12 +235,37 @@ export async function getLlmConfig(supabase: SupabaseClient): Promise<LlmConfig 
   return null;
 }
 
+/**
+ * Helper: grava log em agent_debug_logs (tabela de debug). Falha silenciosa
+ * — se o insert dá erro, não atrapalha o fluxo normal.
+ */
+async function dbgLog(
+  supabase: SupabaseClient | null | undefined,
+  level: "info" | "warn" | "error",
+  source: string,
+  message: string,
+  context?: Record<string, unknown>
+): Promise<void> {
+  if (!supabase) return;
+  try {
+    await supabase.from("agent_debug_logs").insert({
+      level,
+      source,
+      message: message.slice(0, 2000),
+      context: context || null,
+    });
+  } catch {
+    // silencioso
+  }
+}
+
 export async function callLlm(
   config: LlmConfig,
   systemPrompt: string,
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
-  signal?: AbortSignal | null
+  signal?: AbortSignal | null,
+  supabase?: SupabaseClient | null
 ): Promise<string> {
   const safeMessage = sanitizeMessage(userMessage).slice(0, MAX_MESSAGE_LENGTH);
   const recentHistoryRaw = history.slice(-20).map((m) => ({
@@ -336,6 +361,14 @@ export async function callLlm(
             const text = await res.text().catch(() => "");
             lastErrA = `anthropic model=${model} attempt=${attempt} status=${res.status} body=${text.slice(0, 300)}`;
             console.warn("callLlm:", lastErrA);
+            await dbgLog(supabase, "error", "callLlm.anthropic", lastErrA, {
+              model,
+              attempt,
+              status: res.status,
+              body: text.slice(0, 500),
+              promptSize,
+              historyLen: recentHistory.length,
+            });
             if ((res.status === 429 || res.status >= 500) && attempt < LLM_MAX_ATTEMPTS) {
               await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
               continue;
@@ -347,13 +380,28 @@ export async function callLlm(
           if (typeof content !== "string" || !content.trim()) {
             lastErrA = `anthropic model=${model} attempt=${attempt} vazio: ${JSON.stringify(data).slice(0, 300)}`;
             console.warn("callLlm:", lastErrA);
+            await dbgLog(supabase, "error", "callLlm.anthropic", "resposta vazia", {
+              model,
+              attempt,
+              data: JSON.stringify(data).slice(0, 500),
+            });
             break;
           }
+          await dbgLog(supabase, "info", "callLlm.anthropic", "sucesso", {
+            model,
+            attempt,
+            contentLen: content.length,
+          });
           return content.slice(0, 4096).trim();
         } catch (e) {
           const err = e as Error;
           lastErrA = `anthropic model=${model} attempt=${attempt} exception=${err.name}:${err.message}`;
           console.warn("callLlm:", lastErrA);
+          await dbgLog(supabase, "error", "callLlm.anthropic", lastErrA, {
+            model,
+            attempt,
+            errName: err.name,
+          });
           if (err.name === "AbortError") break;
           if (attempt < LLM_MAX_ATTEMPTS) {
             await new Promise((r) => setTimeout(r, LLM_RETRY_DELAY_MS * attempt));
@@ -461,7 +509,7 @@ export async function runAssistente(
     const systemPrompt = await buildAssistentePrompt(supabase, dataContext, customInstructions);
     const config = await getLlmConfig(supabase);
     if (config) {
-      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
+      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal, supabase);
       return reply || FALLBACK_ASSISTENTE;
     }
     return `Dados disponíveis: ${JSON.stringify(dataContext).slice(0, 1200)}. Configure a API de IA em CRM > Configurações para respostas completas.`;
@@ -654,28 +702,48 @@ export async function runAtendente(
       console.error(
         "runAtendente: SEM CONFIG DE LLM (nem agent_api_key em crm_settings, nem LOVABLE_API_KEY env). Cliente vai receber fallback."
       );
+      await dbgLog(supabase, "error", "runAtendente", "sem config de LLM — fallback", {});
       return FALLBACK_ATENDENTE;
     }
+    await dbgLog(supabase, "info", "runAtendente", "chamando callLlm", {
+      baseUrl: config.baseUrl,
+      model: config.model,
+      msgLen: safeMessage.length,
+      historyLen: safeHistory.length,
+      promptLen: systemPrompt.length,
+    });
     try {
-      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal);
+      const reply = await callLlm(config, systemPrompt, safeMessage, safeHistory, controller.signal, supabase);
+      if (!reply) {
+        await dbgLog(supabase, "error", "runAtendente", "callLlm retornou vazio — fallback", {});
+      }
       return reply || FALLBACK_ATENDENTE;
     } catch (llmErr) {
+      const m = (llmErr as Error).message;
       console.error(
         "runAtendente: callLlm FALHOU após retries:",
-        (llmErr as Error).message,
+        m,
         "| modelo=",
         config.model,
         "baseUrl=",
         config.baseUrl
       );
+      await dbgLog(supabase, "error", "runAtendente", "callLlm threw após retries", {
+        message: m,
+        model: config.model,
+        baseUrl: config.baseUrl,
+      });
       return FALLBACK_ATENDENTE;
     }
   } catch (e) {
     if ((e as Error).name === "AbortError") {
       console.error("runAtendente: AbortError (timeout geral)");
+      await dbgLog(supabase, "error", "runAtendente", "AbortError (timeout geral)", {});
       return FALLBACK_ATENDENTE;
     }
-    console.error("runAtendente error:", (e as Error).message);
+    const m = (e as Error).message;
+    console.error("runAtendente error:", m);
+    await dbgLog(supabase, "error", "runAtendente", "exception geral", { message: m });
     return FALLBACK_ATENDENTE;
   } finally {
     clearTimeout(timeoutId);
