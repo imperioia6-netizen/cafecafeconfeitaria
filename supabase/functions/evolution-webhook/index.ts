@@ -90,6 +90,11 @@ import {
 import { sendEvolutionMessage } from "../_shared/evolutionApi.ts";
 import { buildTeamSummary } from "../_shared/teamSummary.ts";
 import { interpretMessage } from "../_shared/agentInterpreter.ts";
+import {
+  decideTeamAlert,
+  buildTeamAlertMessage,
+  markAlertSent,
+} from "../_shared/teamAlerts.ts";
 
 // ── Módulos de cliente/lead ──
 import { findOrCreateCustomer, findOrCreateLead } from "../_shared/customerManager.ts";
@@ -1285,6 +1290,69 @@ async function handleCustomerMessage(
         : (sessionMemory.order_type as string) || "";
 
   // ── Detectar tópico atual para persistir na sessão ──
+  // ── v243: Alertas automáticos para a equipe (3 cenários do proprietário) ──
+  //
+  //   1. Comprovante recebido (PDF) → equipe precisa aprovar com detalhes do pedido
+  //   2. Pergunta sobre vitrine do dia → equipe responde direto
+  //   3. IA disse "vou verificar com a equipe" → humano precisa ajudar
+  //
+  // Dedup por tipo (não spam ma dono quando cliente repete a mesma pergunta).
+  let teamAlertSentKind: ReturnType<typeof decideTeamAlert> = null;
+  try {
+    if (ownerPhonesList.length > 0) {
+      const gotPdf = hasPdfDocument(payload);
+      const alertKind = decideTeamAlert({
+        gotPdfDocument: gotPdf,
+        clientMessage: combinedMessage,
+        iaReply: reply,
+        sessionMemory,
+      });
+      if (alertKind) {
+        // Para "proof": puxa o último pedido pendente do banco pra incluir no alerta.
+        let lastPedidoSummary = "";
+        if (alertKind === "proof") {
+          const { data: pending } = await supabase
+            .from("payment_confirmations")
+            .select("description, created_at")
+            .eq("customer_phone", normalizedPhone)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1);
+          const row = (pending || [])[0] as { description?: string } | undefined;
+          lastPedidoSummary = (row?.description || "").trim();
+        }
+        const alertMsg = buildTeamAlertMessage({
+          kind: alertKind,
+          clientName: pushName || "Cliente",
+          clientPhone: normalizedPhone,
+          clientMessage: combinedMessage,
+          lastPedidoSummary,
+          iaReply: reply,
+        });
+        for (const ownerPhone of ownerPhonesList) {
+          try {
+            await sendEvolutionMessage(
+              evo.baseUrl,
+              evo.apiKey,
+              evo.instance,
+              ownerPhone,
+              alertMsg
+            );
+          } catch (e) {
+            console.error("teamAlert send error:", (e as Error).message);
+          }
+        }
+        teamAlertSentKind = alertKind;
+        console.log(
+          `evolution-webhook: alerta automático '${alertKind}' enviado para ${ownerPhonesList.length} dono(s)`,
+          remoteJid
+        );
+      }
+    }
+  } catch (e) {
+    console.error("teamAlert flow error:", (e as Error).message);
+  }
+
   const msgLowerForTopic = combinedMessage.toLowerCase();
   let currentTopic = (sessionMemory.current_topic as string) || "";
   if (/\b(salgad|coxinha|kibe|quibe|risole|bolinha|empada|esfiha)\b/i.test(msgLowerForTopic)) {
@@ -1295,6 +1363,19 @@ async function handleCustomerMessage(
     currentTopic = "doces";
   } else if (/\b(acai|açaí)\b/i.test(msgLowerForTopic)) {
     currentTopic = "acai";
+  }
+
+  // v243: preserva timestamps de dedup de alertas pra equipe.
+  const alertDedupFields: Record<string, string> = {
+    last_team_alert_proof_at:
+      (sessionMemory.last_team_alert_proof_at as string | undefined) || "",
+    last_team_alert_vitrine_at:
+      (sessionMemory.last_team_alert_vitrine_at as string | undefined) || "",
+    last_team_alert_llm_checks_at:
+      (sessionMemory.last_team_alert_llm_checks_at as string | undefined) || "",
+  };
+  if (teamAlertSentKind) {
+    Object.assign(alertDedupFields, markAlertSent(teamAlertSentKind));
   }
 
   const sessionUpdate: Record<string, unknown> = {
@@ -1309,6 +1390,7 @@ async function handleCustomerMessage(
       // histórico antigo do banco.
       conversation_reset_at:
         (sessionMemory.conversation_reset_at as string | undefined) || "",
+      ...alertDedupFields,
       confirmed_weight:
         sessionWeights.length > 0
           ? sessionWeights[sessionWeights.length - 1]
