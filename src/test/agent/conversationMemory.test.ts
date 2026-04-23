@@ -23,10 +23,21 @@ describe("extractOrderMemory", () => {
     expect(r.hasSalgados).toBe(true);
   });
 
-  it("detecta total mencionado", () => {
+  it("ignora respostas do bot — só extrai do que o cliente disse (v223)", () => {
+    // v223: extractOrderMemory passou a filtrar role==='user'. Mensagens do
+    // assistant ("Seu total: R$235,00") não viram itens — antes o LLM
+    // alucinava itens lendo as próprias respostas como pedido do cliente.
     const h: H[] = [
       { role: "assistant", content: "Seu total: R$ 235,00. Confirma?" },
       { role: "user", content: "isso" },
+    ];
+    const r = extractOrderMemory(h);
+    expect(r.items.join(" ").toLowerCase()).not.toMatch(/r\$\s*235/);
+  });
+
+  it("extrai 'Total: R$X' QUANDO veio do próprio cliente", () => {
+    const h: H[] = [
+      { role: "user", content: "fechei: total R$ 235,00 mesmo" },
     ];
     const r = extractOrderMemory(h);
     expect(r.items.join(" ").toLowerCase()).toMatch(/r\$\s*235/);
