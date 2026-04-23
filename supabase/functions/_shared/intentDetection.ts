@@ -22,10 +22,21 @@ export type ConversationStage = PromptStage;
  * Detecta se o cliente quer EXPLICITAMENTE iniciar um novo pedido
  * (e não adicionar itens ao pedido corrente).
  * Usado para limpar memória e evitar arrastar contexto antigo.
+ *
+ * v242: aceita 2º argumento opcional `history` — se a última mensagem do
+ * atendente perguntou "continuar ou novo?" e o cliente respondeu com UMA
+ * palavra curta como "novo", "outro", "começar", consideramos reset.
+ * Antes só pegava frases completas como "quero fazer um novo pedido",
+ * perdendo o caso real de WhatsApp onde a resposta é uma palavra.
  */
-export function wantsNewOrder(fullMessage: string): boolean {
+export function wantsNewOrder(
+  fullMessage: string,
+  history?: { role: "user" | "assistant"; content: string }[]
+): boolean {
   const msg = normalizeForCompare(fullMessage);
-  return (
+
+  // Patterns clássicos (frase completa)
+  if (
     /\bnov[oa]\s+pedido\b/.test(msg) ||
     /\bpedido\s+nov[oa]\b/.test(msg) ||
     /\bcomecar\s+(?:um\s+)?(?:novo|outro|de\s+novo)\b/.test(msg) ||
@@ -36,7 +47,34 @@ export function wantsNewOrder(fullMessage: string): boolean {
     /\brecomeçar\b/.test(msg) ||
     /\bdo\s+zero\b/.test(msg) ||
     /\boutro\s+pedido\b/.test(msg)
-  );
+  ) {
+    return true;
+  }
+
+  // v242 — detecção contextual: resposta curta "novo/outro/começar" depois
+  // do atendente ter perguntado "continuar ou novo?"
+  if (history && history.length > 0 && msg.length <= 30) {
+    const SHORT_NEW_RE =
+      /^(?:nov[oa]|outro|outra|comec[aá]r|começar|iniciar|come[cç]ando\s+do\s+zero|do\s+zero|refazer|fazer\s+(?:um\s+)?nov[oa])[\s!.,?]*$/i;
+    if (SHORT_NEW_RE.test(msg)) {
+      // Procurar última msg do atendente
+      const lastAssistant = [...history].reverse().find((h) => h.role === "assistant");
+      if (lastAssistant) {
+        const a = normalizeForCompare(lastAssistant.content);
+        const askedContinueOrNew =
+          (a.includes("continuar") && (a.includes("novo") || a.includes("nova"))) ||
+          a.includes("pedido em aberto") ||
+          a.includes("continuar de onde") ||
+          (a.includes("começar um novo") || a.includes("comecar um novo")) ||
+          a.includes("iniciar um novo");
+        if (askedContinueOrNew) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 // ── Detecção de Intent ──

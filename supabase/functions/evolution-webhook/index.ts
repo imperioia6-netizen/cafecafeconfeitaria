@@ -652,7 +652,12 @@ async function handleCustomerMessage(
   }
 
   // ── Detectar se cliente quer NOVO pedido (reset total) ──
-  const clientWantsNew = wantsNewOrder(combinedMessage);
+  // v242: passa history pra detecção contextual — cliente pode responder
+  // apenas "novo" / "outro" depois da pergunta "continuar ou novo?".
+  const clientWantsNew = wantsNewOrder(
+    combinedMessage,
+    history as { role: "user" | "assistant"; content: string }[]
+  );
 
   if (clientWantsNew) {
     console.log("evolution-webhook: cliente pediu NOVO pedido → reset de sessão", remoteJid);
