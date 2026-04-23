@@ -8,9 +8,34 @@
  */
 
 import { normalizeForCompare } from "./webhookUtils.ts";
+import { BOLOS } from "./catalog.ts";
 
 /** Link fixo do cardápio completo em PDF (Drive). */
 const CARDAPIO_PDF_URL = "http://bit.ly/3OYW9Fw";
+
+/** Nomes canônicos de bolos (normalizados) — pra filtrar recipeNames
+ *  e garantir que não oferecemos salgados como "sabor" de bolo. */
+const BOLO_NAMES_NORM = new Set(
+  BOLOS.map((b) => normalizeForCompare(b.name))
+);
+
+/**
+ * Filtra recipeNames mantendo só os que são BOLOS do cardápio canônico.
+ * Resolve bug real: quando enforceReplyGuardrails sugeria "Nossos sabores
+ * disponíveis incluem: Coxinha com Catupiry, Kibe, Pão de Batata, Empada
+ * Palmito" — esses são SALGADOS, não sabores de bolo. A tabela recipes
+ * tem as 3 categorias misturadas e slice(0, 4) pegava os primeiros.
+ */
+function filterBoloNames(recipeNames: string[]): string[] {
+  return recipeNames.filter((name) => {
+    const n = normalizeForCompare(name);
+    if (!n) return false;
+    // Match exato ou substring em ambas direções
+    return [...BOLO_NAMES_NORM].some(
+      (b) => b === n || b.includes(n) || n.includes(b)
+    );
+  });
+}
 
 // ── Tipos ──
 
@@ -149,8 +174,17 @@ export function enforceReplyGuardrails(
       msg.includes("teria outro") ||
       msg.includes("o que tem");
 
+    // v242: só oferecemos BOLOS como sugestão — antes o slice(0,4) das
+    // receitas pegava salgados (Coxinha, Kibe, Empada) como se fossem
+    // "sabores disponíveis" de bolo. Bug real visto em produção.
+    const bolosOnly = filterBoloNames(recipeNames);
+    // Se por qualquer razão não acharmos bolos no banco, caímos de volta
+    // na lista canônica de BOLOS do catalog.ts (nunca oferece salgado).
+    const boloPool =
+      bolosOnly.length > 0 ? bolosOnly : BOLOS.map((b) => b.name);
+
     if (askedRecommendation) {
-      const top = recipeNames.slice(0, 5).join(", ");
+      const top = boloPool.slice(0, 5).join(", ");
       return `Os mais pedidos aqui são: ${top} 😊\nQuer saber o preço de algum? Ou posso te enviar o cardápio completo: ${CARDAPIO_PDF_URL}`;
     } else {
       const invalidCakes = extractBoloRecommendations(replyText).filter((c) => {
@@ -170,7 +204,7 @@ export function enforceReplyGuardrails(
       }
 
       if (invalidCakes.length > 0) {
-        const top = recipeNames.slice(0, 4).join(", ");
+        const top = boloPool.slice(0, 4).join(", ");
         cleaned += `\n\nNossos sabores disponíveis incluem: ${top}. Quer ver o cardápio completo?`;
       }
       return cleaned;
@@ -644,10 +678,16 @@ export function enforceNoTemplatePlaceholders(replyText: string): string {
   //    remove ele literalmente.
   cleaned = cleaned.replace(PLACEHOLDER_EXATO_G, "").trim();
 
-  // 3) Remove listas "Sabores disponíveis: X, Y, Z" — quando o LLM erra placeholder,
-  //    a lista que vem junto costuma ser alucinada.
+  // 3) Remove listas tipo "Nossos sabores disponíveis incluem: X, Y, Z. Quer
+  //    ver o cardápio completo?" — quando o LLM erra placeholder, a lista
+  //    que vem junto é tipicamente alucinada (inclusive com SALGADOS listados
+  //    como se fossem sabores de bolo). v242: ampliado pra pegar "incluem:",
+  //    "são:" e também a follow-up "Quer ver o cardápio completo?".
   cleaned = cleaned
-    .replace(/sabores?\s+dispon[ií]veis\s*[:\-][^\n.!?]*[\n.!?]?/gi, "")
+    .replace(
+      /(?:nossos?\s+)?sabores?\s+dispon[ií]veis\s*(?:incluem|s[ãa]o|s[ãa]o:)?\s*[:\-]?[^\n.!?]*[.!?\n]?\s*(?:quer\s+ver\s+o?\s*card[aá]pio[^.!?\n]*[.!?\n]?)?/gi,
+      ""
+    )
     .trim();
 
   // 4) Colapsa espaços / newlines excessivos que a remoção deixou.
@@ -1065,6 +1105,25 @@ export function enforceNoFragmentAsFlavor(
     replyLower.includes("verificar se conseguimos") ||
     replyLower.includes("ver se conseguimos");
 
+  // v242 — novo critério "LLM tá lidando direito": se a resposta já oferece
+  // ALTERNATIVA do cardápio (cita nome real de bolo). Caso real: cliente
+  // pediu cenoura (não existe), LLM respondeu "não temos cenoura, quer
+  // morango?" — era resposta perfeita, mas o guardrail substituía por
+  // "Opa, acho que entendi errado" porque LLM não disse "vou verificar".
+  // Agora, se a resposta menciona ≥1 bolo real do cardápio, deixa passar.
+  const llmOffersMenuAlternative = ((): boolean => {
+    if (!recipeNames || recipeNames.length === 0) return false;
+    const boloPool = filterBoloNames(recipeNames);
+    const pool = boloPool.length > 0 ? boloPool : recipeNames;
+    return pool.some((name) => {
+      const n = normalizeForCompare(name);
+      // Nome suficientemente distintivo (>= 4 chars) pra não casar por acaso.
+      return n.length >= 4 && replyLower.includes(n);
+    });
+  })();
+
+  const llmIsHandlingProperly = llmOffersToCheckTeam || llmOffersMenuAlternative;
+
   // Padrões de rejeição (regex literais — aceita aspas retas, curly e asteriscos).
   // PATTERN 3 ENDURECIDO: o "X" entre "sabor" e "não" deve ser uma única
   // palavra alfabética (3-30 chars). Antes capturava "a gente" quebrando
@@ -1200,6 +1259,35 @@ export function enforceNoFragmentAsFlavor(
     return false;
   };
 
+  // v242 — distinção entre "fragmento funcional qualquer" (como "a gente")
+  // e "fragmento claramente errado" (como "amanha as", "amo voce"). Este
+  // último indica bug óbvio de interpretação e deve ser substituído SEMPRE,
+  // mesmo que a resposta ofereça alternativa. Já o primeiro (pronome neutro)
+  // pode coexistir com resposta legítima ("esse sabor a gente não tem, mas
+  // tem morango") e deve ser preservado nesse caso.
+  const isObviousTemporalOrWritingMistake = (raw: string): boolean => {
+    const cleaned = raw
+      .toLowerCase()
+      .replace(/[^a-zà-ú0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) return false;
+    const tokens = cleaned.split(" ").filter(Boolean);
+    if (tokens.some((t) => /\d/.test(t))) return true;
+    const TEMPORAL_PREFIX = [
+      "amanh", "hoj", "segund", "terc", "terç", "quart", "quint", "sext",
+      "sabad", "sábad", "doming", "horari", "horári", "manh", "noit",
+    ];
+    if (tokens.some((t) => TEMPORAL_PREFIX.some((p) => t.startsWith(p))))
+      return true;
+    const WRITING_FRAGS = [
+      "amo voce", "amo você", "parabens", "parabéns",
+      "feliz anivers", "te amo",
+    ];
+    if (WRITING_FRAGS.some((w) => cleaned.includes(w))) return true;
+    return false;
+  };
+
   // Verdadeiro se "X" NÃO bate nem parcialmente com qualquer nome do cardápio.
   const notInMenu = (raw: string): boolean => {
     if (!recipeNames || recipeNames.length === 0) return false;
@@ -1223,11 +1311,25 @@ export function enforceNoFragmentAsFlavor(
     if (!m || !m[1]) continue;
     const x = m[1].trim();
 
-    // Caso 1 — X é fragmento funcional/pronominal ("a gente", "ser as",
-    // "pra amanhã"). O LLM se confundiu (às vezes até oferecendo consultar
-    // equipe). Rewrite SEMPRE — o bailout de "vou verificar" NÃO protege aqui,
-    // porque X nem é nome de sabor.
+    // Caso 0 — X é CLARAMENTE erro de interpretação temporal/escrita
+    // ("amanha as", "amo voce", "13hrs", "parabens", "feliz anivers").
+    // Rewrite SEMPRE, mesmo que a resposta mencione alternativa. A rejeição
+    // em si é bug — o cliente pediu escrita/horário, não sabor.
+    if (isObviousTemporalOrWritingMistake(x)) {
+      if (writingContext || /amo\s+voce|amo\s+você|parabens|parabéns|te\s+amo|anivers/i.test(x)) {
+        return "Opa, acho que me confundi aqui 😅 — parece que o texto é o que você quer ESCRITO no bolo (escrita personalizada). Pra eu anotar certinho: qual o SABOR do bolo e qual a FRASE que vai escrita?";
+      }
+      return "Opa, acho que entendi errado aqui 😅 — me confirma qual o sabor do bolo que você quer? (Trabalhamos com vários sabores no cardápio — posso te passar a lista se precisar.)";
+    }
+
+    // Caso 1 — X é fragmento funcional NEUTRO (pronome "a gente", etc.).
+    // Se o LLM já ofereceu ALTERNATIVA do cardápio, a resposta é legítima
+    // ("esse sabor a gente não tem, mas tem morango") → preserva.
+    // Senão, rewrite.
     if (isFragmentFunctional(x)) {
+      if (llmOffersMenuAlternative) {
+        return replyText;
+      }
       if (writingContext) {
         return "Opa, acho que me confundi aqui 😅 — parece que o texto é o que você quer ESCRITO no bolo (escrita personalizada). Pra eu anotar certinho: qual o SABOR do bolo e qual a FRASE que vai escrita?";
       }
@@ -1241,11 +1343,12 @@ export function enforceNoFragmentAsFlavor(
     }
 
     // Caso 3 — X é nome plausível de sabor MAS não existe no cardápio.
-    // Se o LLM já oferece consultar a equipe, é resposta LEGÍTIMA (cliente
-    // pediu red velvet / pistache, LLM admitiu e ofereceu consultar).
-    // Se o LLM apenas rejeita sem oferecer, rewrite (resposta inútil).
+    // Se o LLM já oferece consultar equipe OU já oferece alternativa do
+    // cardápio, é resposta LEGÍTIMA — deixa passar.
+    // (v242: caso real que quebrou antes — cliente pediu cenoura, LLM disse
+    //  "cenoura não temos, quer morango?" → morango ∈ cardápio → passa.)
     if (notInMenu(x)) {
-      if (llmOffersToCheckTeam) {
+      if (llmIsHandlingProperly) {
         return replyText;
       }
       return "Opa, acho que entendi errado aqui 😅 — me confirma qual o sabor do bolo que você quer? (Trabalhamos com vários sabores no cardápio — posso te passar a lista se precisar.)";

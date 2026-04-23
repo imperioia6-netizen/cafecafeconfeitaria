@@ -986,12 +986,24 @@ async function handleCustomerMessage(
   const replyBeforePlaceholder = reply;
   reply = enforceNoTemplatePlaceholders(reply);
   if (reply !== replyBeforePlaceholder) {
+    // v242 — log mais preciso: distinguir entre limpeza inline bem-sucedida
+    // (só remove a sentence com placeholder, preserva o resto) versus o
+    // fallback genérico "me confundi". Antes o log sempre dizia "me confundi".
+    const usedFallback = reply
+      .toLowerCase()
+      .includes("opa, me confundi aqui");
     try {
       await supabase.from("agent_debug_logs").insert({
         level: "warn",
         source: "guardrail.enforceNoTemplatePlaceholders",
-        message: `SUBSTITUIU reply por 'me confundi'`,
-        context: { original_reply: replyBeforePlaceholder.slice(0, 2000), remote_jid: remoteJid } as Record<string, unknown>,
+        message: usedFallback
+          ? `FALLBACK 'me confundi' aplicado (nada aproveitável)`
+          : `LIMPEZA INLINE aplicada (placeholder removido, resto preservado)`,
+        context: {
+          original_reply: replyBeforePlaceholder.slice(0, 2000),
+          new_reply: reply.slice(0, 2000),
+          remote_jid: remoteJid,
+        } as Record<string, unknown>,
       } as Record<string, unknown>);
     } catch (_) { /* ignore */ }
   }

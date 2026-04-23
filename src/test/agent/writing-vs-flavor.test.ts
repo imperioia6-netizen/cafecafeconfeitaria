@@ -94,11 +94,13 @@ describe("enforceNoFragmentAsFlavor — rejeita 'sabor amo voce não temos'", ()
     expect(out).toBe(resp);
   });
 
-  it("sem currentMessage e sem recipes, comportamento antigo (só funcional)", () => {
+  it("sem currentMessage e sem recipes, 'amo voce' ainda é rewrite (v242: escrita óbvia)", () => {
     const resp = `O sabor "amo voce" não temos.`;
     const out = enforceNoFragmentAsFlavor(resp);
-    // Sem contexto, "amo voce" não é funcional nem temporal — passa intacto.
-    expect(out).toBe(resp);
+    // v242: "amo voce" é frase de escrita tão comum (Eu te amo, amo você, te amo)
+    // que é seguro sempre reescrever, mesmo sem contexto explícito. O cliente
+    // provavelmente pediu escrita no bolo e o LLM interpretou como sabor.
+    expect(out.toLowerCase()).toMatch(/escrita|frase|confirma.*sabor/);
   });
 });
 
