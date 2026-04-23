@@ -39,6 +39,7 @@ import {
   extractMessageId,
   normalizeForCompare,
   buildFullMessage,
+  hasPdfDocument,
 } from "../_shared/webhookUtils.ts";
 
 // ── Módulos de conversa ──
