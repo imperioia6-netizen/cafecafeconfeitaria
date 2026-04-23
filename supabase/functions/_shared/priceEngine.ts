@@ -467,6 +467,35 @@ export function enforceIntentAlignment(
     }
   }
 
+  // 9.5) Cliente respondeu MODALIDADE (encomenda/delivery/retirada) — resposta
+  //      NÃO pode alucinar que é sabor/produto. Caso real: cliente disse
+  //      "Encomenda" após pergunta de modalidade, LLM devolveu "Esse sabor
+  //      a gente não tem... vou verificar com a equipe" (hallucination).
+  if (
+    ctx.intent === "provide_order_type" &&
+    (ctx.entities as { order_type?: string }).order_type
+  ) {
+    const orderType = (ctx.entities as { order_type?: string }).order_type!;
+    const orderTypeNorm = orderType.toLowerCase();
+    const treatedAsFlavor =
+      // "esse sabor X não temos" / "esse sabor não existe"
+      /\besse?\s+sabor\b/.test(r) ||
+      /\besta\s+sabor\b/.test(r) ||
+      /\bsabor\s+(?:a\s+gente\s+)?n[aã]o\s+(?:temos|tem|existe|consta)/.test(r) ||
+      // "bolo de encomenda/delivery/retirada" — alucina modalidade como sabor
+      new RegExp(`\\bbolo\\s+de\\s+${orderTypeNorm}\\b`, "i").test(r) ||
+      // pedido genérico de sabor quando cliente acabou de dizer modalidade
+      /\bme\s+diz\s+(?:qual\s+)?(?:o\s+)?sabor/.test(r) ||
+      /\bescolhe\s+(?:o\s+)?sabor/.test(r);
+    if (treatedAsFlavor) {
+      if (orderTypeNorm === "encomenda") {
+        return "Ótimo! A encomenda vai ser com entrega ou retirada? E já pode me informar a data, por favor 😊";
+      }
+      // delivery ou retirada — prosseguir pra coleta de itens
+      return "Beleza! Me diz o que vai querer, por favor 😊";
+    }
+  }
+
   // 10) start_order + resposta já enviando PIX/sinal/chave = pular etapas.
   //     O correto é: anotar item + perguntar "mais alguma coisa?".
   if (
@@ -996,19 +1025,19 @@ export function enforceNoFragmentAsFlavor(
 ): string {
   if (!replyText) return replyText;
 
-  // Se o LLM já está indicando que vai consultar a equipe ou que é um sabor
-  // que pode ser feito sob encomenda, NÃO substituímos — esse é o
-  // comportamento DESEJADO quando o cliente pede um sabor fora do cardápio.
+  // v241 — bailout NUNCA no topo da função: antes qualquer resposta com
+  // "vou verificar com a equipe" passava, mesmo alucinação capturando "a gente"
+  // como sabor (caso real: cliente disse "Encomenda", LLM respondeu
+  // "Esse sabor a gente não tem... vou verificar com a equipe"). Agora o
+  // bailout só aplica quando X é nome plausível de sabor (notInMenu, não
+  // funcional) — é a ÚNICA situação legítima.
   const replyLower = normalizeForCompare(replyText);
-  const llmIsHandlingProperly =
+  const llmOffersToCheckTeam =
     replyLower.includes("vou verificar com a equipe") ||
     replyLower.includes("vou ver com a equipe") ||
     replyLower.includes("vou consultar a equipe") ||
     replyLower.includes("verificar se conseguimos") ||
     replyLower.includes("ver se conseguimos");
-  if (llmIsHandlingProperly) {
-    return replyText;
-  }
 
   // Padrões de rejeição (regex literais — aceita aspas retas, curly e asteriscos).
   // PATTERN 3 ENDURECIDO: o "X" entre "sabor" e "não" deve ser uma única
@@ -1167,13 +1196,31 @@ export function enforceNoFragmentAsFlavor(
     const m = replyText.match(re);
     if (!m || !m[1]) continue;
     const x = m[1].trim();
-    const shouldRewrite =
-      isFragmentFunctional(x) ||
-      writingContext ||
-      notInMenu(x);
-    if (shouldRewrite) {
+
+    // Caso 1 — X é fragmento funcional/pronominal ("a gente", "ser as",
+    // "pra amanhã"). O LLM se confundiu (às vezes até oferecendo consultar
+    // equipe). Rewrite SEMPRE — o bailout de "vou verificar" NÃO protege aqui,
+    // porque X nem é nome de sabor.
+    if (isFragmentFunctional(x)) {
       if (writingContext) {
         return "Opa, acho que me confundi aqui 😅 — parece que o texto é o que você quer ESCRITO no bolo (escrita personalizada). Pra eu anotar certinho: qual o SABOR do bolo e qual a FRASE que vai escrita?";
+      }
+      return "Opa, acho que entendi errado aqui 😅 — me confirma qual o sabor do bolo que você quer? (Trabalhamos com vários sabores no cardápio — posso te passar a lista se precisar.)";
+    }
+
+    // Caso 2 — contexto de ESCRITA (usuário pediu texto no bolo, não sabor).
+    // O fragmento capturado é provavelmente a frase da escrita. Rewrite.
+    if (writingContext) {
+      return "Opa, acho que me confundi aqui 😅 — parece que o texto é o que você quer ESCRITO no bolo (escrita personalizada). Pra eu anotar certinho: qual o SABOR do bolo e qual a FRASE que vai escrita?";
+    }
+
+    // Caso 3 — X é nome plausível de sabor MAS não existe no cardápio.
+    // Se o LLM já oferece consultar a equipe, é resposta LEGÍTIMA (cliente
+    // pediu red velvet / pistache, LLM admitiu e ofereceu consultar).
+    // Se o LLM apenas rejeita sem oferecer, rewrite (resposta inútil).
+    if (notInMenu(x)) {
+      if (llmOffersToCheckTeam) {
+        return replyText;
       }
       return "Opa, acho que entendi errado aqui 😅 — me confirma qual o sabor do bolo que você quer? (Trabalhamos com vários sabores no cardápio — posso te passar a lista se precisar.)";
     }
