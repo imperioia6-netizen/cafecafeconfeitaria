@@ -70,6 +70,7 @@ import {
   enforceEncomendaDeliveryQuestion,
   enforceNoRepeatAfterPix,
   enforceNoFragmentAsFlavor,
+  enforceNoStallPhrases,
   enforceSanePrices,
   enforceNoExactRepeat,
   enforceGreetingReset,
@@ -1099,6 +1100,10 @@ async function handleCustomerMessage(
   // não temos"), trocamos por pergunta aberta. Passa a mensagem atual e
   // o cardápio real para validar se o "sabor rejeitado" é plausível.
   reply = enforceNoFragmentAsFlavor(reply, combinedMessage, recipeNames);
+  // v244: impede frases de dribagem ("enquanto isso", "já te retorno com
+  // a confirmação") — especialmente quando o cliente falou sabor fora do
+  // cardápio e o LLM tentou empurrar a resposta em vez de informar.
+  reply = enforceNoStallPhrases(reply, combinedMessage, recipeNames);
   // Remove "escrita personalizada / +R$15" fantasma (cliente não pediu).
   reply = enforcePhantomWritingRemoval(
     reply,

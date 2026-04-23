@@ -119,7 +119,13 @@ describe("Prompt — decisão 4 (validação parcial: valida, anota válido, exp
 
   it("dá exemplo de parcialmente-inválido ('nutella' dentro de frase boa)", () => {
     expect(p.toLowerCase()).toContain("nutella");
-    const section = p.match(/nutella[\s\S]{0,400}/i)?.[0] || "";
+    // Procura a menção de "nutella" no contexto de validação parcial
+    // (frase "quero um bolo de 3kg de nutella..."). Há outras menções
+    // a "nutella" no prompt (ex.: bloco sobre sabor fora do cardápio em
+    // v244), então buscamos especificamente o padrão da seção 4.
+    const validacaoIdx = p.search(/quero um bolo de 3kg de nutella/i);
+    expect(validacaoIdx).toBeGreaterThan(0);
+    const section = p.slice(validacaoIdx, validacaoIdx + 500);
     // A ação correta é explicar SÓ o problema e anotar o resto
     expect(section.toLowerCase()).toMatch(/anotei|anotado/);
     expect(section.toLowerCase()).toMatch(/n[aã]o refa[cç]a|s[oó] resolva/);

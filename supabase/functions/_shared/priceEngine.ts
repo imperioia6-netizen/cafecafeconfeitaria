@@ -709,9 +709,20 @@ export function enforceNoTemplatePlaceholders(replyText: string): string {
 
   // 5) Sobrou conteúdo útil? Critérios: >= 20 chars com pelo menos uma sequência
   //    alfabética de 3+ letras (não só pontuação / emoji).
+  //
+  // v244: se o que sobrou começa com conector órfão ("enquanto isso", "porém",
+  // "além disso") SEM a sentença anterior que dava contexto, o texto ficou
+  // truncado/confuso. Cai no fallback.
+  const cleanedLower = cleaned.toLowerCase().trim();
+  const startsWithOrphanConnector =
+    /^(?:😊|🙂|👍|✅|⛔|⚠️)?\s*(?:enquanto\s+isso|por[eé]m|al[eé]m\s+disso|ent[aã]o|assim|mas|e\s+mais|e\s+ent[aã]o)\b/i.test(
+      cleanedLower
+    );
+
   const hasContent =
     cleaned.length >= 20 &&
-    /[a-záàâãéèêíïóôõúüç0-9]{3,}/i.test(cleaned);
+    /[a-záàâãéèêíïóôõúüç0-9]{3,}/i.test(cleaned) &&
+    !startsWithOrphanConnector;
 
   if (hasContent) {
     console.warn(
@@ -880,6 +891,128 @@ export function enforceGreetingReset(
     ? "Oi de novo! 😊 Como posso te ajudar?"
     : "Oi! 😊 Bem-vindo à Café Café Confeitaria. Como posso te ajudar?";
   return greet;
+}
+
+// ── Guardrail: proibir frases de dribagem ──
+
+/**
+ * v244 — Caso real (screenshot): cliente pediu "cenoura" (sabor fora do
+ * cardápio). O LLM escreveu "Vou verificar com a equipe se conseguimos fazer
+ * [produto do cardápio]! 😊 Enquanto isso, vamos dividir em duas formas...".
+ * Depois que a limpeza de placeholder removeu a 1ª frase, sobrou só
+ * "😊 Enquanto isso, vamos dividir...". O cliente percebe isso como dribagem
+ * — e com razão: o sabor pedido NUNCA foi respondido.
+ *
+ * Esse guardrail detecta frases de dribagem ("enquanto isso", "já te retorno
+ * com", "aguarde um momento") e, quando o cliente acabou de informar sabor
+ * NÃO existente no cardápio, força resposta que menciona o nome do sabor
+ * e oferece alternativas reais. Remove o "enquanto isso" também quando
+ * ele aparece órfão/sem contexto.
+ */
+export function enforceNoStallPhrases(
+  replyText: string,
+  currentMessage: string,
+  recipeNames: string[]
+): string {
+  if (!replyText) return replyText;
+  const r = normalizeForCompare(replyText);
+  if (!r) return replyText;
+
+  // Marcadores de dribagem
+  const STALL_PATTERNS = [
+    /\benquanto\s+isso\b/i,
+    /\bj[aá]\s+te\s+retorno\s+com\b/i,
+    /\bj[aá]\s+retorno\s+com\b/i,
+    /\bvou\s+retornar\s+com\b/i,
+    /\bte\s+retorno\s+em\s+instantes\b/i,
+    /\bme\s+d[aá]\s+um\s+(?:minuto|momento|segundo|segundinho)\b/i,
+    /\baguarda\s+um\s+momento\b/i,
+    /\baguarde\s+um\s+instante\b/i,
+  ];
+  const hasStall = STALL_PATTERNS.some((re) => re.test(replyText));
+  if (!hasStall) return replyText;
+
+  // Importa catálogo canônico de BOLOS (feito aqui pra não criar ciclo).
+  const BOLO_CANON_NORM = [...BOLO_NAMES_NORM];
+
+  // Cliente mencionou sabor NÃO existente no cardápio?
+  // Extrai primeira palavra substantiva da msg (ignora preposições/artigos/
+  // modalidades/ações que NÃO são sabor).
+  const msgNorm = normalizeForCompare(currentMessage);
+  const stopwords = new Set([
+    // preposições/artigos
+    "quero", "um", "uma", "o", "a", "de", "com", "sem", "pro", "para", "pra",
+    "os", "as", "do", "da", "dos", "das", "em", "no", "na", "por", "pelo",
+    // categorias de produto
+    "bolo", "bolos", "kg", "pedaco", "pedaço", "sabor", "sabores", "fatia",
+    "fatias", "salgado", "salgados", "docinho", "docinhos", "mini",
+    "coxinha", "empada", "kibe", "quibe", "risole", "bolinha", "esfiha",
+    // modalidades e ações
+    "encomenda", "encomendar", "delivery", "entrega", "entregar", "retirada",
+    "retirar", "pedido", "pedir", "fazer", "quero", "queria", "gostaria",
+    "preciso", "precisa", "tem", "temos", "sim", "nao", "não", "ok", "ta",
+    "tá", "bom", "certo", "beleza", "perfeito",
+    // afirmações curtas
+    "novo", "nova", "outro", "outra", "outros", "continuar",
+    // horário / data
+    "hoje", "amanha", "amanhã", "hora", "horas", "dia", "dias", "semana",
+    "mes", "mês", "ano", "segunda", "terca", "terça", "quarta", "quinta",
+    "sexta", "sabado", "sábado", "domingo",
+  ]);
+  const msgTokens = msgNorm.split(/\s+/).filter((t) => t.length >= 4 && !stopwords.has(t));
+  const flavorCandidate = msgTokens[0] || "";
+  const flavorMentionedIsNotInMenu =
+    flavorCandidate.length >= 4 &&
+    // não está em BOLOS canônicos nem em recipeNames
+    !BOLO_CANON_NORM.some(
+      (n) => n.includes(flavorCandidate) || flavorCandidate.includes(n)
+    ) &&
+    !recipeNames.some((name) => {
+      const n = normalizeForCompare(name);
+      return n.length > 3 && (n.includes(flavorCandidate) || flavorCandidate.includes(n));
+    });
+
+  if (flavorMentionedIsNotInMenu) {
+    // Cliente pediu sabor fora do cardápio e agente está dribando.
+    // Substitui por resposta clara que menciona o sabor pedido e oferece alternativas.
+    const top5 = BOLO_CANON_NORM
+      .slice(0, 5)
+      .map((n) => n.charAt(0).toUpperCase() + n.slice(1))
+      .join(", ");
+    const fallbackBolos =
+      "Brigadeiro, Trufado, Morango, Ninho com Nutella, Chocomix";
+    // Usa recipeNames se disponível, senão usa o fallback canônico
+    const bolosOnly = recipeNames
+      .filter((name) => {
+        const n = normalizeForCompare(name);
+        return BOLO_CANON_NORM.some(
+          (b) => b === n || b.includes(n) || n.includes(b)
+        );
+      })
+      .slice(0, 5)
+      .join(", ");
+    const alts = bolosOnly || fallbackBolos;
+    console.warn(
+      `enforceNoStallPhrases: sabor '${flavorCandidate}' fora do cardápio + dribagem do LLM — substituído.`
+    );
+    return `Opa, o sabor '${flavorCandidate}' a gente não tem no cardápio 😊 Mas temos: ${alts}. Qual desses você prefere?`;
+  }
+
+  // Caso 2: resposta começa com "Enquanto isso" sem contexto anterior útil
+  // (resposta curta, dribagem explícita). Remove a frase de enrolação.
+  const replyTrim = replyText.trim();
+  const startsWithStall =
+    /^(?:😊|🙂|👍)?\s*(?:enquanto\s+isso|j[aá]\s+te\s+retorno|aguarda\s+um\s+momento|me\s+d[aá]\s+um\s+(?:minuto|momento))/i.test(
+      replyTrim
+    );
+  if (startsWithStall && replyText.length < 150) {
+    console.warn(
+      "enforceNoStallPhrases: resposta começa com dribagem + curta — substituindo."
+    );
+    return "Me diz: qual sabor você prefere? Temos vários sabores no cardápio — posso te passar a lista se precisar 😊";
+  }
+
+  return replyText;
 }
 
 // ── Guardrail: fallback inteligente (quando LLM falha) ──
