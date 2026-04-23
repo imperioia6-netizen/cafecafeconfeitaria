@@ -970,9 +970,30 @@ async function handleCustomerMessage(
   // ── Aplicar guardrails finais ──
   reply = guardedReplyClean || replyClean || reply;
 
+  // v223: LOG pre-guardrail — gravar o que Claude REALMENTE respondeu
+  try {
+    await supabase.from("agent_debug_logs").insert({
+      level: "info",
+      source: "pre-guardrail-reply",
+      message: `reply ANTES dos guardrails`,
+      context: { reply_full: reply.slice(0, 2000), remote_jid: remoteJid, message: combinedMessage.slice(0, 200) } as Record<string, unknown>,
+    } as Record<string, unknown>);
+  } catch (_) { /* ignore */ }
+
   // Placeholder literal ("[produto do cardápio]", etc.) nunca sai pro cliente.
   // Roda bem cedo no pipeline.
+  const replyBeforePlaceholder = reply;
   reply = enforceNoTemplatePlaceholders(reply);
+  if (reply !== replyBeforePlaceholder) {
+    try {
+      await supabase.from("agent_debug_logs").insert({
+        level: "warn",
+        source: "guardrail.enforceNoTemplatePlaceholders",
+        message: `SUBSTITUIU reply por 'me confundi'`,
+        context: { original_reply: replyBeforePlaceholder.slice(0, 2000), remote_jid: remoteJid } as Record<string, unknown>,
+      } as Record<string, unknown>);
+    } catch (_) { /* ignore */ }
+  }
 
   // Saudação inicial: força template canônico (bem-vindo + cardápio + modalidade).
   // Se há pedido em aberto, força "Oi novamente, tem pedido aberto...".
@@ -1127,7 +1148,8 @@ async function handleCustomerMessage(
   reply = enforceGreetingReset(
     reply,
     combinedMessage,
-    history as { role: "user" | "assistant"; content: string }[]
+    history as { role: "user" | "assistant"; content: string }[],
+    sessionMemory
   );
 
   // ── Guardrail: remover "Oi" repetido no início (exceto primeira saudação) ──

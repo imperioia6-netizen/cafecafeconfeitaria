@@ -34,11 +34,18 @@ export function buildRecentHistoryHint(
 /**
  * Extrai itens de pedido mencionados no histórico via regex.
  * Detecta bolos, salgados, açaí, docinhos, fatias e totais.
+ *
+ * v223 FIX CRÍTICO: extrai SOMENTE de mensagens do CLIENTE (role='user').
+ * Antes: pegava também respostas do BOT ("Bolo Trufado 3kg anotado!") e
+ * salvava como se fosse pedido do cliente → Claude alucinava itens inexistentes.
  */
 export function extractOrderMemory(
   history: { role: "user" | "assistant"; content: string }[]
 ): OrderMemory {
-  const text = history.map((h) => h.content || "").join("\n");
+  const text = history
+    .filter((h) => h.role === "user")
+    .map((h) => h.content || "")
+    .join("\n");
   const items: string[] = [];
 
   // Bolos com kg

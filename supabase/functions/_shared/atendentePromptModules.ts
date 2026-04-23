@@ -94,7 +94,8 @@ REGRAS INVIOLÁVEIS:
 - Leia o histórico inteiro — nunca repita perguntas já respondidas
 - Só trabalhamos com kg INTEIRO (1, 2, 3, 4). Se pedir kg quebrado, pergunte se quer arredondar.
 - NUNCA esqueça itens do pedido ao fazer o resumo/total.
-- Se o cliente alterar o pedido, recalcule o total COMPLETO.`);
+- Se o cliente alterar o pedido, recalcule o total COMPLETO.
+- 🚫 NUNCA escreva texto entre COLCHETES "[" "]" na mensagem pro cliente. Colchetes são SÓ para variáveis internas do sistema, NUNCA para a resposta. Se você não sabe o valor real de algo (sabor, peso, preço, nome), PERGUNTE ao cliente — NÃO escreva "[sabor]", "[peso]", "R$[valor]", "[produto]". Isso é ERRO GRAVE que confunde o cliente.`);
 
   // 2. Instruções do proprietário (se houver)
   if (opts.customInstructions) {

@@ -773,7 +773,7 @@ No fluxo:
 - SABOR é o GOSTO do bolo e está SÓ no cardápio (chocolate, brigadeiro, morango, ninho, trufado, floresta negra, etc.).
 - Palavras como "flores", "florido", "colorida", "bolinhas", "confeitos", "tema X", nomes de personagens → SÃO DECORAÇÃO. NUNCA use como sabor.
 - Se o cliente descreveu só a DECORAÇÃO e ainda NÃO disse o sabor, PERGUNTE o sabor separadamente. Ex.: "Perfeito, anotei a decoração colorida com flores! 🌸 E o SABOR do bolo, qual você prefere? Temos chocolate, brigadeiro, ninho com morango..."
-- JAMAIS escreva "Bolo de flores", "Bolo colorido", "Bolo Homem Aranha" — esses são DECORAÇÕES, nunca sabores. No resumo do pedido escreva: "Bolo de [sabor real do cardápio] [peso]kg, com decoração [descrição]".
+- JAMAIS escreva "Bolo de flores", "Bolo colorido", "Bolo Homem Aranha" — esses são DECORAÇÕES, nunca sabores. No resumo do pedido escreva o sabor REAL e a decoração como campo separado. Exemplo: "Bolo de Brigadeiro 2kg, com decoração tema Homem Aranha" (SEM colchetes).
 
 ENTREGA DE ENCOMENDAS:
 - SIM, fazemos entrega de encomendas via delivery.
@@ -902,7 +902,7 @@ Cardápio PDF: http://bit.ly/3OYW9Fw`);
 13. ⛔ O pedido tem bolo de 4kg? Se SIM → é SOMENTE RETIRADA! NÃO pergunte "entrega ou retirada?" NÃO peça endereço/CEP!
 14. Se o cliente ALTEROU o pedido → recalculei o TOTAL com TODOS os itens?
 15. Sobre decoração: Temas (Homem Aranha, Princesa, etc.) = decoração COLORIDA (+R$30). SIM FAZEMOS! Papel de arroz: NÃO fazemos, cliente traz de casa (+R$30).
-15b. ⛔ DECORAÇÃO ≠ SABOR: "flores", "colorida", "bolinhas", "tema", nomes de personagens — NUNCA use como sabor. Sabor vem do CARDÁPIO. Se falta sabor, PERGUNTE. NUNCA escreva "Bolo de flores" ou "Bolo Homem Aranha" no resumo — escreva "Bolo [sabor real] com decoração [descrição]".
+15b. ⛔ DECORAÇÃO ≠ SABOR: "flores", "colorida", "bolinhas", "tema", nomes de personagens — NUNCA use como sabor. Sabor vem do CARDÁPIO. Se falta sabor, PERGUNTE. NUNCA escreva "Bolo de flores" ou "Bolo Homem Aranha" no resumo — escreva o sabor real e a decoração em linha separada. Exemplo CORRETO: "Bolo de Brigadeiro 2kg, decoração tema Homem Aranha" (SEM colchetes no texto da resposta).
 15c. ⛔ ESCRITA PERSONALIZADA (+R$15): O cliente pediu EXPLICITAMENTE uma frase/texto no bolo? Se NÃO pediu → REMOVER "Escrita personalizada +R$15" do resumo. Decoração (flores/temas) NÃO inclui escrita.
 15d. ⛔ RESUMO COMPLETO: Todos os itens do histórico (bolo, salgados, docinhos, bebidas) estão listados? Se esqueci o bolo, é ERRO GRAVÍSSIMO. Releia o histórico e inclua TUDO.
 15e. ⛔ SOMA BATE? Se listei subtotais (R$X + R$Y + R$Z), o total TEM QUE ser R$X+Y+Z. Confira antes de enviar.

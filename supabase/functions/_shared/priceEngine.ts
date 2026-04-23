@@ -562,10 +562,16 @@ export function enforceWelcomeTemplate(
  */
 export function enforceNoTemplatePlaceholders(replyText: string): string {
   if (!replyText) return replyText;
-  const PLACEHOLDER_RE =
-    /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|bolo|nome|endere[cç]o|valor|total|cliente|pedido|kg|quantidade|data|hora|hor[aá]rio|cep|bairro|frase|escrita)\s*[^\]]*\]/i;
-  if (!PLACEHOLDER_RE.test(replyText)) return replyText;
-  console.warn("enforceNoTemplatePlaceholders: placeholder detectado, substituindo");
+  // v223 EXTRA-RESTRITO: só dispara em placeholders EXATOS sozinhos (como o Claude nunca geraria
+  // a não ser por bug severo). Padrões aceitos pra disparar:
+  //   [sabor]   [peso]   [nome]   [valor]   [total]   [produto]
+  //   [Sabor do bolo]  [Produto do cardápio]  (padrão exato "Palavra do/da X")
+  // NÃO dispara em: [Bolo de Chocolate 3kg], [Lidy], [amanhã 14h], ou qualquer conteúdo real.
+  // Se PRECISA detectar placeholder mais amplo, revisar o regex — ele está propositalmente estrito.
+  const PLACEHOLDER_EXATO =
+    /\[(?:produto|sabor|peso|nome|valor|total|item|quantidade|endere[çc]o|frase|escrita|hor[aá]rio|bairro|cep)(?:\s+(?:real|completo|aqui|do\s+bolo|da\s+entrega|do\s+cliente|do\s+pedido|do\s+card[aá]pio|em\s+kg))?\s*\]/i;
+  if (!PLACEHOLDER_EXATO.test(replyText)) return replyText;
+  console.warn("enforceNoTemplatePlaceholders: placeholder EXATO detectado, substituindo:", replyText.slice(0, 200));
   return "Opa, me confundi aqui 😅 Pode me dizer novamente o que você quer? Assim anoto certinho.";
 }
 
@@ -585,7 +591,8 @@ export function enforceNoTemplatePlaceholders(replyText: string): string {
 export function enforceGreetingReset(
   replyText: string,
   currentMessage: string,
-  history: { role: "user" | "assistant"; content: string }[]
+  history: { role: "user" | "assistant"; content: string }[],
+  sessionMemory?: Record<string, unknown>
 ): string {
   if (!replyText) return replyText;
   const msg = (currentMessage || "").trim();
@@ -595,6 +602,20 @@ export function enforceGreetingReset(
   const GREETING_RE =
     /^(?:oi+|ola|ola[\s!.,]|ol[áa]|ei+|hey+|bom\s*dia|boa\s*tarde|boa\s*noite|oi\s*tudo\s*bem|opa|salve|e\s*ai|eai)[\s!.,?\u{1F44B}\u{1F60A}\u{1F642}\u{1F44C}]*$/iu;
   if (!GREETING_RE.test(msgNorm)) return replyText;
+
+  // v223: Se cliente TEM pedido REAL em aberto na sessão, a retomada é LEGÍTIMA.
+  // Não derrubar a resposta do LLM — ele está corretamente lembrando do pedido.
+  if (sessionMemory) {
+    const items = (sessionMemory.order_items as string[]) || [];
+    const hasRealOrder = items.length > 0 ||
+      !!sessionMemory.confirmed_flavor ||
+      !!sessionMemory.confirmed_weight ||
+      !!sessionMemory.confirmed_date ||
+      !!sessionMemory.order_type;
+    if (hasRealOrder) {
+      return replyText; // preservar retomada legítima
+    }
+  }
 
   const replyNorm = normalizeForCompare(replyText);
   const looksLikePedidoRetomada =
@@ -615,8 +636,8 @@ export function enforceGreetingReset(
     /\btotal\s*[:r$]/.test(replyNorm) ||
     (replyNorm.match(/r\$\s*\d/g) || []).length >= 2 ||
     /pix\s+no\s+banco/.test(replyNorm) ||
-    // Placeholder literal do prompt (ex.: "[produto do cardápio]", "[sabor]") — erro grave.
-    /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|bolo|nome|endere[cç]o|valor|total|cliente)\s*[^\]]*\]/i.test(
+    // Placeholder literal do prompt — só genéricos, não valores reais.
+    /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|nome|endere[cç]o|valor|total|pedido)(?:\s+(?:do|da|de|em|real|completo|aqui|cliente|pedido|card[aá]pio|bolo|entrega))*\s*\]/i.test(
       replyText
     );
   // Também detecta mensagens de "equipe foi avisada" / "em breve retorna" —
