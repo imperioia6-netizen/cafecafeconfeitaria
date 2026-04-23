@@ -276,6 +276,11 @@ export async function callLlm(
   // ── Detecta provider pela baseUrl ──
   const isAnthropic = /api\.anthropic\.com/i.test(config.baseUrl);
 
+  // promptSize é referenciado em ambos os paths (Anthropic e OpenAI) dentro
+  // de dbgLog. Declarar aqui evita ReferenceError no path Anthropic — antes
+  // estava só definido no path OpenAI (mais abaixo).
+  let promptSize = 0;
+
   // Anthropic exige que mensagens ALTERNEM role (user → assistant → user …),
   // que comecem com 'user' e NUNCA repitam duas do mesmo role em sequência.
   // OpenAI é mais tolerante, mas normalizar não atrapalha.
@@ -311,6 +316,13 @@ export async function callLlm(
     // Endpoint, header e body formato Anthropic.
     // Docs: https://docs.anthropic.com/en/api/messages
     const url = `${config.baseUrl.replace(/\/$/, "")}/messages`;
+    // promptSize aproximado — system + mensagens (útil só para logs).
+    promptSize =
+      systemPrompt.length +
+      JSON.stringify([
+        ...recentHistory,
+        { role: "user", content: finalUserContent },
+      ]).length;
     // Modelos Anthropic. Opus-4-5-20250929 NÃO está liberado em todas as
     // contas — o fallback automático cobre 404/model_not_found.
     const MODEL_MAP: Record<string, string> = {
@@ -429,7 +441,7 @@ export async function callLlm(
   }
 
   let lastErr = "";
-  const promptSize = JSON.stringify(messages).length;
+  promptSize = JSON.stringify(messages).length;
 
   // Tenta cada modelo, com retry para erros transientes (5xx, 429, timeout).
   for (const model of candidates) {
