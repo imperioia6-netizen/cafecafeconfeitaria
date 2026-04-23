@@ -382,7 +382,18 @@ export function enforceIntentAlignment(
   }
 
   // 2) Cliente só cumprimentou — resposta não pode listar preços / Pix.
+  //
+  // v241: antes esse caso era AGRESSIVO DEMAIS — se cliente dizia "oi de novo"
+  // no meio de um fluxo ativo (depois do atendente mandar PIX/resumo), o
+  // guardrail substituía a continuação legítima por "Oi! Como posso ajudar?".
+  // Agora, se o último turno do atendente já estava mandando PIX, consideramos
+  // que é continuação de pagamento e deixamos o enforceGreetingReset (pipeline
+  // mais abaixo) decidir com base na session.
   if (ctx.intent === "greeting" && ctx.next_action === "greet") {
+    if (ctx.last_assistant_had_pix) {
+      // conversação ativa mid-pagamento — não sobrescreve
+      return replyText;
+    }
     if (hasPixData || hasSummary) {
       return "Oi! 😊 Como posso te ajudar?";
     }
@@ -696,13 +707,20 @@ export function enforceGreetingReset(
 
   // v223: Se cliente TEM pedido REAL em aberto na sessão, a retomada é LEGÍTIMA.
   // Não derrubar a resposta do LLM — ele está corretamente lembrando do pedido.
+  //
+  // v241: !!"" vira false, então o check antigo (`!!sessionMemory.confirmed_flavor`)
+  // dava falso negativo quando a session tinha "" no campo (setado explicitamente
+  // como vazio). Agora checamos .trim().length — string não-vazia de verdade.
   if (sessionMemory) {
     const items = (sessionMemory.order_items as string[]) || [];
-    const hasRealOrder = items.length > 0 ||
-      !!sessionMemory.confirmed_flavor ||
-      !!sessionMemory.confirmed_weight ||
-      !!sessionMemory.confirmed_date ||
-      !!sessionMemory.order_type;
+    const nonEmpty = (v: unknown): boolean =>
+      typeof v === "string" ? v.trim().length > 0 : !!v;
+    const hasRealOrder =
+      items.length > 0 ||
+      nonEmpty(sessionMemory.confirmed_flavor) ||
+      nonEmpty(sessionMemory.confirmed_weight) ||
+      nonEmpty(sessionMemory.confirmed_date) ||
+      nonEmpty(sessionMemory.order_type);
     if (hasRealOrder) {
       return replyText; // preservar retomada legítima
     }
@@ -779,15 +797,23 @@ export function enforceSmartFallback(
 ): string {
   if (!replyText) return replyText;
   const r = normalizeForCompare(replyText);
+  // v241: lista expandida pra cobrir o FALLBACK_REPLY literal do index.ts
+  // ("Obrigado pela mensagem! Em instantes nossa equipe retorna.") — antes
+  // "em instantes nossa equipe" não estava na lista.
   const isFallback =
     r.includes("equipe ja foi avisada") ||
     r.includes("equipe foi avisada") ||
     r.includes("nossa equipe ja") ||
     r.includes("em breve retorna") ||
+    r.includes("em instantes nossa equipe") ||
+    r.includes("em instantes a equipe") ||
+    r.includes("equipe retorna") ||
     r.includes("obrigado pela mensagem") ||
     r.includes("estamos a disposicao") ||
+    r.includes("estamos à disposição") ||
     r.includes("nao consegui processar") ||
-    r.includes("não consegui processar");
+    r.includes("não consegui processar") ||
+    r.includes("desculpe a demora");
   if (!isFallback) return replyText;
 
   // Resposta determinística por intent/next_action.
@@ -1734,9 +1760,13 @@ export function enforceAskBeforePayment(
     "fechou",
   ];
   const hitDone = (t: string) => doneMarkers.some((m) => t.includes(m));
+  // v241: ampliado de slice(-2) para slice(-5) — cliente pode ter dito
+  // "só isso" / "pode fechar" há 3-4 mensagens e depois respondeu outras
+  // perguntas (endereço, forma pagto). Se pegamos só as 2 últimas, o
+  // guardrail volta a bloquear o PIX indevidamente.
   const recentUserText = history
     .filter((h) => h.role === "user")
-    .slice(-2)
+    .slice(-5)
     .map((h) => normalizeForCompare(h.content))
     .join(" ");
   if (hitDone(currentNorm) || hitDone(recentUserText)) return replyText;
