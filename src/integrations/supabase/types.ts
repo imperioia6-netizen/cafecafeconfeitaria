@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      _debug_open_order: {
+        Row: {
+          has_open: boolean | null
+          id: number
+          intent: string | null
+          is_new_conv: boolean | null
+          items_count: number | null
+          message: string | null
+          recently_reset: boolean | null
+          remote_jid: string | null
+          sess_has_data: boolean | null
+          should_show: boolean | null
+          stage: string | null
+          stage_active: boolean | null
+          ts: string | null
+        }
+        Insert: {
+          has_open?: boolean | null
+          id?: number
+          intent?: string | null
+          is_new_conv?: boolean | null
+          items_count?: number | null
+          message?: string | null
+          recently_reset?: boolean | null
+          remote_jid?: string | null
+          sess_has_data?: boolean | null
+          should_show?: boolean | null
+          stage?: string | null
+          stage_active?: boolean | null
+          ts?: string | null
+        }
+        Update: {
+          has_open?: boolean | null
+          id?: number
+          intent?: string | null
+          is_new_conv?: boolean | null
+          items_count?: number | null
+          message?: string | null
+          recently_reset?: boolean | null
+          remote_jid?: string | null
+          sess_has_data?: boolean | null
+          should_show?: boolean | null
+          stage?: string | null
+          stage_active?: boolean | null
+          ts?: string | null
+        }
+        Relationships: []
+      }
       _deploy_bundle: {
         Row: {
           content: string
@@ -47,6 +95,57 @@ export type Database = {
           content?: string
           id?: number
           name?: string
+        }
+        Relationships: []
+      }
+      activity_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_debug_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: number
+          level: string
+          message: string
+          source: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: number
+          level: string
+          message: string
+          source: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: number
+          level?: string
+          message?: string
+          source?: string
         }
         Relationships: []
       }
@@ -250,6 +349,194 @@ export type Database = {
           },
         ]
       }
+      automations: {
+        Row: {
+          completed_at: string | null
+          contact_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          current_step: number | null
+          id: string
+          script_id: string | null
+          script_name: string | null
+          started_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          script_id?: string | null
+          script_name?: string | null
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          script_id?: string | null
+          script_name?: string | null
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automations_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backups: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size_mb: number | null
+          file_url: string | null
+          id: string
+          status: string | null
+          total_contacts: number | null
+          total_messages: number | null
+          total_scripts: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          id?: string
+          status?: string | null
+          total_contacts?: number | null
+          total_messages?: number | null
+          total_scripts?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          id?: string
+          status?: string | null
+          total_contacts?: number | null
+          total_messages?: number | null
+          total_scripts?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          contact_name: string | null
+          contact_phone: string
+          created_at: string | null
+          id: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          campaign_id: string
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          file_url: string | null
+          id: string
+          message_content: string | null
+          message_type: string | null
+          name: string
+          started_at: string | null
+          status: string | null
+          target_labels: string[] | null
+          target_phones: string[] | null
+          total_sent: number | null
+          total_targets: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          message_content?: string | null
+          message_type?: string | null
+          name: string
+          started_at?: string | null
+          status?: string | null
+          target_labels?: string[] | null
+          target_phones?: string[] | null
+          total_sent?: number | null
+          total_targets?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          message_content?: string | null
+          message_type?: string | null
+          name?: string
+          started_at?: string | null
+          status?: string | null
+          target_labels?: string[] | null
+          target_phones?: string[] | null
+          total_sent?: number | null
+          total_targets?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       cash_closings: {
         Row: {
           cash_difference: number | null
@@ -361,6 +648,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contacts: {
+        Row: {
+          created_at: string | null
+          id: string
+          labels: string[] | null
+          last_contact_at: string | null
+          name: string | null
+          notes: string | null
+          phone: string
+          source: string | null
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          labels?: string[] | null
+          last_contact_at?: string | null
+          name?: string | null
+          notes?: string | null
+          phone: string
+          source?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          labels?: string[] | null
+          last_contact_at?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: string
+          source?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          data: Json
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          data?: Json
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       crm_messages: {
         Row: {
@@ -494,6 +841,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      debug_prompts: {
+        Row: {
+          created_at: string | null
+          history_length: number | null
+          id: number
+          intent: string | null
+          remote_jid: string | null
+          reply: string | null
+          system_prompt_length: number | null
+          system_prompt_preview: string | null
+          user_message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          history_length?: number | null
+          id?: number
+          intent?: string | null
+          remote_jid?: string | null
+          reply?: string | null
+          system_prompt_length?: number | null
+          system_prompt_preview?: string | null
+          user_message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          history_length?: number | null
+          id?: number
+          intent?: string | null
+          remote_jid?: string | null
+          reply?: string | null
+          system_prompt_length?: number | null
+          system_prompt_preview?: string | null
+          user_message?: string | null
+        }
+        Relationships: []
+      }
+      debug_send_log: {
+        Row: {
+          error_msg: string | null
+          evo_base: string | null
+          evo_instance: string | null
+          id: number
+          phone: string | null
+          reply_len: number | null
+          reply_preview: string | null
+          stage: string | null
+          ts: string | null
+        }
+        Insert: {
+          error_msg?: string | null
+          evo_base?: string | null
+          evo_instance?: string | null
+          id?: number
+          phone?: string | null
+          reply_len?: number | null
+          reply_preview?: string | null
+          stage?: string | null
+          ts?: string | null
+        }
+        Update: {
+          error_msg?: string | null
+          evo_base?: string | null
+          evo_instance?: string | null
+          id?: number
+          phone?: string | null
+          reply_len?: number | null
+          reply_preview?: string | null
+          stage?: string | null
+          ts?: string | null
+        }
+        Relationships: []
       }
       delivery_zones: {
         Row: {
@@ -813,6 +1232,68 @@ export type Database = {
         }
         Relationships: []
       }
+      labels: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      licenses: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          license_key: string
+          plan_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          license_key: string
+          plan_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          license_key?: string
+          plan_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licenses_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       "messaages log": {
         Row: {
           from_me: boolean | null
@@ -1029,6 +1510,65 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          plan_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          duration_days: number
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          duration_days?: number
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
       }
       productions: {
         Row: {
@@ -1339,6 +1879,162 @@ export type Database = {
           },
         ]
       }
+      saved_messages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          file_name: string | null
+          file_url: string | null
+          folder: string | null
+          id: string
+          message_type: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          folder?: string | null
+          id?: string
+          message_type?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          folder?: string | null
+          id?: string
+          message_type?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scheduled_messages: {
+        Row: {
+          contact_name: string | null
+          contact_phone: string
+          created_at: string | null
+          file_url: string | null
+          id: string
+          message_content: string | null
+          message_type: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          message_content?: string | null
+          message_type?: string | null
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          message_content?: string | null
+          message_type?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      script_steps: {
+        Row: {
+          created_at: string | null
+          delay_seconds: number | null
+          id: string
+          message_id: string | null
+          script_id: string
+          step_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          delay_seconds?: number | null
+          id?: string
+          message_id?: string | null
+          script_id: string
+          step_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          delay_seconds?: number | null
+          id?: string
+          message_id?: string | null
+          script_id?: string
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_steps_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "saved_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_steps_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scripts: {
+        Row: {
+          auto_add_labels: string[] | null
+          auto_remove_labels: string[] | null
+          created_at: string | null
+          id: string
+          name: string
+          show_typing: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_add_labels?: string[] | null
+          auto_remove_labels?: string[] | null
+          created_at?: string | null
+          id?: string
+          name: string
+          show_typing?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_add_labels?: string[] | null
+          auto_remove_labels?: string[] | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          show_typing?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           address: string | null
@@ -1390,6 +2086,36 @@ export type Database = {
           total?: number | null
           "type text"?: Database["public"]["Enums"]["type text"][] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      signatures: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1479,6 +2205,54 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          auto_reply_enabled: boolean | null
+          auto_reply_message: string | null
+          business_hours_enabled: boolean | null
+          business_hours_end: string | null
+          business_hours_start: string | null
+          created_at: string | null
+          id: string
+          theme: string | null
+          typing_simulation: boolean | null
+          updated_at: string | null
+          user_id: string
+          welcome_message: string | null
+          welcome_message_enabled: boolean | null
+        }
+        Insert: {
+          auto_reply_enabled?: boolean | null
+          auto_reply_message?: string | null
+          business_hours_enabled?: boolean | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string | null
+          id?: string
+          theme?: string | null
+          typing_simulation?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          welcome_message?: string | null
+          welcome_message_enabled?: boolean | null
+        }
+        Update: {
+          auto_reply_enabled?: boolean | null
+          auto_reply_message?: string | null
+          business_hours_enabled?: boolean | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string | null
+          id?: string
+          theme?: string | null
+          typing_simulation?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          welcome_message?: string | null
+          welcome_message_enabled?: boolean | null
         }
         Relationships: []
       }
