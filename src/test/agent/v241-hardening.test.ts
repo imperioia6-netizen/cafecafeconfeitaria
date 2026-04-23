@@ -37,13 +37,27 @@ describe("Fix 1 — enforceGreetingReset aceita string vazia em session", () => 
     expect(out.toLowerCase()).toMatch(/como posso/);
   });
 
-  it("confirmed_flavor com valor REAL ('morango') → preserva retomada", () => {
+  it("confirmed_flavor com valor REAL ('morango') + resposta reapresenta pedido cegamente → substitui por 'continuar ou novo' (v242: decisão 1 proprietário)", () => {
     const sessionMem = {
       confirmed_flavor: "morango",
       order_items: [] as string[],
     };
     const reply =
       "Oi de novo! Seu pedido: bolo de morango 2kg. Quer confirmar?";
+    const out = enforceGreetingReset(reply, "oi", [], sessionMem);
+    // v242: quando tem pedido aberto na session + cliente só saudou, a
+    // resposta certa é perguntar "continuar ou novo?", não reapresentar
+    // o pedido cegamente. Conforme decisão 1 do proprietário.
+    expect(out.toLowerCase()).toMatch(/continuar|novo/);
+  });
+
+  it("confirmed_flavor REAL + resposta JÁ pergunta 'continuar' → preserva", () => {
+    const sessionMem = {
+      confirmed_flavor: "morango",
+      order_items: [] as string[],
+    };
+    const reply =
+      "Oi de novo! 😊 Você tem um pedido em aberto — quer continuar de onde paramos ou começar um novo?";
     const out = enforceGreetingReset(reply, "oi", [], sessionMem);
     expect(out).toBe(reply);
   });

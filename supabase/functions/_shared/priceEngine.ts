@@ -516,6 +516,9 @@ export function enforceIntentAlignment(
   //      NÃO pode alucinar que é sabor/produto. Caso real: cliente disse
   //      "Encomenda" após pergunta de modalidade, LLM devolveu "Esse sabor
   //      a gente não tem... vou verificar com a equipe" (hallucination).
+  //
+  // v242: regex ampliado pra cobrir "sabores" (plural), menção a sabor
+  //       específico (nutella, morango, etc.) e verificar-com-equipe-sobre-sabor.
   if (
     ctx.intent === "provide_order_type" &&
     (ctx.entities as { order_type?: string }).order_type
@@ -527,6 +530,13 @@ export function enforceIntentAlignment(
       /\besse?\s+sabor\b/.test(r) ||
       /\besta\s+sabor\b/.test(r) ||
       /\bsabor\s+(?:a\s+gente\s+)?n[aã]o\s+(?:temos|tem|existe|consta)/.test(r) ||
+      // "sobre esses sabores / sobre o sabor / verificar sabor" — qualquer
+      // menção a "sabor" em plural ou fragmento indica que LLM puxou contexto
+      // antigo de bolo em vez de responder à modalidade.
+      /\b(?:sobre|verificar|consultar|sobre\s+os?)\s+(?:o\s+|esses\s+|esse\s+)?sabor(?:es)?\b/.test(r) ||
+      /\bn[aã]o\s+(?:fa[zç]|temos|tem)\s+(?:puro|esse)/.test(r) || // "não faz puro"
+      // menção direta a sabor específico (alucinação de contexto antigo)
+      /\b(?:nutella|chocolate|morango|ninho|trufado|brigadeiro|p[eê]ssego|cenoura|coco|lim[aã]o|maracuj[aá]|baunilha|pistache)\b/i.test(r) ||
       // "bolo de encomenda/delivery/retirada" — alucina modalidade como sabor
       new RegExp(`\\bbolo\\s+de\\s+${orderTypeNorm}\\b`, "i").test(r) ||
       // pedido genérico de sabor quando cliente acabou de dizer modalidade
@@ -745,28 +755,41 @@ export function enforceGreetingReset(
     /^(?:oi+|ola|ola[\s!.,]|ol[áa]|ei+|hey+|bom\s*dia|boa\s*tarde|boa\s*noite|oi\s*tudo\s*bem|opa|salve|e\s*ai|eai)[\s!.,?\u{1F44B}\u{1F60A}\u{1F642}\u{1F44C}]*$/iu;
   if (!GREETING_RE.test(msgNorm)) return replyText;
 
-  // v223: Se cliente TEM pedido REAL em aberto na sessão, a retomada é LEGÍTIMA.
-  // Não derrubar a resposta do LLM — ele está corretamente lembrando do pedido.
-  //
-  // v241: !!"" vira false, então o check antigo (`!!sessionMemory.confirmed_flavor`)
-  // dava falso negativo quando a session tinha "" no campo (setado explicitamente
-  // como vazio). Agora checamos .trim().length — string não-vazia de verdade.
-  if (sessionMemory) {
-    const items = (sessionMemory.order_items as string[]) || [];
-    const nonEmpty = (v: unknown): boolean =>
-      typeof v === "string" ? v.trim().length > 0 : !!v;
-    const hasRealOrder =
-      items.length > 0 ||
-      nonEmpty(sessionMemory.confirmed_flavor) ||
-      nonEmpty(sessionMemory.confirmed_weight) ||
-      nonEmpty(sessionMemory.confirmed_date) ||
-      nonEmpty(sessionMemory.order_type);
-    if (hasRealOrder) {
-      return replyText; // preservar retomada legítima
-    }
-  }
-
   const replyNorm = normalizeForCompare(replyText);
+
+  // v242: detectar se a resposta DO LLM é apropriada para uma saudação.
+  // Cobre: cumprimento explícito ("oi", "bem-vindo"), pergunta aberta de
+  // intenção ("como posso ajudar", "algum pedido hoje", "o que precisa"),
+  // retomada de pedido ("quer continuar"), e link do cardápio.
+  const looksLikeAppropriateGreeting =
+    replyNorm.includes("bem vindo") ||
+    replyNorm.includes("bem-vindo") ||
+    replyNorm.includes("como posso") ||
+    replyNorm.includes("como eu posso") ||
+    replyNorm.includes("em que posso") ||
+    replyNorm.includes("posso ajudar") ||
+    replyNorm.includes("posso te ajudar") ||
+    replyNorm.includes("algum pedido") ||
+    replyNorm.includes("quer pedir") ||
+    replyNorm.includes("o que precisa") ||
+    replyNorm.includes("o que vai querer") ||
+    replyNorm.includes("o que voce precisa") ||
+    replyNorm.includes("o que voce vai") ||
+    replyNorm.includes("bom te ver") ||
+    replyNorm.includes("bom de te ver") ||
+    replyNorm.includes("que bom") ||
+    replyNorm.includes("quer continuar") ||
+    replyNorm.includes("continuar com o pedido") ||
+    replyNorm.includes("continuar de onde") ||
+    replyNorm.includes("começar um novo") ||
+    replyNorm.includes("comecar um novo") ||
+    replyNorm.includes("iniciar um novo") ||
+    replyNorm.includes("pedido em aberto") ||
+    /cardapio|cardápio/.test(replyNorm) ||
+    /(?:^|\W)(?:oi+|ol[áa]+|ei+|hey+|opa|salve|bom\s+dia|boa\s+tarde|boa\s+noite)(?:\W|$)/i.test(
+      replyText
+    );
+
   const looksLikePedidoRetomada =
     replyNorm.includes("desculpa a confusao") ||
     replyNorm.includes("pedido atualizado") ||
@@ -780,17 +803,12 @@ export function enforceGreetingReset(
     replyNorm.includes("resumo do seu pedido") ||
     replyNorm.includes("pedimos 50") ||
     replyNorm.includes("chave pix") ||
-    replyNorm.includes("mais alguma coisa") ||
-    replyNorm.includes("podemos finalizar") ||
     /\btotal\s*[:r$]/.test(replyNorm) ||
     (replyNorm.match(/r\$\s*\d/g) || []).length >= 2 ||
     /pix\s+no\s+banco/.test(replyNorm) ||
-    // Placeholder literal do prompt — só genéricos, não valores reais.
     /\[(?:produto\s+do\s+card[aá]pio|sabor|peso|item|nome|endere[cç]o|valor|total|pedido)(?:\s+(?:do|da|de|em|real|completo|aqui|cliente|pedido|card[aá]pio|bolo|entrega))*\s*\]/i.test(
       replyText
     );
-  // Também detecta mensagens de "equipe foi avisada" / "em breve retorna" —
-  // são fallbacks inadequados para uma saudação simples.
   const looksLikeFallback =
     replyNorm.includes("equipe ja foi avisada") ||
     replyNorm.includes("equipe foi avisada") ||
@@ -798,8 +816,62 @@ export function enforceGreetingReset(
     replyNorm.includes("obrigado pela mensagem") ||
     replyNorm.includes("estamos a disposicao") ||
     replyNorm.includes("equipe retorna");
-  if (!looksLikePedidoRetomada && !looksLikeFallback) return replyText;
-  if (replyText.trim().length <= 60 && !looksLikeFallback) return replyText;
+
+  // v242: se sessão tem pedido real ABERTO, preserva SÓ se a resposta do LLM
+  // tem greeting apropriado (ex.: "Oi! Quer continuar seu pedido anterior?").
+  // Se a resposta é uma continuação CEGA do turno anterior ("Quer que seja
+  // de 4kg ou 5kg?"), substitui por pergunta de continuidade limpa.
+  if (sessionMemory) {
+    const items = (sessionMemory.order_items as string[]) || [];
+    const nonEmpty = (v: unknown): boolean =>
+      typeof v === "string" ? v.trim().length > 0 : !!v;
+    const hasRealOrder =
+      items.length > 0 ||
+      nonEmpty(sessionMemory.confirmed_flavor) ||
+      nonEmpty(sessionMemory.confirmed_weight) ||
+      nonEmpty(sessionMemory.confirmed_date) ||
+      nonEmpty(sessionMemory.order_type);
+    if (hasRealOrder) {
+      // Resposta já faz a pergunta certa de continuidade → preserva
+      if (
+        replyNorm.includes("continuar") ||
+        replyNorm.includes("novo pedido") ||
+        replyNorm.includes("pedido em aberto") ||
+        replyNorm.includes("iniciar um novo")
+      ) {
+        return replyText;
+      }
+      // Resposta é um cumprimento normal sem menção ao pedido → preserva
+      // (cenário C: pedido antigo já finalizado, cliente voltou, LLM só
+      // cumprimenta).
+      if (looksLikeAppropriateGreeting && !looksLikePedidoRetomada) {
+        return replyText;
+      }
+      // Caso contrário: resposta é continuação cega ou retomada cega do
+      // pedido antigo. Substitui por pergunta explícita.
+      return "Oi de novo! 😊 Você tem um pedido em aberto aqui — quer continuar de onde paramos ou começar um novo?";
+    }
+  }
+
+  // v242: novo critério — cliente saudou mas resposta NÃO é nem cumprimento
+  // apropriado nem retomada identificável, e tem tamanho relevante (>30 chars):
+  // é continuação cega de contexto antigo. Substitui por saudação limpa.
+  // Caso real: cliente "ola" + LLM "A gente trabalha com peso inteiro. Quer
+  // que seja de 4kg ou 5kg?" (herdou contexto de 4,5kg de conversa antiga).
+  const needsCleanGreeting =
+    !looksLikeAppropriateGreeting &&
+    !looksLikePedidoRetomada &&
+    !looksLikeFallback &&
+    replyText.trim().length > 30;
+
+  if (!looksLikePedidoRetomada && !looksLikeFallback && !needsCleanGreeting)
+    return replyText;
+  if (
+    replyText.trim().length <= 60 &&
+    !looksLikeFallback &&
+    !needsCleanGreeting
+  )
+    return replyText;
 
   // Tem pedido ABERTO confirmado na sessão? (se tiver, avisa; senão só saúda).
   // Como não temos acesso à sessão aqui, cumprimentamos e perguntamos.

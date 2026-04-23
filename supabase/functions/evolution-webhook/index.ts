@@ -544,14 +544,25 @@ async function handleCustomerMessage(
   }
 
   // ── Carregar histórico ──
+  //
+  // v242: filtrar por conversation_reset_at — quando o cliente pediu "novo
+  // pedido" em algum turno anterior, gravamos o timestamp na session. Mensagens
+  // ANTERIORES ao reset são descartadas aqui para o LLM não alucinar com
+  // conversas antigas (ex.: "encomenda" virar resposta sobre nutella porque
+  // nutella apareceu 3 mensagens atrás).
   let history: { role: string; content: string }[] = [];
+  const resetAtRaw = (sessionMemory.conversation_reset_at as string | undefined) || "";
   if (!instanceChanged) {
-    const { data: historyRows } = await supabase
+    let histQuery = supabase
       .from("crm_messages")
       .select("message_type, message_content, created_at")
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false })
       .limit(20);
+    if (resetAtRaw) {
+      histQuery = histQuery.gt("created_at", resetAtRaw);
+    }
+    const { data: historyRows } = await histQuery;
 
     history = (historyRows || [])
       .reverse()
@@ -576,6 +587,12 @@ async function handleCustomerMessage(
       ) {
         history = history.slice(0, -1);
       }
+    }
+    if (resetAtRaw) {
+      console.log(
+        `evolution-webhook: histórico filtrado por reset_at=${resetAtRaw}, ${history.length} msgs`,
+        remoteJid
+      );
     }
   } else {
     console.log(
@@ -640,8 +657,15 @@ async function handleCustomerMessage(
   if (clientWantsNew) {
     console.log("evolution-webhook: cliente pediu NOVO pedido → reset de sessão", remoteJid);
     // Limpar memória da sessão para não arrastar pedido anterior
-    sessionMemory = { evo_instance: evo.instance };
-    // Limpar histórico para a LLM não puxar itens antigos
+    // v242: persistir conversation_reset_at → histórico futuro é filtrado
+    // pra ignorar mensagens anteriores ao reset. Antes, next turn puxava
+    // história antiga do banco e o LLM alucinava com contexto velho.
+    const resetTimestamp = new Date().toISOString();
+    sessionMemory = {
+      evo_instance: evo.instance,
+      conversation_reset_at: resetTimestamp,
+    };
+    // Limpar histórico para a LLM não puxar itens antigos (este turno)
     history = [];
     // Forçar intent correto
     intent = "start_order";
@@ -1276,6 +1300,10 @@ async function handleCustomerMessage(
       stage,
       current_topic: currentTopic,
       evo_instance: evo.instance,
+      // v242: preservar marcador de reset pra próximos turnos filtrarem
+      // histórico antigo do banco.
+      conversation_reset_at:
+        (sessionMemory.conversation_reset_at as string | undefined) || "",
       confirmed_weight:
         sessionWeights.length > 0
           ? sessionWeights[sessionWeights.length - 1]
