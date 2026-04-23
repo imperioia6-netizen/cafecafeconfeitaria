@@ -254,10 +254,25 @@ export function enforceOrderSummaryCompleteness(
 
   const rep = normalizeForCompare(replyText);
 
+  // v243: detectar sinal financeiro mais cedo — resposta com PIX, sinal 50%,
+  // total ou múltiplos R$ conta como summary (e se faltar item, NÃO pode sair
+  // cálculo errado pro cliente).
+  const hasFinancialPayload =
+    /\btotal\s*[:r$]/.test(rep) ||
+    /\bsinal\s+de\s+50/.test(rep) ||
+    /\b50\s*%/.test(rep) ||
+    /\bchave\s*pix\b/.test(rep) ||
+    /pix\s+no\s+banco/.test(rep) ||
+    /\b11998287836\b/.test(replyText) ||
+    /\bnubank\b/i.test(replyText) ||
+    /pagar.*comprovante|comprovante.*pagar/.test(rep) ||
+    (replyText.match(/R\$\s*[\d.,]+/gi) || []).length >= 2;
+
   // 1. A resposta parece um resumo/fechamento do pedido?
   const looksLikeSummary =
+    hasFinancialPayload ||
     /\btotal\b/.test(rep) ||
-    /resumo\s+(?:do\s+)?pedido/.test(rep) ||
+    /\bresumo\b/.test(rep) ||
     /pedido\s+(?:completo|ficou|resumindo)/.test(rep) ||
     /\bfechou\b/.test(rep);
   if (!looksLikeSummary) return replyText;
@@ -281,7 +296,23 @@ export function enforceOrderSummaryCompleteness(
 
   if (missing.length === 0) return replyText;
 
-  // 3. Injetar aviso no final para o cliente/atendente perceber.
+  // v243: antes só ANEXAVA aviso ⚠️ no final mas deixava o resumo incompleto,
+  // total errado e PIX com valor do sinal ERRADO sair pro cliente. Agora:
+  // (a) se resposta tem cálculo financeiro (total/PIX/sinal) → SUBSTITUI a
+  //     resposta inteira por uma mensagem que admite o erro e pede
+  //     confirmação dos itens SEM enviar total/PIX
+  // (b) se não tem cálculo (só lista de itens sem total) → só anexa nota
+  if (hasFinancialPayload) {
+    // Resposta tem total/PIX errado por causa do item faltando → substitui
+    // inteira. NÃO podemos mandar PIX com valor errado.
+    const missingStr = missing.join(" e ");
+    console.warn(
+      `enforceOrderSummaryCompleteness: item(s) faltando (${missingStr}) + resposta tinha total/PIX — SUBSTITUÍDA completamente pra evitar cobrança errada.`
+    );
+    return `Opa, deixa eu conferir seu pedido direitinho antes de fechar — acho que faltou o ${missingStr}. Pode me confirmar tudo que você pediu? Assim eu refaço o resumo correto com o valor certo 😊`;
+  }
+
+  // Sem cálculo financeiro, só falta item — nota ao final é suficiente.
   const nota = `\n\n⚠️ Opa, parece que esqueci de listar ${missing.join(
     " e "
   )} no resumo — deixa eu conferir seus itens antes de fechar. Pode me confirmar se todos estão aí?`;
