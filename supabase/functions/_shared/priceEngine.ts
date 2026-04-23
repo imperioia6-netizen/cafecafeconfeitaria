@@ -570,8 +570,70 @@ export function enforceNoTemplatePlaceholders(replyText: string): string {
   // Se PRECISA detectar placeholder mais amplo, revisar o regex — ele está propositalmente estrito.
   const PLACEHOLDER_EXATO =
     /\[(?:produto|sabor|peso|nome|valor|total|item|quantidade|endere[çc]o|frase|escrita|hor[aá]rio|bairro|cep)(?:\s+(?:real|completo|aqui|do\s+bolo|da\s+entrega|do\s+cliente|do\s+pedido|do\s+card[aá]pio|em\s+kg))?\s*\]/i;
+  // versão global pra usar no replace
+  const PLACEHOLDER_EXATO_G = new RegExp(PLACEHOLDER_EXATO.source, "gi");
+
   if (!PLACEHOLDER_EXATO.test(replyText)) return replyText;
-  console.warn("enforceNoTemplatePlaceholders: placeholder EXATO detectado, substituindo:", replyText.slice(0, 200));
+
+  console.warn(
+    "enforceNoTemplatePlaceholders: placeholder detectado, tentando limpeza inline:",
+    replyText.slice(0, 200)
+  );
+
+  // v240 — LIMPEZA INLINE:
+  // Em vez de substituir TUDO por "me confundi", tenta remover cirurgicamente só as
+  // sentenças contaminadas pelo placeholder + listas "Sabores disponíveis:" que
+  // costumam vir alucinadas junto. Assim preserva partes válidas tipo
+  // "Anotado! 50 brigadeiros e 25 empadas de frango."
+  let cleaned = replyText;
+
+  // 1) Split por pontuação sentencial / newline, mantendo separadores.
+  const SENTENCE_SPLIT = /([.!?\n]+\s*)/;
+  const parts = cleaned.split(SENTENCE_SPLIT);
+  const kept: string[] = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const sentence = parts[i] || "";
+    const terminator = parts[i + 1] || "";
+    // Pula sentenças que têm placeholder dentro.
+    if (PLACEHOLDER_EXATO.test(sentence)) continue;
+    kept.push(sentence + terminator);
+  }
+  cleaned = kept.join("").trim();
+
+  // 2) Ainda assim, se escapar algum placeholder solto (ex.: sem pontuação),
+  //    remove ele literalmente.
+  cleaned = cleaned.replace(PLACEHOLDER_EXATO_G, "").trim();
+
+  // 3) Remove listas "Sabores disponíveis: X, Y, Z" — quando o LLM erra placeholder,
+  //    a lista que vem junto costuma ser alucinada.
+  cleaned = cleaned
+    .replace(/sabores?\s+dispon[ií]veis\s*[:\-][^\n.!?]*[\n.!?]?/gi, "")
+    .trim();
+
+  // 4) Colapsa espaços / newlines excessivos que a remoção deixou.
+  cleaned = cleaned
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([.,;!?])/g, "$1")
+    .trim();
+
+  // 5) Sobrou conteúdo útil? Critérios: >= 20 chars com pelo menos uma sequência
+  //    alfabética de 3+ letras (não só pontuação / emoji).
+  const hasContent =
+    cleaned.length >= 20 &&
+    /[a-záàâãéèêíïóôõúüç0-9]{3,}/i.test(cleaned);
+
+  if (hasContent) {
+    console.warn(
+      "enforceNoTemplatePlaceholders: limpeza inline bem-sucedida, preservando conteúdo útil."
+    );
+    return cleaned;
+  }
+
+  // Fallback genérico se nada sobrou.
+  console.warn(
+    "enforceNoTemplatePlaceholders: sem conteúdo aproveitável após limpeza, usando fallback."
+  );
   return "Opa, me confundi aqui 😅 Pode me dizer novamente o que você quer? Assim anoto certinho.";
 }
 
@@ -934,11 +996,28 @@ export function enforceNoFragmentAsFlavor(
 ): string {
   if (!replyText) return replyText;
 
+  // Se o LLM já está indicando que vai consultar a equipe ou que é um sabor
+  // que pode ser feito sob encomenda, NÃO substituímos — esse é o
+  // comportamento DESEJADO quando o cliente pede um sabor fora do cardápio.
+  const replyLower = normalizeForCompare(replyText);
+  const llmIsHandlingProperly =
+    replyLower.includes("vou verificar com a equipe") ||
+    replyLower.includes("vou ver com a equipe") ||
+    replyLower.includes("vou consultar a equipe") ||
+    replyLower.includes("verificar se conseguimos") ||
+    replyLower.includes("ver se conseguimos");
+  if (llmIsHandlingProperly) {
+    return replyText;
+  }
+
   // Padrões de rejeição (regex literais — aceita aspas retas, curly e asteriscos).
+  // PATTERN 3 ENDURECIDO: o "X" entre "sabor" e "não" deve ser uma única
+  // palavra alfabética (3-30 chars). Antes capturava "a gente" quebrando
+  // respostas legítimas como "Esse sabor a gente não tem".
   const patterns: RegExp[] = [
     /(?:o\s+)?sabor\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+(?:a\s+gente\s+)?n[a\u00E3]o\s+(?:temos|tem|existe|consta)/i,
     /bolo\s+(?:s[o\u00F3]\s+)?de\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+(?:a\s+gente\s+)?n[a\u00E3]o\s+(?:temos|tem|existe|consta)/i,
-    /(?:esse|esta?)\s+sabor\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([^"'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*\n.!?]{1,60}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+n[a\u00E3]o/i,
+    /(?:esse|esta?)\s+sabor\s*["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?([a-záàâãéèêíïóôõúüç][a-záàâãéèêíïóôõúüç\s]{2,40}?)["'\u201C\u201D\u2018\u2019\u00AB\u00BB\u0060*]?\s+(?:a\s+gente\s+)?n[a\u00E3]o\s+(?:temos|tem|existe|consta)/i,
   ];
 
   // Padrão especial: "preciso de um sabor válido" / "me diz um sabor válido"
