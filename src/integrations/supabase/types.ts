@@ -2366,7 +2366,12 @@ export type Database = {
         | "bebida"
         | "doce"
         | "outro"
-      sales_channel: "balcao" | "delivery" | "ifood" | "cardapio_digital"
+      sales_channel:
+        | "balcao"
+        | "delivery"
+        | "ifood"
+        | "cardapio_digital"
+        | "local"
       social_lead_status:
         | "novo_seguidor"
         | "mensagem_enviada"
@@ -2522,7 +2527,13 @@ export const Constants = {
       order_status: ["aberto", "finalizado", "cancelado"],
       payment_method: ["pix", "credito", "debito", "dinheiro", "refeicao"],
       product_category: ["bolo", "torta", "salgado", "bebida", "doce", "outro"],
-      sales_channel: ["balcao", "delivery", "ifood", "cardapio_digital"],
+      sales_channel: [
+        "balcao",
+        "delivery",
+        "ifood",
+        "cardapio_digital",
+        "local",
+      ],
       social_lead_status: [
         "novo_seguidor",
         "mensagem_enviada",

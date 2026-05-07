@@ -48,7 +48,7 @@ import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const channelLabels: Record<string, string> = { balcao: 'Balcão', delivery: 'Delivery', cardapio_digital: 'Cardápio Digital', ifood: 'iFood' };
+const channelLabels: Record<string, string> = { balcao: 'Retirada', local: 'Local', delivery: 'Delivery', cardapio_digital: 'Cardápio Digital', ifood: 'iFood' };
 const paymentLabels: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', refeicao: 'Refeição' };
 const categoryLabels: Record<string, string> = { bolo: 'Bolos', torta: 'Tortas', salgado: 'Salgados', bebida: 'Bebidas', doce: 'Doces', acai: 'Açaí', outro: 'Outros' };
 const categoryEmoji: Record<string, string> = { bolo: '🎂', torta: '🥧', salgado: '🥟', bebida: '🥤', doce: '🍫', acai: '🫐', outro: '📦' };
@@ -657,7 +657,7 @@ const Orders = () => {
                             </Badge>
                           ) : (
                             <Badge className="text-[10px] rounded-full border-0 bg-muted/50 text-muted-foreground">
-                              {channelLabels[order.channel] || 'Balcão'}
+                              {channelLabels[order.channel] || 'Retirada'}
                             </Badge>
                           )}
                         </div>
